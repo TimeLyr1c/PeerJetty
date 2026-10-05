@@ -1,0 +1,10 @@
+.build/
+.module-cache/
+outputs/
+Original/outputs/
+Original/.module-cache/
+.DS_Store
+*.p12
+*.pem
+*.key
+local-state/
