@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let menu = NSMenu()
         for (title, action) in [("设备与设置…", #selector(showSettings)), ("添加设备（2 分钟）", #selector(addDevice)),
                                 ("显示投放区", #selector(preview)), ("显示最近收到的文件", #selector(revealReceived)),
-                                ("隐藏菜单栏图标", #selector(hideMenu)), ("退出", #selector(quit))] {
+                                ("隐藏菜单栏图标", #selector(hideMenu)), ("关于 OpenOnMini…", #selector(showAbout)), ("退出", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item)
         }
         menuItem?.menu = menu
@@ -105,6 +105,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     @objc private func addDevice() { showSettings(); engine?.openPairing() }
     @objc private func preview() { drop?.preview() }
+    @objc private func showAbout() {
+        NSApp.orderFrontStandardAboutPanel(options: [.version: AppVersion.details])
+        NSApp.activate(ignoringOtherApps: true)
+    }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func revealReceived() { if !lastReceived.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(lastReceived) } }
     @objc private func showSettings() {

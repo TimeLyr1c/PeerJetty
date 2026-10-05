@@ -8,3 +8,5 @@ Original/.module-cache/
 *.pem
 *.key
 local-state/
+__pycache__/
+*.pyc

@@ -31,9 +31,13 @@
 
 Bonjour 广播服务标识及公开证书指纹；显示名只在开启配对窗口时广播。文件内容使用系统 TLS 1.3 加密，不经云服务器。配对码流程是本项目实现的协议，尚未独立安全审计，不能将其视为已认证的成熟配对标准。详见 [协议说明](Docs/PROTOCOL.md)。
 
+## 本地测试候选
+
+当前源码为 **0.2.1 / 构建 3**：增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。新候选尚未完成双机验收，不会自动替换已安装 App。
+
 ## 从源码构建
 
-需要 Apple Command Line Tools 或 Xcode，Swift 5.9+，macOS 15+ SDK；系统 `/usr/bin/openssl` 用于首次生成本机证书。无第三方 Swift 包、无 Homebrew 依赖。
+需要 Apple Command Line Tools 或 Xcode，Swift 5.9+，macOS 15+ SDK；系统 `/usr/bin/openssl` 用于首次生成本机证书。构建来源记录使用 Python 3 标准库，本机 Command Line Tools 已提供 `/usr/bin/python3`。无第三方 Swift 包、无 Homebrew 依赖。
 
 ```sh
 cd /path/to/OpenOnMini
@@ -63,3 +67,5 @@ cd /path/to/OpenOnMini
 ## 开发目录与版本管理
 
 正式开发目录为 `~/Developer/Projects/OpenOnMini`。源码历史由 Git 保存，构建结果在 `outputs/`，已安装 App 位于 Applications；这三者分别管理。详见 [开发工作流](Docs/WORKFLOW.md)。
+
+[后续计划（含多语言与更新）](Docs/ROADMAP.md)、[GitHub 发布准备](Docs/PUBLISHING.md)、[许可证比较](Docs/LICENSING.md)、[产品定位与名称候选](Docs/POSITIONING.md)。

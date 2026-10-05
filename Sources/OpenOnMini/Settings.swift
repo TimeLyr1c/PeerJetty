@@ -27,7 +27,7 @@ final class SettingsController: NSWindowController {
     private let login = NSSwitch()
     private var peers: [DiscoveredPeer] = []
     init(configuration: Configuration) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: 680), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: 710), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = "OpenOnMini · 双向文件投放"; window.isReleasedWhenClosed = false; window.center()
         super.init(window: window)
         name.stringValue = configuration.name; folderLabel.stringValue = configuration.receivePath
@@ -35,6 +35,9 @@ final class SettingsController: NSWindowController {
         title.font = .systemFont(ofSize: 22, weight: .semibold)
         let intro = NSTextField(wrappingLabelWithString: "两台 Mac 安装同一个 App，在同一局域网配对后即可互传。可信设备自动接收；收到文件只通知，不自动打开。")
         intro.textColor = .secondaryLabelColor
+        let version = NSTextField(labelWithString: AppVersion.summary)
+        version.font = .systemFont(ofSize: 11); version.textColor = .secondaryLabelColor
+        version.toolTip = AppVersion.details
         name.widthAnchor.constraint(greaterThanOrEqualToConstant: 290).isActive = true
         devices.widthAnchor.constraint(greaterThanOrEqualToConstant: 320).isActive = true
         folderLabel.lineBreakMode = .byTruncatingMiddle; folderLabel.maximumNumberOfLines = 2
@@ -52,7 +55,7 @@ final class SettingsController: NSWindowController {
             progressLabel, button("在 Finder 中显示最近收到的文件", #selector(reveal)), separator(),
             row([NSTextField(labelWithString: "登录时自动启动"), login, button("局域网权限…", #selector(permissions))]),
             row([button("微信文件访问权限…", #selector(diskAccess)), button("重置身份…", #selector(reset)), button("退出", #selector(quit))]),
-            statusLabel]
+            statusLabel, version]
         let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         let content = window.contentView!; content.addSubview(stack)

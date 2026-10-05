@@ -1,78 +1,74 @@
-# OpenOnMini 开发、构建与版本工作流
+# 开发、构建与版本工作流
 
-更新：2026-10-05。此文区分现状与后续约定，不表示尚未实施的发布能力已经存在。
+更新：2026-10-05。
 
-## 当前位置
+## 当前状态
 
-- Air 源码：`~/Developer/Projects/OpenOnMini`。
-- Air 安装：`/Applications/OpenOnMini.app`，当前 0.2.0，构建号 2。本次不替换。
-- 配置：`~/Library/Application Support/OpenOnMini/configuration.json`；身份在本机 Keychain。
-- 当前本地 Git 历史已保留，尚未配置远程仓库，本次不创建标签或发布。
-- 先前交付文件仍在 `~/Documents/Codex/2026-10-04/wo-d/outputs/`。
-- mini、Windows 的完整目录及实际安装状态待核实。
+- 正式源码：`~/Developer/Projects/OpenOnMini`。
+- Air 已安装 App：`/Applications/OpenOnMini.app`，仍为 0.2.0 / 构建 2。
+- 当前源码准备 0.2.1 / 构建 3，本地测试候选，未安装、未公开发行。
+- 本机配置：`~/Library/Application Support/OpenOnMini/configuration.json`；身份在 Keychain。
+- 0.2.0 安装包与源码包已逐字节核对；本地标签 v0.2.0 对应原实现提交 47f5254。
+- Air 历史包归档：`~/Dropbox/90_开发资料/OpenOnMini/安装包/0.2.0-build2/`。本地写入不代表其他电脑已同步完成。
+- 尚无 GitHub 远程仓库；mini、Windows 完整路径待核实。
 
-## 项目结构
+## 文件分工
 
-| 路径 | 用途 |
-|---|---|
-| Sources/ | 当前实现源码 |
-| Tests/ | 自动验证代码 |
-| Assets/ | App 图标等资源 |
-| Scripts/、build.sh | 测试与构建工具 |
-| Package.swift | SwiftPM 的模块和构建配置 |
-| Info.plist | App 身份、产品版本与构建号 |
-| Docs/ | 协议、开发设计、验证和工作流说明 |
-| README.md | 使用、安装和构建入口 |
-| CHANGELOG.md | 已交付版本的变化摘要 |
-| LICENSE-NOTES.md | 当前来源与授权状态，不等于已授予开源许可 |
-| Original/ | 保留的原始 Starter 基线，禁止在其中开发新功能 |
-| .git/ | 完整修改历史；由 Git 管理 |
-| .build/、.module-cache/ | 可重新生成的本机缓存，Git 忽略 |
-| outputs/ | 最新本机构建结果，Git 忽略 |
+Sources/ 是源码；Tests/ 是验证；Assets/ 是资源；Scripts/ 与 build.sh 是工具；Package.swift 管理 SwiftPM 配置；Info.plist 是产品版本与构建号的唯一来源。
+README.md 是使用入口；Docs/ 是技术和操作说明；CHANGELOG.md 是版本变化；LICENSE-NOTES.md 记录授权状态；Original/ 保留 Starter 基线。
+.git/ 保存源码历史。.build/、.module-cache/ 是本机缓存；outputs/ 是最新构建与本地候选，均不进 Git。
 
-不建立 OpenOnMini-final、OpenOnMini-v2 等源码副本来记录历史。原始 Starter 作为来源基线是明确的保留例外。
+## 普通开发构建
 
-## 开发与构建
+```sh
+./build.sh           # release 配置
+./build.sh debug     # debug 配置
+./Scripts/test.sh
+python3 -m unittest discover -s Tests/ReleaseTools -v
+```
 
-在本目录运行 `./build.sh` 或 `./build.sh debug`。输出均为 `outputs/OpenOnMini.app`，后一次会替换前一次。
-运行 `./Scripts/test.sh` 验证核心行为；双机发现、系统授权、睡眠恢复等还需实体设备测试。
-编译成功不等于安装完成，也不等于新版本已通过验收。不要自动替换日常使用中的 App。
+两种构建配置目前都输出到 outputs/OpenOnMini.app，下一次构建会替换该位置。不会自动安装 App，也不会自动增加版本号。
+构建使用 Python 3 标准库生成来源记录；此机 Command Line Tools 已提供 /usr/bin/python3，无第三方 Python 包。
+App 的设置窗口显示产品版本和构建号；菜单“关于”及版本文字提示可查看源码提交和构建配置。
+资源内 build-info.json 包含完整提交、未提交修改标记、时间、架构和工具链版本。带未提交修改的普通构建会如实标记，不得把它当作固定提交的交付包。
 
-## 三种标识
+## 准备新的交付候选
 
-1. Git 提交 ID：指出哪份源码。一次提交可以保存未完成的进度。
-2. 产品版本：例如 0.2.0，对应 Info.plist 的 CFBundleShortVersionString。
-3. 构建号：例如 2，对应 CFBundleVersion，区分交付构建。
+```sh
+python3 Scripts/release.py show
+# 示例：只有准备下一份交付时执行，不要对当前已交付构建重复使用
+python3 Scripts/release.py set 0.2.1 --build 4
+```
 
-以后每个保留并分发的测试包要能对应一个确定的提交、产品版本和构建号。
-普通本地编译不自动增加构建号；准备交付一个新候选包时增加构建号并保存源代码进度。
-目前构建脚本没有自动注入提交 ID、生成归档或增加版本号的功能；这些步骤仍需明确执行。
-例如将来的测试包可命名 `OpenOnMini-0.3.0-build3-arm64.zip`，这只是示例，本次没有构建此版本。
-通信协议版本另见 PROTOCOL.md，不由产品版本号直接代替。
+set 要求版本格式为三个数字，产品版本不能倒退，构建号必须增加。它修改 Info.plist，不自动提交、不自动发布。
+准备工作分支，检查修改、测试并提交后，再打包。未完成进度可保存为 WIP 提交；交付候选仍需明确记录验收状态。
 
-## 发布和安装包归档（待实施）
+## 自动归档
 
-建议位置：`~/Dropbox/90_开发资料/OpenOnMini/安装包/<版本>-build<构建号>/`。
-每个保留版本建议包含：
-- 安装包。
+```sh
+python3 Scripts/release.py package
+# 默认 outputs/releases/<版本>-build<构建号>/
+# 也可显式指定自己电脑已核实的归档根目录：
+python3 Scripts/release.py package --destination "$HOME/Dropbox/90_开发资料/OpenOnMini/安装包"
+```
+
+工具要求仓库干净；未提交修改或未跟踪的新源码会阻止打包。它重新构建 release 配置，核对源码和版本未在构建中变化，验证签名，并生成：
+- 带产品版本、构建号和架构的 ZIP。
 - SHA256SUMS.txt。
-- release-info.md：产品版本、构建号、完整提交 ID、构建配置、架构、构建日期、系统/Swift 工具版本、签名和公证状态、验证结果与已知限制。
+- build-info.json 与脱敏 signature.txt。
+- release-info.md，明确编译/签名校验与未完成的双机验收。
 
-同一提交也可能因工具链、签名或构建配置不同产生不同二进制，因此需要记录构建信息并保留实际交付包。
-已交付包不覆盖；下一份使用新构建号或产品版本。保留已交付版本与关键测试候选，不归档每一次编译。
-正式版本可给源码创建标签，例如 v0.3.0，再用 GitHub Release 保存安装包。标签不自带安装包。
-当前 0.2.0 包保持原来的名称与内容，不在迁移时重新命名成另一版本。
+已有同版本/构建号目录会拒绝覆盖；需要增加构建号。普通编译不都归档。
+打包不创建 GitHub Release，不自动上传，不自动公证，不自动安装，不改变本机配对配置。
 
-## 两台电脑交接与测试
+## 历史与发布
 
-工作分支保存进度 → 上传分支 → 另一台下载同一分支 → 继续修改。
-目前尚无远程仓库，此流程要在后续远程配置完成后使用。
-未提交或未上传的修改不自动转移；新文件须检查并加入提交，私密材料与忽略的产物不加入。
-两机测试使用同一份明确标识的安装包，并记录各机器显示的版本/构建号与测试结果。
-正常替换 App 保留本机配置与 Keychain；不要将设备身份作为项目文件复制。
+提交是源码进度；分支是工作线；标签指向选定源码；安装包是具体二进制。已分发的安装包保留原样，源码通过 Git 历史回看，不复制“最终版”源码文件夹。
+正式发布时更新 CHANGELOG、完成验收、确认授权，选定提交和版本标签，再上传对应源码与安装包。0.2.0 的本地历史标签不代表已公开发布。
+其他机器先保存并上传工作分支，接收机器下载同一分支继续；未保存、未提交、未上传或只在本地 stash 的修改不会自动过去。
 
-## 迁移记录
+## 迁移和兼容性
 
-2026-10-05：完整迁移项目与 .git，逐文件校验移动前后内容一致；保留 Original。
-为消除编译缓存里的旧绝对路径，旧 .build 与 .module-cache 临时留在本机临时目录，随后在新路径重新构建。
-本次只改变目录与说明；未改变 App 行为、版本号、安装位置、配对身份，未修改电脑档案或 Dropbox。
+2026-10-05 源码从 Documents/Codex 迁到本地 Developer，完整保留 Git 与 Original，重新生成旧路径缓存。本次版本工具不替换安装的 App，也不更换设备身份。
+通信协议版本另见 PROTOCOL.md；不要直接用产品版本代替协议版本。
+后续改名与国际化计划见 ROADMAP.md。

@@ -17,6 +17,7 @@ for entry in 'ic11:32' 'ic12:64' 'ic07:128' 'ic13:256' 'ic08:256' 'ic14:512' 'ic
   kind="${entry%%:*}"; size="${entry##*:}"
   /usr/bin/sips -z "$size" "$size" "$PROJECT_ROOT/Assets/AppIcon.png" --out "$STAGING_ROOT/icons/$kind.png" >/dev/null
 done
+/usr/bin/python3 "$PROJECT_ROOT/Scripts/release.py" stamp "$APP" "$CONFIGURATION"
 /usr/bin/perl "$PROJECT_ROOT/Scripts/make_icns.pl" "$APP/Contents/Resources/AppIcon.icns" \
   "ic11=$STAGING_ROOT/icons/ic11.png" "ic12=$STAGING_ROOT/icons/ic12.png" "ic07=$STAGING_ROOT/icons/ic07.png" \
   "ic13=$STAGING_ROOT/icons/ic13.png" "ic08=$STAGING_ROOT/icons/ic08.png" "ic14=$STAGING_ROOT/icons/ic14.png" \

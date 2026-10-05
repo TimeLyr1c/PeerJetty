@@ -108,3 +108,6 @@
 
 
 实施补充：0.2.0 首版最低系统调整为 macOS 15，使用 Security 的内存 PKCS#12 导入能力，让自动测试身份不写入用户 Keychain。以上最后一段“本轮只生成计划”描述的是计划阶段，并非当前实现状态；实现与验证见 VALIDATION.md。
+
+
+2026-10-05 后续计划更新：版本管理、GitHub 准备、改名、多语言支持（i18n）和应用内更新分别见 [ROADMAP.md](ROADMAP.md)、[WORKFLOW.md](WORKFLOW.md)、[PUBLISHING.md](PUBLISHING.md)。原始计划留作设计背景。
