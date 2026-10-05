@@ -62,7 +62,7 @@ cd /path/to/OpenOnMini
 
 0.2.0 是首个双向开发版本。原始单向 SSH Starter 保留在 `Original/`，新传输代码位于 `Sources/`，没有复用 SSH 连接或自动打开逻辑。[开发计划](Docs/development-plan.md)、[验证与验收](Docs/VALIDATION.md)、[来源及授权](LICENSE-NOTES.md) 记录范围与限制。
 
-原始源码和图标未附许可证。公开 GitHub 前需要取得作者授权或替换相关材料；目前未创建 GitHub 仓库，也未发布 Release。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
+本项目采用 [MIT 许可证](LICENSE)，用户与提供 Starter 的室友已约定采用 MIT。原始来源及现有图标尚待核实的素材授权见 [来源及授权](LICENSE-NOTES.md)。目前未创建 GitHub 仓库，也未发布 Release。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
 
 ## 开发目录与版本管理
 
