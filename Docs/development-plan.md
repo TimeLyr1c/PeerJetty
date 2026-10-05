@@ -1,6 +1,6 @@
 # 双向文件投放 App：旧项目复用与开发计划
 
-日期：2026-10-04（America/New_York）。状态：计划中，等待用户确认后开发。
+日期：2026-10-04（America/New_York）。本文件保留最初设计；0.2.0 已实现，实际验证见 VALIDATION.md。2026-10-05 正式源码迁至 `~/Developer/Projects/OpenOnMini/`，当前目录及版本规则见 WORKFLOW.md。
 
 ## 已确定的产品范围
 
@@ -62,7 +62,7 @@
 
 ## 项目组织建议
 
-正式源码位置：`~/Documents/Codex/OpenOnMini/`，沿用内部名字作为暂定项目名。对外显示名称与固定 Bundle ID 在初始化时确定，不以每个使用者的姓名或设备地址区分。
+正式源码位置：`~/Developer/Projects/OpenOnMini/`，沿用内部名字作为暂定项目名。对外显示名称与固定 Bundle ID 在初始化时确定，不以每个使用者的姓名或设备地址区分。
 
 使用 SwiftPM 管理 Sources、Tests 和必要的版本锁定；构建脚本组装 `.app`。首轮不预先安装完整 Xcode 或其他全局工具。框架以 AppKit、Network、Security、Foundation、ServiceManagement 和 UserNotifications 为基础；需要的密码学/证书依赖先审查，再加入项目配置。
 

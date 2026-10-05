@@ -27,7 +27,7 @@
 
 ## 存放与隐私
 
-源码建议放项目目录，例如 `~/Documents/Codex/OpenOnMini`；App 放 Applications；配置在 `~/Library/Application Support/OpenOnMini/configuration.json`；私有身份在本机 Keychain 的 `app.openonmini.identity.v1` 项目。不上传 Keychain、配置、实际传输文件或设备信任记录。
+源码建议放项目目录，例如 `~/Developer/Projects/OpenOnMini`；App 放 Applications；配置在 `~/Library/Application Support/OpenOnMini/configuration.json`；私有身份在本机 Keychain 的 `app.openonmini.identity.v1` 项目。不上传 Keychain、配置、实际传输文件或设备信任记录。
 
 Bonjour 广播服务标识及公开证书指纹；显示名只在开启配对窗口时广播。文件内容使用系统 TLS 1.3 加密，不经云服务器。配对码流程是本项目实现的协议，尚未独立安全审计，不能将其视为已认证的成熟配对标准。详见 [协议说明](Docs/PROTOCOL.md)。
 
@@ -59,3 +59,7 @@ cd /path/to/OpenOnMini
 0.2.0 是首个双向开发版本。原始单向 SSH Starter 保留在 `Original/`，新传输代码位于 `Sources/`，没有复用 SSH 连接或自动打开逻辑。[开发计划](Docs/development-plan.md)、[验证与验收](Docs/VALIDATION.md)、[来源及授权](LICENSE-NOTES.md) 记录范围与限制。
 
 原始源码和图标未附许可证。公开 GitHub 前需要取得作者授权或替换相关材料；目前未创建 GitHub 仓库，也未发布 Release。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
+
+## 开发目录与版本管理
+
+正式开发目录为 `~/Developer/Projects/OpenOnMini`。源码历史由 Git 保存，构建结果在 `outputs/`，已安装 App 位于 Applications；这三者分别管理。详见 [开发工作流](Docs/WORKFLOW.md)。
