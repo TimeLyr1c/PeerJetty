@@ -28,7 +28,7 @@ def info():
 
 
 def stamp(app, configuration):
-    executable = app / 'Contents/MacOS/OpenOnMini'
+    executable = app / 'Contents/MacOS/PeerJetty'
     revision, dirty = git_state()
     metadata = {
         'product_version': info()['CFBundleShortVersionString'],
@@ -71,17 +71,17 @@ def package(destination):
     if target.exists():
         raise ValueError('Archive already exists; increase the build number instead of overwriting: ' + str(target))
     subprocess.run([str(ROOT / 'build.sh'), 'release'], cwd=ROOT, check=True)
-    app = ROOT / 'outputs/OpenOnMini.app'
+    app = ROOT / 'outputs/PeerJetty.app'
     metadata = json.loads((app / 'Contents/Resources/build-info.json').read_text())
     if git_state() != (revision, False) or metadata['git_commit'] != revision or metadata['dirty']:
         raise ValueError('Source changed during build; no archive created')
     if (metadata['product_version'], metadata['build_number']) != (source['CFBundleShortVersionString'], source['CFBundleVersion']):
         raise ValueError('Version changed during build; no archive created')
     destination.mkdir(parents=True, exist_ok=True)
-    staged = Path(tempfile.mkdtemp(prefix='.OpenOnMini-', dir=str(destination)))
+    staged = Path(tempfile.mkdtemp(prefix='.PeerJetty-', dir=str(destination)))
     try:
         architecture = '-'.join(metadata['architectures'])
-        filename = 'OpenOnMini-{}-{}.zip'.format(label, architecture)
+        filename = 'PeerJetty-{}-{}.zip'.format(label, architecture)
         subprocess.run(['/usr/bin/codesign', '--verify', '--strict', str(app)], check=True)
         subprocess.run(['/usr/bin/ditto', '-c', '-k', '--sequesterRsrc', '--keepParent',
                         str(app), str(staged / filename)], check=True)
@@ -96,7 +96,7 @@ def package(destination):
         checksum = hashlib.sha256((staged / filename).read_bytes()).hexdigest()
         (staged / 'SHA256SUMS.txt').write_text('{}  {}\n'.format(checksum, filename))
         (staged / 'release-info.md').write_text(
-            '# OpenOnMini {}\n\n'.format(label) +
+            '# PeerJetty {}\n\n'.format(label) +
             '- Source commit: `{}`\n'.format(revision) +
             '- Configuration: release; architectures: {}\n'.format(architecture) +
             '- Build time (UTC): {}\n'.format(metadata['built_at_utc']) +

@@ -5,7 +5,7 @@ let testRoot: URL = {
     if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--root" {
         return URL(fileURLWithPath: CommandLine.arguments[2]).appendingPathComponent("run-\(UUID())")
     }
-    return FileManager.default.temporaryDirectory.appendingPathComponent("OpenOnMini-Test-\(UUID())")
+    return FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-Test-\(UUID())")
 }()
 
 func check(_ condition: Bool, _ text: String) {
@@ -100,7 +100,7 @@ a.onTransfer = { update in
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             do {
                 check(!fm.fileExists(atPath: br.appendingPathComponent("cancel.bin").path), "cancelled payload not published")
-                check(try fm.contentsOfDirectory(atPath: br.path).allSatisfy { !$0.hasPrefix(".OpenOnMini-Partial-") }, "cancelled staging removed")
+                check(try fm.contentsOfDirectory(atPath: br.path).allSatisfy { !$0.hasPrefix(".PeerJetty-Partial-") }, "cancelled staging removed")
                 passChecks.append("cancellation closes stream and removes partial data")
                 stage = "reconnecting"; a.connect(host: "127.0.0.1", port: bPort)
             } catch { fail(error) }

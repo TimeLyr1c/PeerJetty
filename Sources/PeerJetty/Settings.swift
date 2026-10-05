@@ -28,7 +28,7 @@ final class SettingsController: NSWindowController {
     private var peers: [DiscoveredPeer] = []
     init(configuration: Configuration) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: 710), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "OpenOnMini · 双向文件投放"; window.isReleasedWhenClosed = false; window.center()
+        window.title = "PeerJetty · 双向文件投放"; window.isReleasedWhenClosed = false; window.center()
         super.init(window: window)
         name.stringValue = configuration.name; folderLabel.stringValue = configuration.receivePath
         let title = NSTextField(labelWithString: configuration.onboardingComplete ? "设备与设置" : "欢迎使用双向文件投放")

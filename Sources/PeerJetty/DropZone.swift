@@ -21,7 +21,7 @@ final class DropZoneView: NSView {
     var onCancel: (() -> Void)?
     var targetName = "请选择发送设备"
     private let promises: OperationQueue = {
-        let queue = OperationQueue(); queue.name = "OpenOnMini.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
+        let queue = OperationQueue(); queue.name = "PeerJetty.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
     }()
     private var promiseTracker: PromiseTracker?
     override init(frame: NSRect) {
@@ -76,7 +76,7 @@ final class DropZoneView: NSView {
         receive(receivers); return true
     }
     private func receive(_ receivers: [NSFilePromiseReceiver]) {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("OpenOnMini-Promises-\(UUID())")
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-Promises-\(UUID())")
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
         catch { onFailure?("无法创建拖拽临时目录"); return }
         let cleanup = { try? FileManager.default.removeItem(at: folder); return () }

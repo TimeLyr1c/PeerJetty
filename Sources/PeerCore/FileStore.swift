@@ -63,7 +63,7 @@ public final class ReceiveTransaction {
         try manifest.validate()
         self.manifest = manifest
         self.destination = destination.resolvingSymlinksInPath().standardizedFileURL
-        staging = self.destination.appendingPathComponent(".OpenOnMini-Partial-\(UUID())", isDirectory: true)
+        staging = self.destination.appendingPathComponent(".PeerJetty-Partial-\(UUID())", isDirectory: true)
         fileIndices = manifest.entries.indices.filter { manifest.entries[$0].kind == .file }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: self.destination.path, isDirectory: &isDirectory), isDirectory.boolValue else {

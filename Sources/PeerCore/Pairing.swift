@@ -2,6 +2,7 @@ import Foundation
 import CryptoKit
 
 public enum PairingProof {
+    // Protocol v1 domain is stable across product renaming.
     private static let domain = Data("OpenOnMini-SAS-v1\0".utf8)
     public static func commitment(id: String, nonce: Data) -> String {
         Digest.hex(domain + Data(id.utf8) + nonce)

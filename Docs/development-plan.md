@@ -111,3 +111,5 @@
 
 
 2026-10-05 后续计划更新：版本管理、GitHub 准备、改名、多语言支持（i18n）和应用内更新分别见 [ROADMAP.md](ROADMAP.md)、[WORKFLOW.md](WORKFLOW.md)、[PUBLISHING.md](PUBLISHING.md)。原始计划留作设计背景。
+
+2026-10-05 改名补充：当前源码目录为 `~/Developer/Projects/PeerJetty/`，构建产物为 `outputs/PeerJetty.app`。以上 OpenOnMini 引用保留最初设计与历史来源语境；当前使用与升级兼容规则见 README 和 WORKFLOW。

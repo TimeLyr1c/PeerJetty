@@ -30,3 +30,12 @@
 - 版本来源记录和归档工具不修改传输协议或设备身份。
 - 新候选尚未安装；设置/关于窗口的实际显示、两台实体 Mac 的新包验收仍待执行。
 - 0.2.0 的两机使用正常是用户报告，不能作为新候选的实机验收。
+
+## 2026-10-05 PeerJetty 改名候选 0.2.2 / 构建 4
+
+- 主目标、可执行文件、App、用户界面、源码目录及新安装包文件名统一为 PeerJetty；Original 与历史安装包不改写。
+- 核心测试 8 组通过，包括临时目录内的旧配置迁移：保留信任记录、默认目标、接收路径和 bookmark；保留旧文件；新配置优先；新旧损坏配置明确失败；无旧配置时正常初始化。未读取生产配置或生产 Keychain。
+- 独立临时身份 localhost TLS 联调 7 项通过；版本工具 4 项通过。
+- release 编译与严格本地签名校验通过；核对 App 显示名称、可执行文件、0.2.2/build4、稳定 Bundle ID 和内附 MIT LICENSE。
+- Bundle ID、Keychain service、Bonjour、ALPN、SAS domain 与 exporter label 保持原值；真正的旧版/新版双机互通、生产 Keychain 授权、通知、登录启动及首次升级仍待实机验收。
+- 没有替换已安装的 OpenOnMini.app，也没有迁移生产配置、修改电脑管理档案、改动 Dropbox 历史归档或上传 GitHub。

@@ -4,10 +4,10 @@
 
 ## 当前状态
 
-- 正式源码：`~/Developer/Projects/OpenOnMini`。
+- 正式源码：`~/Developer/Projects/PeerJetty`。
 - Air 已安装 App：`/Applications/OpenOnMini.app`，仍为 0.2.0 / 构建 2。
-- 当前源码准备 0.2.1 / 构建 3，本地测试候选，未安装、未公开发行。
-- 本机配置：`~/Library/Application Support/OpenOnMini/configuration.json`；身份在 Keychain。
+- 当前源码准备 PeerJetty 0.2.2 / 构建 4，本地测试候选，未安装、未公开发行。
+- 新版配置：`~/Library/Application Support/PeerJetty/configuration.json`；首次启动复制经校验的旧配置，保留旧文件；身份在 Keychain。
 - 0.2.0 安装包与源码包已逐字节核对；本地标签 v0.2.0 对应原实现提交 47f5254。
 - Air 历史包归档：`~/Dropbox/90_开发资料/OpenOnMini/安装包/0.2.0-build2/`。本地写入不代表其他电脑已同步完成。
 - 尚无 GitHub 远程仓库；mini、Windows 完整路径待核实。
@@ -27,7 +27,7 @@ README.md 是使用入口；Docs/ 是技术和操作说明；CHANGELOG.md 是版
 python3 -m unittest discover -s Tests/ReleaseTools -v
 ```
 
-两种构建配置目前都输出到 outputs/OpenOnMini.app，下一次构建会替换该位置。不会自动安装 App，也不会自动增加版本号。
+两种构建配置目前都输出到 outputs/PeerJetty.app，下一次构建会替换该位置。不会自动安装 App，也不会自动增加版本号。
 构建使用 Python 3 标准库生成来源记录；此机 Command Line Tools 已提供 /usr/bin/python3，无第三方 Python 包。
 App 的设置窗口显示产品版本和构建号；菜单“关于”及版本文字提示可查看源码提交和构建配置。
 资源内 build-info.json 包含完整提交、未提交修改标记、时间、架构和工具链版本。带未提交修改的普通构建会如实标记，不得把它当作固定提交的交付包。
@@ -37,7 +37,7 @@ App 的设置窗口显示产品版本和构建号；菜单“关于”及版本�
 ```sh
 python3 Scripts/release.py show
 # 示例：只有准备下一份交付时执行，不要对当前已交付构建重复使用
-python3 Scripts/release.py set 0.2.1 --build 4
+python3 Scripts/release.py set 0.2.2 --build 5
 ```
 
 set 要求版本格式为三个数字，产品版本不能倒退，构建号必须增加。它修改 Info.plist，不自动提交、不自动发布。
@@ -49,7 +49,7 @@ set 要求版本格式为三个数字，产品版本不能倒退，构建号必�
 python3 Scripts/release.py package
 # 默认 outputs/releases/<版本>-build<构建号>/
 # 也可显式指定自己电脑已核实的归档根目录：
-python3 Scripts/release.py package --destination "$HOME/Dropbox/90_开发资料/OpenOnMini/安装包"
+python3 Scripts/release.py package --destination "$HOME/Dropbox/90_开发资料/PeerJetty/安装包"
 ```
 
 工具要求仓库干净；未提交修改或未跟踪的新源码会阻止打包。它重新构建 release 配置，核对源码和版本未在构建中变化，验证签名，并生成：
@@ -71,4 +71,7 @@ python3 Scripts/release.py package --destination "$HOME/Dropbox/90_开发资料/
 
 2026-10-05 源码从 Documents/Codex 迁到本地 Developer，完整保留 Git 与 Original，重新生成旧路径缓存。本次版本工具不替换安装的 App，也不更换设备身份。
 通信协议版本另见 PROTOCOL.md；不要直接用产品版本代替协议版本。
-后续改名与国际化计划见 ROADMAP.md。
+2026-10-05 产品及源码目录改名 PeerJetty，保留 Git 历史、Original 和旧安装包路径。内部身份与协议标识保持兼容；新 App 安装目标为 `/Applications/PeerJetty.app`，尚未替换 Air 旧 App。新归档可使用 `~/Dropbox/90_开发资料/PeerJetty/安装包`，此目录尚未创建；上述旧归档仍在 OpenOnMini 路径。
+
+每项完成并验证的修改保存为独立本地 Git 提交；最终报告提交 ID。上传仍是独立步骤。未完成工作若需要中断，做明确标记的 WIP 检查点，不把它冒充通过验收的版本。
+国际化等后续计划见 ROADMAP.md。

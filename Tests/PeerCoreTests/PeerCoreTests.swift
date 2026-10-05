@@ -3,6 +3,42 @@ import CryptoKit
 import PeerCore
 
 final class PeerCoreTests {
+    func testRenamedConfigurationPreservesTrustAndDoesNotOverwrite() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fallback = Configuration(name: "fresh", receivePath: "/test/fallback")
+        let legacyURL = root.appendingPathComponent("OpenOnMini/configuration.json")
+        let currentURL = root.appendingPathComponent("PeerJetty/configuration.json")
+        let legacy = try ConfigurationStore(url: legacyURL, fallback: fallback)
+        try legacy.update {
+            $0.name = "paired Mac"; $0.receivePath = "/test/inbox"
+            $0.receiveBookmark = Data([1, 2, 3]); $0.onboardingComplete = true
+            $0.peers = [TrustedPeer(id: "trusted-id", name: "Other Mac")]; $0.preferredPeer = "trusted-id"
+        }
+        let original = try Data(contentsOf: legacyURL)
+        let migrated = try ConfigurationStore.forApplication(applicationSupport: root, fallback: fallback)
+        XCTAssertEqual(migrated.url, currentURL)
+        XCTAssertEqual(migrated.snapshot.peers, legacy.snapshot.peers)
+        XCTAssertEqual(migrated.snapshot.preferredPeer, "trusted-id")
+        XCTAssertEqual(migrated.snapshot.receivePath, "/test/inbox")
+        XCTAssertEqual(migrated.snapshot.receiveBookmark, Data([1, 2, 3]))
+        XCTAssertEqual(migrated.snapshot.onboardingComplete, true)
+        XCTAssertEqual(try Data(contentsOf: legacyURL), original)
+        try migrated.update { $0.name = "new settings" }
+        let reopened = try ConfigurationStore.forApplication(applicationSupport: root, fallback: fallback)
+        XCTAssertEqual(reopened.snapshot.name, "new settings")
+        try Data("corrupt".utf8).write(to: currentURL)
+        XCTAssertThrowsError(try ConfigurationStore.forApplication(applicationSupport: root, fallback: fallback))
+        XCTAssertEqual(try Data(contentsOf: currentURL), Data("corrupt".utf8))
+        try FileManager.default.removeItem(at: currentURL)
+        try Data("corrupt legacy".utf8).write(to: legacyURL)
+        XCTAssertThrowsError(try ConfigurationStore.forApplication(applicationSupport: root, fallback: fallback))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: currentURL.path))
+        try FileManager.default.removeItem(at: legacyURL)
+        let fresh = try ConfigurationStore.forApplication(applicationSupport: root, fallback: fallback)
+        XCTAssertEqual(fresh.snapshot.name, "fresh")
+        XCTAssertEqual(fresh.snapshot.peers, [])
+    }
     func testPairingBindsBothIdentitiesNoncesAndTLSConnection() throws {
         let a = String(repeating: "a", count: 64), b = String(repeating: "b", count: 64)
         let an = Data(repeating: 1, count: 32), bn = Data(repeating: 2, count: 32), tls = Data(repeating: 3, count: 32)
@@ -104,6 +140,7 @@ private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) 
 @main struct TestRunner {
     static func main() throws {
         let tests = PeerCoreTests()
+        try tests.testRenamedConfigurationPreservesTrustAndDoesNotOverwrite()
         try tests.testPairingBindsBothIdentitiesNoncesAndTLSConnection()
         try tests.testRejectTraversalAndSymlinkParent()
         try tests.testSymlinkChainEscapeAndCycles()
@@ -111,6 +148,6 @@ private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) 
         try tests.testMalformedAndDuplicateManifests()
         try tests.testCorruptionDoesNotCommitAndCancellationCleansStaging()
         try tests.testAtomicNoOverwriteAndEmptyFiles()
-        print("PASS: 7 core test groups (pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
+        print("PASS: 8 core test groups (rename migration, pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
     }
 }

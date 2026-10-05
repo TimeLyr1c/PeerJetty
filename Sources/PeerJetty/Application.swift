@@ -33,9 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         // Certificate generation and Keychain access must not block the UI run loop.
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("OpenOnMini")
+                let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 let fallback = Configuration(name: Host.current().localizedName ?? "Mac", receivePath: FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].path)
-                let store = try ConfigurationStore(url: base.appendingPathComponent("configuration.json"), fallback: fallback)
+                let store = try ConfigurationStore.forApplication(applicationSupport: base, fallback: fallback)
                 let identity = try DeviceIdentity.load()
                 DispatchQueue.main.async { self?.finishStartup(store: store, identity: identity) }
             } catch { DispatchQueue.main.async { self?.bootError = error.localizedDescription; self?.showError(error.localizedDescription) } }
@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let menu = NSMenu()
         for (title, action) in [("设备与设置…", #selector(showSettings)), ("添加设备（2 分钟）", #selector(addDevice)),
                                 ("显示投放区", #selector(preview)), ("显示最近收到的文件", #selector(revealReceived)),
-                                ("隐藏菜单栏图标", #selector(hideMenu)), ("关于 OpenOnMini…", #selector(showAbout)), ("退出", #selector(quit))] {
+                                ("隐藏菜单栏图标", #selector(hideMenu)), ("关于 PeerJetty…", #selector(showAbout)), ("退出", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item)
         }
         menuItem?.menu = menu
@@ -232,7 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         settings?.status(text); drop?.show(); drop?.view.show(title: "请查看设置", subtitle: text, symbol: "exclamationmark.triangle.fill", color: .systemOrange); drop?.hide(after: 5)
     }
     private func showError(_ text: String) {
-        let alert = NSAlert(); alert.messageText = "OpenOnMini"; alert.informativeText = text; alert.addButton(withTitle: "好")
+        let alert = NSAlert(); alert.messageText = "PeerJetty"; alert.informativeText = text; alert.addButton(withTitle: "好")
         NSApp.activate(ignoringOtherApps: true); alert.runModal()
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }

@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "OpenOnMini",
+    name: "PeerJetty",
     platforms: [.macOS("15.0")],
-    products: [.executable(name: "OpenOnMini", targets: ["OpenOnMini"]),
+    products: [.executable(name: "PeerJetty", targets: ["PeerJetty"]),
                .executable(name: "PeerHarness", targets: ["PeerHarness"])],
     targets: [.target(name: "PeerCore"),
-              .executableTarget(name: "OpenOnMini", dependencies: ["PeerCore"]),
+              .executableTarget(name: "PeerJetty", dependencies: ["PeerCore"]),
               .executableTarget(name: "PeerHarness", dependencies: ["PeerCore"]),
               .executableTarget(name: "PeerTests", dependencies: ["PeerCore"], path: "Tests/PeerCoreTests")]
 )

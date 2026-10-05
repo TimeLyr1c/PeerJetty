@@ -39,6 +39,20 @@ public final class ConfigurationStore {
             value = try JSONDecoder().decode(Configuration.self, from: Data(contentsOf: url))
         } else { value = fallback }
     }
+    /// Copy validated legacy settings once, preserving the original for recovery.
+    /// An existing PeerJetty configuration always takes precedence, even if corrupt.
+    public static func forApplication(applicationSupport: URL, fallback: Configuration) throws -> ConfigurationStore {
+        let current = applicationSupport.appendingPathComponent("PeerJetty/configuration.json")
+        let legacy = applicationSupport.appendingPathComponent("OpenOnMini/configuration.json")
+        if !FileManager.default.fileExists(atPath: current.path),
+           FileManager.default.fileExists(atPath: legacy.path) {
+            let previous = try ConfigurationStore(url: legacy, fallback: fallback)
+            let migrated = try ConfigurationStore(url: current, fallback: previous.snapshot)
+            try migrated.update { _ in }
+            return migrated
+        }
+        return try ConfigurationStore(url: current, fallback: fallback)
+    }
     public var snapshot: Configuration { lock.lock(); defer { lock.unlock() }; return value }
     public func update(_ change: (inout Configuration) -> Void) throws {
         lock.lock(); defer { lock.unlock() }

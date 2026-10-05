@@ -7,6 +7,7 @@ public final class DeviceIdentity {
     public let identity: SecIdentity
     public let certificate: SecCertificate
     public let fingerprint: String
+    // Preserve the established Keychain identity across product renaming.
     private static let service = "app.openonmini.identity.v1"
 
     private init(_ stored: Stored) throws {
@@ -37,7 +38,7 @@ public final class DeviceIdentity {
         let identity = try DeviceIdentity(stored)
         let add: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                   kSecAttrService as String: service, kSecAttrAccount as String: "identity",
-                                  kSecAttrLabel as String: "OpenOnMini 本机设备身份",
+                                  kSecAttrLabel as String: "PeerJetty 本机设备身份",
                                   kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                                   kSecAttrSynchronizable as String: false,
                                   kSecValueData as String: try JSONEncoder().encode(stored)]
@@ -63,7 +64,7 @@ public final class DeviceIdentity {
     }
 
     private static func generate() throws -> Stored {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("OpenOnMini-Identity-\(UUID())")
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-Identity-\(UUID())")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: folder) }
         let key = folder.appendingPathComponent("key.pem").path
@@ -71,7 +72,7 @@ public final class DeviceIdentity {
         let archive = folder.appendingPathComponent("identity.p12")
         // A new private directory contains the temporary unencrypted key; it never enters source or logs.
         try runOpenSSL(["req", "-x509", "-newkey", "rsa:2048", "-sha256", "-nodes", "-days", "3650",
-                        "-subj", "/CN=OpenOnMini-\(UUID())", "-keyout", key, "-out", cert,
+                        "-subj", "/CN=PeerJetty-\(UUID())", "-keyout", key, "-out", cert,
                         "-addext", "basicConstraints=critical,CA:FALSE", "-addext", "extendedKeyUsage=serverAuth,clientAuth"])
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: key)
         let password = try random(32).base64EncodedString()

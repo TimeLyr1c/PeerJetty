@@ -39,6 +39,7 @@ private final class Session {
 }
 
 public final class PeerEngine {
+    // Keep discovery compatible with existing OpenOnMini installations.
     public static let serviceType = "_openonmini._tcp"
     public let identity: DeviceIdentity
     public let store: ConfigurationStore
@@ -51,7 +52,7 @@ public final class PeerEngine {
     public var onListening: ((UInt16) -> Void)?
     public var onRejectedConnection: ((String) -> Void)?
     public var onPreparation: ((Bool) -> Void)?
-    private let queue = DispatchQueue(label: "OpenOnMini.Network")
+    private let queue = DispatchQueue(label: "PeerJetty.Network")
     private let gate = PairingGate()
     private var listener: NWListener?
     private var browser: NWBrowser?

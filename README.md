@@ -1,12 +1,12 @@
-# OpenOnMini — 双向局域网文件投放
+# PeerJetty — 双向局域网文件投放
 
 同一个原生 macOS App 安装在两台 Mac 上。选择文件或把文件拖到屏幕顶部的投放区，发送到默认配对设备。可信设备自动接收，只提示收到，不自动打开或执行文件。
 
 ## 安装与初始化
 
-本版本需要 macOS 15 或更新系统。提供的 0.2.0 安装包为 Apple Silicon（arm64）本地构建，未做 Developer ID 签名或 Apple 公证。它不是面向公众的正式发行包；Intel Mac 需自行构建。
+本版本需要 macOS 15 或更新系统。历史 OpenOnMini 0.2.0 安装包为 Apple Silicon（arm64）本地构建，未做 Developer ID 签名或 Apple 公证。它不是面向公众的正式发行包；Intel Mac 需自行构建。
 
-1. 解压 `OpenOnMini-0.2.0-arm64.zip`，将 App 放到 `/Applications/OpenOnMini.app`，然后打开。不要长期从 Downloads 运行。
+1. 从源码构建 PeerJetty，将生成的 `outputs/PeerJetty.app` 放到 `/Applications/PeerJetty.app`，然后打开。当前候选未公开发布。升级旧版时先退出 OpenOnMini，不要同时运行两个版本；确认新版配置和配对正常后再移除旧 App。不要长期从 Downloads 运行。
 2. 两台电脑各设置本机名称及接收目录，点击“保存 / 完成初始化”。名称只是方便辨认，不是账号或身份凭据。
 3. 允许系统请求的局域网访问。通知权限可选；不需要 SSH、远程登录、管理员密码或 Apple 账号。
 4. 两台电脑都点击“添加设备 · 2 分钟”，在一台电脑设备列表中选择另一台，点击“连接 / 配对”。
@@ -27,28 +27,28 @@
 
 ## 存放与隐私
 
-源码建议放项目目录，例如 `~/Developer/Projects/OpenOnMini`；App 放 Applications；配置在 `~/Library/Application Support/OpenOnMini/configuration.json`；私有身份在本机 Keychain 的 `app.openonmini.identity.v1` 项目。不上传 Keychain、配置、实际传输文件或设备信任记录。
+源码建议放项目目录，例如 `~/Developer/Projects/PeerJetty`；App 放 Applications；配置在 `~/Library/Application Support/PeerJetty/configuration.json`；首次运行时若新配置不存在，会校验并复制旧 OpenOnMini 配置，原文件保留，新配置存在时绝不以旧配置覆盖它；私有身份在本机 Keychain 的 `app.openonmini.identity.v1` 项目。不上传 Keychain、配置、实际传输文件或设备信任记录。
 
 Bonjour 广播服务标识及公开证书指纹；显示名只在开启配对窗口时广播。文件内容使用系统 TLS 1.3 加密，不经云服务器。配对码流程是本项目实现的协议，尚未独立安全审计，不能将其视为已认证的成熟配对标准。详见 [协议说明](Docs/PROTOCOL.md)。
 
 ## 本地测试候选
 
-当前源码为 **0.2.1 / 构建 3**：增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。新候选尚未完成双机验收，不会自动替换已安装 App。
+当前源码为 **0.2.2 / 构建 4**：产品与构建改名为 PeerJetty，迁移旧配置，安装包附 MIT 声明；0.2.1 增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。新候选尚未完成双机验收，不会自动替换已安装 App。
 
 ## 从源码构建
 
 需要 Apple Command Line Tools 或 Xcode，Swift 5.9+，macOS 15+ SDK；系统 `/usr/bin/openssl` 用于首次生成本机证书。构建来源记录使用 Python 3 标准库，本机 Command Line Tools 已提供 `/usr/bin/python3`。无第三方 Swift 包、无 Homebrew 依赖。
 
 ```sh
-cd /path/to/OpenOnMini
+cd /path/to/PeerJetty
 ./build.sh
-# 产物：outputs/OpenOnMini.app
+# 产物：outputs/PeerJetty.app
 ./Scripts/test.sh
 ```
 
 测试脚本执行核心断言与两个独立身份的 localhost TLS 联调；不读生产配置或生产 Keychain，临时密钥只在测试内存和权限受限的临时目录存在。自动测试不能代替两台实体 Mac 的 Bonjour、系统授权、Finder/微信拖拽、登录启动与睡眠恢复测试。部分受限执行环境需要允许 localhost 网络。
 
-构建默认使用本地 ad hoc 签名。具备自己的 Developer ID 后，可通过 `OPENONMINI_SIGNING_IDENTITY` 指定签名；Apple 公证为后续单独发行步骤。架构遵循构建机器，当前脚本不自动产出 universal binary。
+构建默认使用本地 ad hoc 签名。具备自己的 Developer ID 后，可通过 `PEERJETTY_SIGNING_IDENTITY`（兼容旧的 `OPENONMINI_SIGNING_IDENTITY`） 指定签名；Apple 公证为后续单独发行步骤。架构遵循构建机器，当前脚本不自动产出 universal binary。
 
 ## 故障处理
 
@@ -66,6 +66,10 @@ cd /path/to/OpenOnMini
 
 ## 开发目录与版本管理
 
-正式开发目录为 `~/Developer/Projects/OpenOnMini`。源码历史由 Git 保存，构建结果在 `outputs/`，已安装 App 位于 Applications；这三者分别管理。详见 [开发工作流](Docs/WORKFLOW.md)。
+正式开发目录为 `~/Developer/Projects/PeerJetty`。源码历史由 Git 保存，构建结果在 `outputs/`，已安装 App 位于 Applications；这三者分别管理。详见 [开发工作流](Docs/WORKFLOW.md)。
 
 [后续计划（含多语言与更新）](Docs/ROADMAP.md)、[GitHub 发布准备](Docs/PUBLISHING.md)、[许可证比较](Docs/LICENSING.md)、[产品定位与名称候选](Docs/POSITIONING.md)。
+
+## 改名兼容性
+
+用户界面、SwiftPM 主目标、可执行文件、App、源码目录和新安装包名称已改为 PeerJetty。Bundle ID `app.openonmini.desktop`、Keychain 服务 `app.openonmini.identity.v1`、Bonjour 和协议 v1 标识保留，避免现有身份失效并保持与旧版本通信。它们是稳定的内部兼容标识，不是用户需要填写的配置。Original 基线、旧安装包名称与过去验收记录保持原样；旧图标尚未替换。首次升级仍需在两台实体 Mac 上验证配对、权限和登录启动。

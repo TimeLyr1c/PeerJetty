@@ -29,7 +29,7 @@ Dropover、NotchDrop 等已有拖拽/刘海入口，单独减少几次点击不�
 - PeerJetty：设备之间的码头，未来不局限于两台；候选英文名，尚未最终核名。
 - 双渡：简短中文名，强调双向交接；候选中文品牌名。
 
-名称不要承诺超过现有能力，也不要局限于 mini 或刘海硬件。现阶段代码、身份和安装位置仍保留 OpenOnMini。
+名称不要承诺超过现有能力，也不要局限于 mini 或刘海硬件。现已选择 PeerJetty：用户界面、主目标与新安装包已改名；内部身份与协议标识为兼容旧版保留，Air 已安装的旧 App 尚未替换。
 
 参考：
 - Apple：https://support.apple.com/guide/mac-help/mh35868/mac
