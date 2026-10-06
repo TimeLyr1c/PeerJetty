@@ -147,9 +147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onPermissions = {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!)
             }
-            controller.onDiskAccess = {
-                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
-            }
+            controller.onLanguage = { selection in LanguagePreferences().save(selection) }
             controller.onAutoOpen = { [weak self] enabled in
                 do {
                     try store.update { $0.autoOpenReceivedFiles = enabled }

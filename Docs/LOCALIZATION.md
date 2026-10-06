@@ -6,13 +6,17 @@ PeerJetty 0.3.0 支持英文和简体中文。i18n 是 internationalization（�
 
 ## Selecting a language / 选择语言
 
-The app follows macOS's preferred languages, including a per-app override. Unsupported preferences fall back to English unless another preferred supported language is available. Quit and reopen PeerJetty after changing the preference. No in-app language selector is provided yet.
+In PeerJetty's Settings, choose **Follow system**, **English** or **简体中文** under Language. The choice saves automatically on this Mac. Finish current transfers, quit PeerJetty from its menu, and reopen it to apply. Closing the settings window does not quit the menu bar app. The app does not force a restart or change macOS language preferences.
 
-应用跟随 macOS 的语言偏好，也支持系统为单个应用指定语言。若首选语言不支持，会选择偏好列表中的可用语言，最终回退英文。修改语言后退出并重新打开 App；当前没有应用内语言开关。
+在 PeerJetty 设置中直接选择“跟随系统 / English / 简体中文”，本机自动保存。请先完成传输，通过菜单退出 PeerJetty 再重新打开，语言即生效；关闭设置窗口不等于退出菜单栏 App。不会强制重启或改动 macOS 语言设置。
 
-In System Settings → General → Language & Region, use the Applications section to choose PeerJetty and its language. See [Apple's instructions](https://support.apple.com/guide/mac-help/change-the-system-language-mh26684/mac).
+Follow system uses macOS's preferred language list (including any existing per-app override), falling back to a supported preferred language or English. An explicit app choice takes precedence for PeerJetty-owned UI, menus, notifications and diagnostics. Native file pickers, macOS authorization dialogs and provider-generated errors are still controlled by macOS and may use the system language. Percentages follow regional formats independently of the chosen UI language.
 
-在系统设置 → 通用 → 语言与地区的“应用程序”区域，为 PeerJetty 指定语言。具体操作见上述 Apple 文档。
+“跟随系统”沿用 macOS 偏好列表（包括已有单应用语言设置），找不到支持的语言时回退英文。应用内指定语言优先控制 PeerJetty 自身界面、菜单、通知和错误；系统文件选择器、授权弹窗及系统生成的错误仍由 macOS 控制，可能使用系统语言。百分比仍按地区格式显示。
+
+The preference uses the app's local UserDefaults key `PeerJettyDisplayLanguage`; it is separate from transfer configuration and never sent to peers. Missing or unsupported stored values follow system. Choosing Follow system removes the override. TranslationCatalog remains immutable per launch, so a preference change cannot leave an active transfer or pairing half-switched.
+
+语言设置单独保存在本机应用偏好里，不传给另一台电脑、不改变身份或接收配置；旧版本没有该字段时默认跟随系统。选择“跟随系统”清除应用自身覆盖。每次启动确定语言，避免一次传输或配对期间混用两种语言。
 
 ## Resource layout / 资源结构
 
@@ -36,9 +40,9 @@ For plural entries, preserve `NSStringLocalizedFormatKey`, variable names and `N
 
 数量句子使用原生单复数规则，英文区分单数和复数，中文使用 `other`；保留变量名与类型，调用时传整数。百分比按系统地区格式显示。目前没有日期或文件大小界面字段，后续增加时再采用对应格式化工具。
 
-New languages require a matching resource folder, Package/Info language declarations, the supported-language list in `TranslationCatalog`, and expanded checks. Add both current translations when introducing a new key. Check layout with long labels, narrow windows, and system text sizes.
+New languages require a matching resource folder, Package/Info language declarations, the supported-language list in `TranslationCatalog`, `DisplayLanguage`/the picker, and expanded checks. Add both current translations when introducing a new key. Check layout with long labels, narrow windows, and system text sizes.
 
-新增语言需要同时更新资源、语言声明、`TranslationCatalog` 支持列表及检查。新增文字必须提供当前两种翻译，并检查较长文字和小窗口的布局。
+新增语言需要同时更新资源、语言声明、`TranslationCatalog` 支持列表、`DisplayLanguage`/选择控件及检查。新增文字必须提供当前两种翻译，并检查较长文字和小窗口的布局。
 
 ## Diagnostics and compatibility / 错误及兼容
 

@@ -114,3 +114,7 @@ README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发
 用户报告 0.2.6 使用正常。当前源码为 0.3.0/build9，中英文跟随系统或单应用语言偏好；验收见 VALIDATION.md，翻译维护见 LOCALIZATION.md。本地归档目标为 `outputs/releases/0.3.0-build9`，App 安装目标仍为 `/Applications/PeerJetty.app`。此轮不自动安装、公开上传或修改电脑管理档案。
 
 GitHub 远程仓库为 https://github.com/TimeLyr1c/PeerJetty，当前公开 Latest 仍是 0.2.4/build6。文档开头的未创建远程仓库和旧安装位置是早期记录，不代表当前实机安装已重新核实；两台电脑现有安装位置/版本应以各自实际检查为准。测试通过后再决定是否发布新版本，保留既有安装包及标签。
+
+## 0.3.1 应用内语言选择（2026-10-06）
+
+0.3.1/build10 为本地测试候选，归档路径 `outputs/releases/0.3.1-build10`。语言在应用设置里选择，自动保存在本机 UserDefaults；退出重开生效。该偏好不进入配对或传输配置，不更换设备身份。删除“微信文件访问权限”系统跳转按钮；不撤销用户先前在系统授予的权限。未自动安装或公开发布。

@@ -14,13 +14,14 @@ final class SettingsController: NSWindowController {
     var onReveal: (() -> Void)?
     var onManual: (() -> Void)?
     var onPermissions: (() -> Void)?
-    var onDiskAccess: (() -> Void)?
+    var onLanguage: ((DisplayLanguage) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
     var onReset: (() -> Void)?
     var onQuit: (() -> Void)?
     private let name = NSTextField()
     private let devices = NSPopUpButton()
+    private let language = NSPopUpButton()
     private let folderLabel = NSTextField(wrappingLabelWithString: "")
     private let statusLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.preparing_to_connect"))
     private let progressLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.no_transfers_yet"))
@@ -28,10 +29,14 @@ final class SettingsController: NSWindowController {
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
     private var peers: [DiscoveredPeer] = []
-    init(configuration: Configuration) {
+    init(configuration: Configuration, displayLanguage: DisplayLanguage = LanguagePreferences().selection) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: min(810, (NSScreen.main?.visibleFrame.height ?? 900) - 70)), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = L10n.text("settings.peerjetty_file_handoff"); window.isReleasedWhenClosed = false; window.center()
         super.init(window: window)
+        language.addItems(withTitles: [L10n.text("settings.language_system"), L10n.text("settings.language_english"), L10n.text("settings.language_chinese")])
+        language.selectItem(at: DisplayLanguage.allCases.firstIndex(of: displayLanguage) ?? 0)
+        language.identifier = NSUserInterfaceItemIdentifier("displayLanguage")
+        language.target = self; language.action = #selector(changeLanguage)
         name.stringValue = configuration.name; folderLabel.stringValue = configuration.receivePath
         let title = NSTextField(labelWithString: configuration.onboardingComplete ? L10n.text("settings.devices_settings") : L10n.text("settings.welcome_to_peerjetty"))
         title.font = .systemFont(ofSize: 22, weight: .semibold)
@@ -51,7 +56,10 @@ final class SettingsController: NSWindowController {
         autoOpen.state = configuration.autoOpenReceivedFiles ? .on : .off
         let openHint = NSTextField(wrappingLabelWithString: L10n.text("settings.when_enabled_saved_files_from_paired_devices_open"))
         openHint.font = .systemFont(ofSize: 11); openHint.textColor = .secondaryLabelColor
+        let languageHint = NSTextField(wrappingLabelWithString: L10n.text("settings.language_restart"))
+        languageHint.font = .systemFont(ofSize: 11); languageHint.textColor = .secondaryLabelColor
         let rows: [NSView] = [title, intro,
+            row([NSTextField(labelWithString: L10n.text("settings.language")), language]), languageHint,
             row([NSTextField(labelWithString: L10n.text("settings.device_name")), name, button(L10n.text("settings.save_finish_setup"), #selector(save))]),
             row([NSTextField(labelWithString: L10n.text("settings.receive_folder")), button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]), folderLabel,
             separator(), NSTextField(wrappingLabelWithString: L10n.text("settings.devices_select_a_paired_device_as_your_default")),
@@ -63,7 +71,7 @@ final class SettingsController: NSWindowController {
             progressLabel, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal)), separator(),
             row([NSTextField(labelWithString: L10n.text("settings.open_after_receiving")), autoOpen]), openHint,
             row([NSTextField(labelWithString: L10n.text("settings.start_at_login")), login, button(L10n.text("settings.local_network_access"), #selector(permissions))]),
-            row([button(L10n.text("settings.wechat_file_access"), #selector(diskAccess)), button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
+            row([button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
             statusLabel, version]
         let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -125,7 +133,11 @@ final class SettingsController: NSWindowController {
     @objc private func reveal() { onReveal?() }
     @objc private func manual() { onManual?() }
     @objc private func permissions() { onPermissions?() }
-    @objc private func diskAccess() { onDiskAccess?() }
+    @objc private func changeLanguage() {
+        guard DisplayLanguage.allCases.indices.contains(language.indexOfSelectedItem) else { return }
+        onLanguage?(DisplayLanguage.allCases[language.indexOfSelectedItem])
+        status(L10n.text("settings.language_restart"))
+    }
     @objc private func toggleAutoOpen() { onAutoOpen?(autoOpen.state == .on) }
     @objc private func toggleLogin() { onLogin?(login.state == .on) }
     @objc private func reset() { onReset?() }

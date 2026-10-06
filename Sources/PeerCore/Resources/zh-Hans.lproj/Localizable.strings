@@ -184,8 +184,12 @@
 "settings.sending_progress" = "发送至 %1$@ · %2$@";
 "settings.show_recent_files_in_finder" = "在 Finder 中显示最近收到的文件";
 "settings.start_at_login" = "登录时自动启动";
-"settings.wechat_file_access" = "微信文件访问权限…";
 "settings.welcome_to_peerjetty" = "欢迎使用双向文件投放";
 "settings.when_enabled_saved_files_from_paired_devices_open" = "开启后，已配对设备发来的文件保存成功就会用默认应用打开；文件夹在 Finder 打开。请只对信任的设备开启。";
 "version.changed_suffix" = " · %1$@";
 "version.source" = "%1$@\n源码 %2$@ · %3$@%4$@";
+"settings.language" = "语言";
+"settings.language_system" = "跟随系统";
+"settings.language_english" = "English";
+"settings.language_chinese" = "简体中文";
+"settings.language_restart" = "语言选择会自动保存，退出并重新打开 PeerJetty 后生效；请先完成正在进行的传输。";

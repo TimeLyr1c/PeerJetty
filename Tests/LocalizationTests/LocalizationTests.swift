@@ -33,6 +33,20 @@ struct LocalizationChecks {
         }
         guard let partial = Bundle(url: scratch) else { fatalError("No partial catalog") }
         check(TranslationCatalog(bundle: partial, preferences: ["zh-Hans"]).text("fallback.test") == "English fallback", "Missing translation falls back to English")
+        let suite = "PeerJetty-Language-Test-" + UUID().uuidString
+        let isolatedDefaults = UserDefaults(suiteName: suite)!
+        defer { isolatedDefaults.removePersistentDomain(forName: suite) }
+        let preference = LanguagePreferences(defaults: isolatedDefaults)
+        check(preference.selection == .system, "Existing installations follow system")
+        preference.save(.english)
+        check(LanguagePreferences(defaults: isolatedDefaults).selection == .english, "Language survives recreation")
+        check(TranslationCatalog(preferences: preference.selection.preferences(systemLanguages: ["zh-Hans"])).language == "en", "App preference overrides system")
+        preference.save(.simplifiedChinese)
+        check(TranslationCatalog(preferences: preference.selection.preferences(systemLanguages: ["en"])).language == "zh-Hans", "Chinese override")
+        preference.save(.system)
+        check(preference.selection == .system && preference.selection.preferences(systemLanguages: ["en"]) == ["en"], "Restore system selection")
+        isolatedDefaults.set("unknown-language", forKey: "PeerJettyDisplayLanguage")
+        check(preference.selection == .system, "Invalid preference safely follows system")
         print("PASS: language selection, fallback, plurals, positional fields and literal user data")
 
         let diagnostic = "filestore.the_receive_folder_is_not_writable"
@@ -54,7 +68,7 @@ struct LocalizationChecks {
         print("PASS: bounded bilingual diagnostics and legacy JSON compatibility")
 
         _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
-        let settings = SettingsController(configuration: Configuration(name: device, receivePath: "/isolated-test/Inbox"))
+        let settings = SettingsController(configuration: Configuration(name: device, receivePath: "/isolated-test/Inbox"), displayLanguage: .english)
         guard let window = settings.window, let content = window.contentView else { fatalError("No settings view") }
         window.appearance = NSAppearance(named: .aqua)
         content.wantsLayer = true; content.layer?.backgroundColor = NSColor.white.cgColor
@@ -78,6 +92,14 @@ struct LocalizationChecks {
                 }
             }
         }
+        let languagePicker = stack.arrangedSubviews.compactMap { $0 as? NSStackView }
+            .flatMap { $0.arrangedSubviews }.first { $0.identifier?.rawValue == "displayLanguage" } as? NSPopUpButton
+        check(languagePicker?.indexOfSelectedItem == 1, "Picker shows saved English preference")
+        var changed: DisplayLanguage?
+        settings.onLanguage = { changed = $0 }
+        languagePicker?.selectItem(at: 2)
+        if let picker = languagePicker, let action = picker.action { NSApp.sendAction(action, to: picker.target, from: picker) }
+        check(changed == .simplifiedChinese, "Picker dispatches selected language")
         check(document.frame.height >= scroll.contentView.bounds.height, "Scrollable short screen")
         print("PASS: " + L10n.language + " settings layout at 650×600")
         if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.arguments.count > index + 1 {

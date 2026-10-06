@@ -20,7 +20,7 @@ PeerJetty is designed for frequent handoffs between paired work devices. It does
 
 ## Install
 
-The current installer supports **Apple Silicon Macs running macOS 15 or later**. The 0.3.0 local test candidate supports English and Simplified Chinese, following the system or per-app language preference. The current public 0.2.4 installer still uses Simplified Chinese.
+The current installer supports **Apple Silicon Macs running macOS 15 or later**. The 0.3.1 local test candidate supports English and Simplified Chinese, with an in-app Language choice: Follow system, English or 简体中文. Quit and reopen the app after changing it. The current public 0.2.4 installer still uses Simplified Chinese.
 
 1. Open [Releases](https://github.com/TimeLyr1c/PeerJetty/releases/latest) and download the DMG from **Assets**.
 2. Open the DMG, drag `PeerJetty.app` into `Applications`, then eject the image.
@@ -46,7 +46,7 @@ If discovery fails, check network permissions and Wi-Fi client isolation. The se
 
 - Local network only; both devices must be online and awake. No cloud relay, SSH, account, or hardcoded device credentials.
 - No Windows client, automatic updater, offline queue, or resumable transfers yet. Retry interrupted transfers from the start.
-- The 0.3.0 local test candidate retains the 0.2.6 design and opens a stationary rounded card when files approach the upper center below the menu bar, on both notch and non-notch screens. There is no need to touch the physical screen edge. The current public 0.2.4 installer still uses the previous drop zone; see the [display design and validation checklist](Docs/DISPLAY-PLAN.md).
+- The 0.3.1 local test candidate retains the 0.2.6 design and opens a stationary rounded card when files approach the upper center below the menu bar, on both notch and non-notch screens. There is no need to touch the physical screen edge. The current public 0.2.4 installer still uses the previous drop zone; see the [display design and validation checklist](Docs/DISPLAY-PLAN.md).
 - Settings stay in `~/Library/Application Support/PeerJetty/`; private identity is stored in the local Keychain. Do not share these through Git or cloud sync.
 - Pairing uses this project's own protocol and has not undergone an independent security audit. See the [protocol documentation](Docs/PROTOCOL.md).
 
@@ -68,7 +68,7 @@ Bug reports and feature suggestions are welcome. Include the app version, macOS 
 
 [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Roadmap](Docs/ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-README and release notes are available in English and Simplified Chinese. App localization is implemented in the 0.3.0 test candidate. Other engineering documents may currently be Chinese-only. See the [localization guide](Docs/LOCALIZATION.md) for language selection and translation contributions.
+README and release notes are available in English and Simplified Chinese. App localization is implemented in the 0.3.1 test candidate. Other engineering documents may currently be Chinese-only. See the [localization guide](Docs/LOCALIZATION.md) for language selection and translation contributions.
 
 ## License and credits
 

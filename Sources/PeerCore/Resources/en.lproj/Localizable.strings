@@ -184,8 +184,12 @@
 "settings.sending_progress" = "Sending to %1$@ · %2$@";
 "settings.show_recent_files_in_finder" = "Show recent files in Finder";
 "settings.start_at_login" = "Start at login";
-"settings.wechat_file_access" = "WeChat file access…";
 "settings.welcome_to_peerjetty" = "Welcome to PeerJetty";
 "settings.when_enabled_saved_files_from_paired_devices_open" = "When enabled, saved files from paired devices open in their default apps. Folders open in Finder. Enable this only for devices you trust.";
 "version.changed_suffix" = " · %1$@";
 "version.source" = "%1$@\nSource %2$@ · %3$@%4$@";
+"settings.language" = "Language";
+"settings.language_system" = "Follow system";
+"settings.language_english" = "English";
+"settings.language_chinese" = "简体中文";
+"settings.language_restart" = "Language changes are saved automatically. Quit and reopen PeerJetty to apply; finish any transfers first.";

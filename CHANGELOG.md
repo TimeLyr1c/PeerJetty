@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.1 / build 10 — local test candidate, 2026-10-06
+
+Adds a Language picker to Settings with Follow system, English and 简体中文. Choices save locally and apply after quitting and reopening PeerJetty; active transfers are not restarted. Existing installations follow system. Removes the misleading WeChat file-access shortcut, which only opened Full Disk Access settings; drag-and-drop support remains. Pairing and transfer configuration are unchanged. Native macOS dialogs retain OS language selection.
+
+设置新增“跟随系统 / English / 简体中文”语言选择，自动保存在本机，退出重开后生效，不强制中断传输。旧安装默认跟随系统。移除仅打开“完全磁盘访问权限”页面的“微信文件访问权限”按钮，保留微信拖拽能力；配对与传输设置不变，系统弹窗仍按 macOS 的语言显示。
+
 ## 0.3.0 / build 9 — local test candidate, 2026-10-06
 
 Adds English and Simplified Chinese interface and diagnostics, selected from macOS system/per-app language preferences with English fallback. Uses stable .strings keys and native .stringsdict plural rules for item counts; permission descriptions ship in both languages. Wraps longer settings explanations, enlarges pairing guidance, and reserves space for translated drop-card controls.

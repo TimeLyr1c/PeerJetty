@@ -32,6 +32,27 @@ public struct TranslationCatalog {
     }
 }
 
+/// This local UI preference never enters pairing or transfer configuration.
+public enum DisplayLanguage: String, CaseIterable {
+    case system, english = "en", simplifiedChinese = "zh-Hans"
+    public func preferences(systemLanguages: [String]) -> [String] {
+        self == .system ? systemLanguages : [rawValue]
+    }
+}
+
+public struct LanguagePreferences {
+    private let defaults: UserDefaults
+    private static let key = "PeerJettyDisplayLanguage"
+    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    public var selection: DisplayLanguage {
+        DisplayLanguage(rawValue: defaults.string(forKey: Self.key) ?? "") ?? .system
+    }
+    public func save(_ selection: DisplayLanguage) {
+        if selection == .system { defaults.removeObject(forKey: Self.key) }
+        else { defaults.set(selection.rawValue, forKey: Self.key) }
+    }
+}
+
 public enum L10n {
     public static var resources: Bundle {
         // Assembled apps carry .lproj folders in their own Resources directory.
@@ -43,7 +64,7 @@ public enum L10n {
         return .main
         #endif
     }
-    private static let catalog = TranslationCatalog()
+    private static let catalog = TranslationCatalog(preferences: LanguagePreferences().selection.preferences(systemLanguages: Locale.preferredLanguages))
     public static var language: String { catalog.language }
     public static func text(_ key: String, _ arguments: CVarArg...) -> String { catalog.format(key, arguments: arguments) }
     public static func message(_ key: String, arguments: [String]) -> String {
