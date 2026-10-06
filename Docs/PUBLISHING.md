@@ -49,3 +49,5 @@
 The owner approved the 0.2.3 icon and authorized upload to https://github.com/TimeLyr1c/PeerJetty. The remote has been verified empty. All progress is on main. Legacy icon artwork is excluded from public history and the original history is preserved in a verified local Git bundle; see HISTORY.md for source-ID mapping. Prior sections describe historical preparation states. Actual upload success must be verified against the remote branch.
 
 Still pending: roommate public username/invitation, GitHub private vulnerability reporting settings, and a prerelease installer. This upload contains source only.
+
+2026-10-05 GitHub CLI 浏览器授权完成，已核验账号 TimeLyr1c 并接入 Git 凭据。未来本项目提交使用该用户名及 GitHub noreply 隐私邮箱，保留旧提交作者信息。0.2.4/build6 加入用户要求的可选收件打开；自动检查通过，实机验收仍待进行。首次上传只推送 main，不发布测试安装包或备份。

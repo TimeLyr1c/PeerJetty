@@ -1,6 +1,6 @@
 # Project rules
 
-Read Docs/development-plan.md and README.md before changing behavior. Preserve the Original source baseline. Never use SSH or auto-open received files in the new app. Credentials, certificates with private keys, device trust records, actual transfers and build outputs must stay out of Git.
+Read Docs/development-plan.md and README.md before changing behavior. Preserve the Original source baseline. Never use SSH. Received files stay unopened by default; the user explicitly authorized an optional auto-open switch on 2026-10-05. Only open committed, fully received roots when this local setting is enabled, never partial/failed/cancelled transfers. Credentials, certificates with private keys, device trust records, actual transfers and build outputs must stay out of Git.
 
 Use system TLS and CryptoKit; changes to pairing require adversarial tests. Validate paths before writing and never overwrite existing received files. A transfer succeeds only after receiver integrity checks and final commit. Keep smoke tests isolated from production Keychain/configuration and explain real-device coverage honestly.
 

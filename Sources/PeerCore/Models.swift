@@ -24,8 +24,22 @@ public struct Configuration: Codable {
     public var peers: [TrustedPeer]
     public var preferredPeer: String?
     public var onboardingComplete: Bool
+    public var autoOpenReceivedFiles: Bool
     public init(name: String, receivePath: String) {
-        self.name = name; self.receivePath = receivePath; peers = []; onboardingComplete = false
+        self.name = name; self.receivePath = receivePath; peers = []; onboardingComplete = false; autoOpenReceivedFiles = false
+    }
+    private enum CodingKeys: String, CodingKey {
+        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        name = try values.decode(String.self, forKey: .name)
+        receivePath = try values.decode(String.self, forKey: .receivePath)
+        receiveBookmark = try values.decodeIfPresent(Data.self, forKey: .receiveBookmark)
+        peers = try values.decode([TrustedPeer].self, forKey: .peers)
+        preferredPeer = try values.decodeIfPresent(String.self, forKey: .preferredPeer)
+        onboardingComplete = try values.decode(Bool.self, forKey: .onboardingComplete)
+        autoOpenReceivedFiles = try values.decodeIfPresent(Bool.self, forKey: .autoOpenReceivedFiles) ?? false
     }
 }
 

@@ -81,7 +81,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         engine.onReceived = { [weak self] name, urls in
             guard let self else { return }; self.lastReceived = urls; self.notifyReceived(name: name, count: urls.count)
-            self.settings?.received(urls)
+            let enabled = store.snapshot.autoOpenReceivedFiles
+            let failures = ReceivedFileActions.openCommitted(urls, enabled: enabled) { NSWorkspace.shared.open($0) }
+            if !failures.isEmpty {
+                self.settings?.status("已保存 \(urls.count) 项；\(failures.count) 项无法自动打开，可在 Finder 查看")
+                let content = UNMutableNotificationContent()
+                content.title = "文件已保存，部分未能打开"; content.body = "请在 PeerJetty 中查看最近收到的文件。"
+                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+            } else {
+                self.settings?.status("已保存 \(urls.count) 项；" + (enabled ? "已请求自动打开" : "没有自动打开"))
+            }
         }
         engine.onListening = { [weak self] port in self?.settings?.connectionInfo("本机连接地址：\(Self.localAddresses().joined(separator: " / "))    端口：\(port)") }
         initialized = true; engine.start()
@@ -141,6 +150,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onDiskAccess = {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
             }
+            controller.onAutoOpen = { [weak self] enabled in
+                do {
+                    try store.update { $0.autoOpenReceivedFiles = enabled }
+                    self?.settings?.status(enabled ? "已开启收到后自动打开" : "已关闭收到后自动打开")
+                } catch {
+                    self?.settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
+                    self?.showError(error.localizedDescription)
+                }
+            }
             controller.onLogin = { [weak self] enabled in
                 do {
                     if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
@@ -152,6 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onQuit = { NSApp.terminate(nil) }
         }
         settings?.updatePeers(peers, preferred: store.snapshot.preferredPeer)
+        settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
         settings?.loginState(SMAppService.mainApp.status == .enabled)
         settings?.showWindow(nil); NSApp.activate(ignoringOtherApps: true); settings?.window?.makeKeyAndOrderFront(nil)
     }

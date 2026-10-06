@@ -3,6 +3,29 @@ import CryptoKit
 import PeerCore
 
 final class PeerCoreTests {
+    func testOptionalAutoOpenDefaultsPersistsAndUsesOnlyCommittedRoots() throws {
+        let legacy = Data(#"{"name":"Mac","receivePath":"/test/inbox","peers":[],"onboardingComplete":true}"#.utf8)
+        let decoded = try JSONDecoder().decode(Configuration.self, from: legacy)
+        XCTAssertEqual(decoded.autoOpenReceivedFiles, false)
+        XCTAssertEqual(decoded.onboardingComplete, true)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("configuration.json")
+        let store = try ConfigurationStore(url: url, fallback: decoded)
+        try store.update { $0.autoOpenReceivedFiles = true }
+        XCTAssertEqual(try ConfigurationStore(url: url, fallback: decoded).snapshot.autoOpenReceivedFiles, true)
+        try store.update { $0.autoOpenReceivedFiles = false }
+        XCTAssertEqual(try ConfigurationStore(url: url, fallback: decoded).snapshot.autoOpenReceivedFiles, false)
+        let paths = [URL(fileURLWithPath: "/committed/a.txt"), URL(fileURLWithPath: "/committed/folder")]
+        var opened: [URL] = []
+        let disabled = ReceivedFileActions.openCommitted(paths, enabled: false) { opened.append($0); return true }
+        XCTAssertEqual(disabled, []); XCTAssertEqual(opened, [])
+        let failures = ReceivedFileActions.openCommitted(paths, enabled: true) { opened.append($0); return $0 == paths[0] }
+        XCTAssertEqual(opened, paths); XCTAssertEqual(failures, [paths[1]])
+        opened = []
+        XCTAssertEqual(ReceivedFileActions.openCommitted([], enabled: true) { opened.append($0); return true }, [])
+        XCTAssertEqual(opened, [])
+    }
     func testRenamedConfigurationPreservesTrustAndDoesNotOverwrite() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -140,6 +163,7 @@ private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) 
 @main struct TestRunner {
     static func main() throws {
         let tests = PeerCoreTests()
+        try tests.testOptionalAutoOpenDefaultsPersistsAndUsesOnlyCommittedRoots()
         try tests.testRenamedConfigurationPreservesTrustAndDoesNotOverwrite()
         try tests.testPairingBindsBothIdentitiesNoncesAndTLSConnection()
         try tests.testRejectTraversalAndSymlinkParent()
@@ -148,6 +172,6 @@ private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) 
         try tests.testMalformedAndDuplicateManifests()
         try tests.testCorruptionDoesNotCommitAndCancellationCleansStaging()
         try tests.testAtomicNoOverwriteAndEmptyFiles()
-        print("PASS: 8 core test groups (rename migration, pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
+        print("PASS: 9 core test groups (optional auto-open, rename migration, pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
     }
 }

@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.4 / build 6 — optional receive auto-open, local candidate, 2026-10-05
+
+Adds a persistent receiver-side “open after receiving” switch, disabled by default including legacy configuration upgrades. Only successful committed roots are handed to the system default application; opening failures preserve received files and are reported. Settings now scroll to accommodate smaller screens. Pairing and transfer protocol unchanged; physical two-Mac behavior remains to be checked.
+
 ## 0.2.3 / build 5 — new icon, local candidate, 2026-10-05
 
 Uses the project owner’s replacement PeerJetty PNG and records the non-notch display improvement plan. The display behavior is unchanged in this build; screen-edge activation and geometry adjustments are planned separately. Pairing and transfer implementation unchanged. Not automatically installed or published.
