@@ -1,6 +1,8 @@
 # Changes
 
-## 0.2.4 / build 6 — optional receive auto-open, local candidate, 2026-10-05
+## 0.2.4 / build 6 — first public prerelease, 2026-10-05
+
+Published at https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4 from source commit `ef49e674889298a1dd8d9a75f118e89abcb5b85f`, with an arm64 ZIP, SHA256 checksums and build/signature records. Ad hoc signed, not notarized.
 
 Adds a persistent receiver-side “open after receiving” switch, disabled by default including legacy configuration upgrades. Only successful committed roots are handed to the system default application; opening failures preserve received files and are reported. Settings now scroll to accommodate smaller screens. Pairing and transfer protocol unchanged; physical two-Mac behavior remains to be checked.
 

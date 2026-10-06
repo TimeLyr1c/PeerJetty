@@ -4,9 +4,9 @@
 
 ## 安装与初始化
 
-本版本需要 macOS 15 或更新系统。历史 OpenOnMini 0.2.0 安装包为 Apple Silicon（arm64）本地构建，未做 Developer ID 签名或 Apple 公证。它不是面向公众的正式发行包；Intel Mac 需自行构建。
+本版本需要 macOS 15 或更新系统。[PeerJetty 0.2.4 / build 6 预发布安装包](https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4) 已提供 Apple Silicon（arm64）版本，未做 Developer ID 签名或 Apple 公证；Intel Mac 需自行构建，尚未实机验证。
 
-1. 从源码构建 PeerJetty，将生成的 `outputs/PeerJetty.app` 放到 `/Applications/PeerJetty.app`，然后打开。当前候选未公开发布。升级旧版时先退出 OpenOnMini，不要同时运行两个版本；确认新版配置和配对正常后再移除旧 App。不要长期从 Downloads 运行。
+1. 从 Release 的 Assets 下载 `PeerJetty-0.2.4-build6-arm64.zip`，解压后将 `PeerJetty.app` 放到 `/Applications/PeerJetty.app`，然后打开。也可按下文从源码构建。升级旧版时先退出 OpenOnMini，不要同时运行两个版本；确认新版配置和配对正常后再移除旧 App。不要长期从 Downloads 运行。
 2. 两台电脑各设置本机名称及接收目录，点击“保存 / 完成初始化”。名称只是方便辨认，不是账号或身份凭据。
 3. 允许系统请求的局域网访问。通知权限可选；不需要 SSH、远程登录、管理员密码或 Apple 账号。
 4. 两台电脑都点击“添加设备 · 2 分钟”，在一台电脑设备列表中选择另一台，点击“连接 / 配对”。
@@ -33,7 +33,7 @@ Bonjour 广播服务标识及公开证书指纹；显示名只在开启配对窗
 
 ## 本地测试候选
 
-当前源码为 **0.2.4 / 构建 6**：新增收到后自动打开开关，默认关闭，旧配置同样保持关闭；只在完整保存后打开，打开失败不影响已保存文件。0.2.3 / 构建 5：替换为用户提供的 PeerJetty 图标，投放面板逻辑尚未改变。0.2.2 / 构建 4：产品与构建改名为 PeerJetty，迁移旧配置，安装包附 MIT 声明；0.2.1 增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。用户已反馈 0.2.2 在 Air / mini 上双机试用正常，0.2.3 新图标也正常；详见验证记录，这不代表全部边界场景已逐项覆盖。构建脚本不会自动替换已安装 App。
+已发布 **0.2.4 / 构建 6 预发布版**：新增收到后自动打开开关，默认关闭，旧配置同样保持关闭；只在完整保存后打开，打开失败不影响已保存文件。0.2.3 / 构建 5：替换为用户提供的 PeerJetty 图标，投放面板逻辑尚未改变。0.2.2 / 构建 4：产品与构建改名为 PeerJetty，迁移旧配置，安装包附 MIT 声明；0.2.1 增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。用户已反馈 0.2.2 在 Air / mini 上双机试用正常，0.2.3 新图标也正常；详见验证记录，这不代表全部边界场景已逐项覆盖。构建脚本不会自动替换已安装 App。
 
 ## 从源码构建
 
@@ -62,7 +62,7 @@ cd /path/to/PeerJetty
 
 0.2.0 是首个双向开发版本。原始单向 SSH Starter 保留在 `Original/`，新传输代码位于 `Sources/`，没有复用 SSH 连接或自动打开逻辑。[开发计划](Docs/development-plan.md)、[验证与验收](Docs/VALIDATION.md)、[来源及授权](LICENSE-NOTES.md) 记录范围与限制。
 
-本项目采用 [MIT 许可证](LICENSE)，用户与提供 Starter 的室友已约定采用 MIT。原始来源及现有图标尚待核实的素材授权见 [来源及授权](LICENSE-NOTES.md)。源码仓库为 [TimeLyr1c/PeerJetty](https://github.com/TimeLyr1c/PeerJetty)；目前未发布 Release。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
+本项目采用 [MIT 许可证](LICENSE)，用户与提供 Starter 的室友已约定采用 MIT。原始来源及现有图标尚待核实的素材授权见 [来源及授权](LICENSE-NOTES.md)。源码仓库为 [TimeLyr1c/PeerJetty](https://github.com/TimeLyr1c/PeerJetty)；已发布 [0.2.4 / build 6 预发布版](https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4)。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
 
 ## 开发目录与版本管理
 

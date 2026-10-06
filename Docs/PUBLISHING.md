@@ -51,3 +51,10 @@ The owner approved the 0.2.3 icon and authorized upload to https://github.com/Ti
 Still pending: roommate public username/invitation, GitHub private vulnerability reporting settings, and a prerelease installer. This upload contains source only.
 
 2026-10-05 GitHub CLI 浏览器授权完成，已核验账号 TimeLyr1c 并接入 Git 凭据。未来本项目提交使用该用户名及 GitHub noreply 隐私邮箱，保留旧提交作者信息。0.2.4/build6 加入用户要求的可选收件打开；自动检查通过，实机验收仍待进行。首次上传只推送 main，不发布测试安装包或备份。
+
+## 已发布：0.2.4 / build6
+
+2026-10-05 首个 GitHub 预发布版已创建：
+https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
+
+标签 v0.2.4 指向安装包的源码提交 ef49e674889298a1dd8d9a75f118e89abcb5b85f。附件为 arm64 App ZIP、SHA256SUMS.txt、build-info.json、signature.txt；MIT 包含在 App 中。保持原包不覆盖，不把发布记录后续提交当作该包的构建来源。此版本供朋友试用，ad hoc 签名、未公证，支持 macOS 15+。尚未发送任何消息给室友；由用户转发链接。

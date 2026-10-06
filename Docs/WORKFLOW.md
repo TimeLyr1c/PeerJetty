@@ -75,3 +75,10 @@ python3 Scripts/release.py package --destination "$HOME/Dropbox/90_开发资料/
 
 每项完成并验证的修改保存为独立本地 Git 提交；最终报告提交 ID。上传仍是独立步骤。未完成工作若需要中断，做明确标记的 WIP 检查点，不把它冒充通过验收的版本。
 国际化等后续计划见 ROADMAP.md。
+
+## 首次公开安装包
+
+2026-10-05：0.2.4/build6 已发布为 GitHub Pre-release，标签 v0.2.4 固定至源码 ef49e67。下载页：
+https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
+
+本机原归档仍在 outputs/releases/0.2.4-build6；本次未移动到 Dropbox，也未替换已安装 App。后续修改先保存提交和测试，再交付新版本/构建号，不能覆盖此次安装包。
