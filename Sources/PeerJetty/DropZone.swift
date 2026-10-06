@@ -26,8 +26,14 @@ final class DropZoneView: NSView {
     private var promiseTracker: PromiseTracker?
     override init(frame: NSRect) {
         super.init(frame: frame)
-        wantsLayer = true; layer?.backgroundColor = NSColor.black.cgColor; layer?.cornerRadius = 13
-        layer?.cornerCurve = .continuous; layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        wantsLayer = true; layer?.cornerRadius = 16; layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+        appearance = NSAppearance(named: .darkAqua)
+        let background = NSVisualEffectView(frame: bounds)
+        background.material = .hudWindow; background.blendingMode = .behindWindow
+        background.state = .active; background.autoresizingMask = [.width, .height]
+        addSubview(background)
+        layer?.borderWidth = 0.5; layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
         icon.contentTintColor = .white
         title.textColor = .white; title.font = .systemFont(ofSize: 12.5, weight: .semibold)
         subtitle.textColor = NSColor.white.withAlphaComponent(0.65); subtitle.font = .systemFont(ofSize: 10)
@@ -105,73 +111,123 @@ final class DropZoneView: NSView {
     }
 }
 
+/// Prevent AppKit from moving the animation origin below the menu bar.
+private final class EdgeDropPanel: NSPanel {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+}
+
 final class DropPanelController {
-    let view = DropZoneView(frame: NSRect(x: 0, y: 0, width: 260, height: 102))
+    let view = DropZoneView(frame: NSRect(x: 0, y: 0, width: 320, height: 76))
     private let panel: NSPanel
     private var timer: Timer?
+    private var screenObserver: NSObjectProtocol?
     private var visible = false
     private var revision = 0
-    private var mouseDown = false
-    private var downLocation = NSPoint.zero
-    private var handled = NSPasteboard(name: .drag).changeCount
+    private var dragTracker = FileDragTracker(changeCount: NSPasteboard(name: .drag).changeCount)
     private var dragActive = false
+    private var selectedScreenID: NSNumber?
+    private var cardFrame: NSRect?
+    private var hidePending = false
+    private var keepUntil = Date.distantPast
     var busy = false
     init() {
-        panel = NSPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false; panel.level = .statusBar
+        panel = EdgeDropPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .statusBar
         panel.hidesOnDeactivate = false; panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = view; panel.orderOut(nil)
         let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.poll() }
         RunLoop.main.add(timer, forMode: .common); self.timer = timer
-        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in self?.position() }
+        screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in self?.position() }
     }
-    private func geometry() -> (NSRect, NSRect)? {
-        guard let screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else { return nil }
-        let frame = screen.frame
-        let notch = screen.safeAreaInsets.top > 0 ? screen.safeAreaInsets.top : 0
-        let width: CGFloat, x: CGFloat
-        if notch > 0, let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea, right.minX - left.maxX > 100 {
-            width = right.minX - left.maxX; x = left.maxX
-        } else { width = 260; x = frame.midX - width / 2 }
-        let top = notch > 0 ? frame.maxY : screen.visibleFrame.maxY
-        let height = notch + 70
-        return (NSRect(x: x, y: top - notch, width: width, height: height), NSRect(x: x, y: top - height, width: width, height: height))
+    private func screenID(_ screen: NSScreen) -> NSNumber? {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
     }
-    private func position() { if let geometry = geometry() { panel.setFrame(visible ? geometry.1 : geometry.0, display: true) } }
-    func show() {
-        guard !visible, let geometry = geometry() else { return }
-        revision += 1; visible = true; panel.setFrame(geometry.0, display: true); panel.orderFrontRegardless()
+    private func mouseScreen() -> NSScreen? {
+        NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+    }
+    private func selectedScreen() -> NSScreen? {
+        NSScreen.screens.first { screenID($0) == selectedScreenID } ?? mouseScreen()
+    }
+    private func geometry() -> DropPresentation? {
+        selectedScreen().map { DropPresentation(DropScreenMetrics($0)) }
+    }
+    private func position() {
+        guard let screen = selectedScreen() else { panel.orderOut(nil); visible = false; return }
+        selectedScreenID = screenID(screen)
+        revision += 1; hidePending = false
+        let geometry = DropPresentation(DropScreenMetrics(screen))
+        cardFrame = geometry.card
+        panel.setFrame(visible ? geometry.card : geometry.hidden, display: true)
+    }
+    func show() { show(on: nil) }
+    private func show(on screen: NSScreen?) {
+        if visible {
+            if hidePending { revision += 1; hidePending = false }
+            return
+        }
+        if let screen = screen ?? mouseScreen() { selectedScreenID = screenID(screen) }
+        guard let geometry = geometry() else { return }
+        revision += 1; hidePending = false; visible = true
+        cardFrame = geometry.card
+        panel.setFrame(geometry.hidden, display: true); panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.24; context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().setFrame(geometry.1, display: true)
+            context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().setFrame(geometry.card, display: true)
         }
     }
     func hide(after seconds: Double = 0) {
-        revision += 1; let token = revision
+        guard visible, !hidePending else { return }
+        revision += 1; let token = revision; hidePending = true
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-            guard let self, self.revision == token, !self.busy, !self.dragActive, self.visible, let geometry = self.geometry() else { return }
+            guard let self, self.revision == token else { return }
+            self.hidePending = false
+            guard !self.busy, self.visible, let geometry = self.geometry() else { return }
+            // A drag elsewhere on the screen must not hold this card open.
+            if self.dragActive, geometry.retention.contains(NSEvent.mouseLocation) { return }
             self.visible = false
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2; context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                self.panel.animator().setFrame(geometry.0, display: true)
+                context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.16
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                self.panel.animator().setFrame(geometry.hidden, display: true)
             } completionHandler: { [weak self] in
-                guard let self, self.revision == token, !self.visible else { return }; self.panel.orderOut(nil)
+                guard let self, self.revision == token, !self.visible else { return }
+                self.panel.orderOut(nil)
             }
         }
     }
-    func preview() { view.idle(); show(); hide(after: 5) }
+    func preview() {
+        if !busy { view.idle() }
+        keepUntil = Date().addingTimeInterval(5); show(); hide(after: 5)
+    }
     private func poll() {
         let pressed = NSEvent.pressedMouseButtons & 1 == 1
+        let location = NSEvent.mouseLocation
         let board = NSPasteboard(name: .drag)
-        if pressed, !mouseDown { downLocation = NSEvent.mouseLocation }
-        if pressed, !dragActive, board.changeCount != handled,
-           hypot(NSEvent.mouseLocation.x - downLocation.x, NSEvent.mouseLocation.y - downLocation.y) >= 4,
-           DragPayload.accepts(board) {
-            dragActive = true; handled = board.changeCount
-            if !busy { view.idle() }; show()
+        // Menu-bar visibility can change without a screen-parameters event.
+        if visible, let geometry = geometry(), cardFrame != geometry.card {
+            cardFrame = geometry.card
+            panel.setFrame(geometry.card, display: true)
         }
-        if !pressed, mouseDown { dragActive = false; hide() }
-        mouseDown = pressed
+        let acceptsFiles = pressed && board.changeCount != dragTracker.handled && DragPayload.accepts(board)
+        dragActive = dragTracker.update(pressed: pressed, location: location,
+                                        changeCount: board.changeCount, acceptsFiles: acceptsFiles)
+        if !pressed {
+            if visible, !busy, Date() >= keepUntil { hide(after: 0.25) }
+        } else if dragActive {
+            if let geometry = geometry(), visible, geometry.retention.contains(location) {
+                // Cancel an exit dismissal when the user returns to the card.
+                if hidePending { revision += 1; hidePending = false }
+            } else if let screen = mouseScreen(), DropPresentation(DropScreenMetrics(screen)).trigger.contains(location) {
+                if visible, !busy, screenID(screen) != selectedScreenID {
+                    revision += 1; hidePending = false; visible = false; panel.orderOut(nil)
+                }
+                if !busy { view.idle() }; show(on: screen)
+            } else if visible, !busy { hide(after: 0.25) }
+        }
     }
-    deinit { timer?.invalidate() }
+    deinit {
+        timer?.invalidate()
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+    }
 }

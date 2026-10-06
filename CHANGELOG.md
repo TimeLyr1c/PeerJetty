@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.5 / build 7 — local test candidate, 2026-10-05
+
+Replaces the notch-style black rectangle with an independent rounded HUD card below the menu bar and display safe area. Opens only when a file drag reaches the current screen’s top-center trigger; uses actual auxiliary screen areas for notch location/width, supports cross-screen activation, and retains the card while moving into it. Handles screen-layout and menu-bar geometry changes, stale drag pasteboards, and Reduce Motion. Pairing, transfer protocol, and receive/open settings are unchanged. Automated geometry, drag-session and isolated AppKit layout checks pass; physical two-Mac/full-screen/Space acceptance is pending. Not yet installed or publicly released.
+
 ## 0.2.4 / build 6 — first public release, 2026-10-05
 
 Published at https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4 from source commit `ef49e674889298a1dd8d9a75f118e89abcb5b85f`, with an Apple Silicon DMG installer. ZIP, checksums and build/signature records are retained in the local release archive rather than uploaded as release assets. Ad hoc signed, not notarized.

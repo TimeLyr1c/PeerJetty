@@ -100,3 +100,7 @@ python3 Scripts/release.py dmg outputs/releases/0.2.4-build6
 公开上传的 Release 附件只保留 DMG；ZIP、JSON、签名记录和校验文件保留在本地 outputs/releases 归档中，用于追溯，不作为用户下载附件。GitHub 自动生成的 Source code ZIP/tar.gz 属于平台功能，不是项目上传的安装包。
 
 README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发布说明提供英文与简体中文，首页使用普通 Releases 链接，不添加大型下载标题。应用界面多语言另行实现，文档双语不代表应用已经支持英文。经验证可用的版本按正式版发布并设为 Latest；未经验收的试用构建标为 Pre-release。不要修改已经分发的二进制或移动已有版本标签。
+
+## 0.2.5 顶部投放测试候选
+
+2026-10-05：0.2.5/build7 加入有／无刘海屏幕的顶边触发圆角卡片。源码按项目规则保存提交，归档目标为 outputs/releases/0.2.5-build7；实际生成结果以文件存在和校验为准。公开正式版仍为 0.2.4，后续先在 Air 与 mini 安装同一候选并核对版本、完成 DISPLAY-PLAN.md 的实机验收，再决定发布。配置与身份不参与双机文件同步。

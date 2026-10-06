@@ -6,7 +6,7 @@
 
 1. 阅读 README、AGENTS.md 和 Docs/PROTOCOL.md；功能和限制见 Docs/ROADMAP.md。
 2. 在工作分支进行修改，一个 PR 围绕一个明确的问题。未经验证的新功能不作为已经支持的能力宣传。
-3. 运行 `./Scripts/test.sh`；涉及版本和打包工具时运行 `python3 -m unittest discover -s Tests/ReleaseTools -v`。界面与系统集成功能记录实际测试环境和人工检查结果。
+3. 运行 `./Scripts/test.sh`；顶部投放区改动另运行 `./Scripts/test-drop-presentation.sh` 并完成实机显示检查；涉及版本和打包工具时运行 `python3 -m unittest discover -s Tests/ReleaseTools -v`。界面与系统集成功能记录实际测试环境和人工检查结果。
 4. 提交中说明变化与验证。不要提交密钥、证书私钥、配对记录、本机配置、真实传输文件或构建产物；测试使用隔离身份。
 5. 改动配对、身份或文件接收时补充相关安全边界测试；不要直接更换现有兼容标识。
 

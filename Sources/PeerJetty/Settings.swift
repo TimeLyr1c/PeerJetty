@@ -57,6 +57,7 @@ final class SettingsController: NSWindowController {
             row([devices, button("连接 / 配对", #selector(connect))]),
             row([button("添加设备 · 2 分钟", #selector(pair)), button("手动地址…", #selector(manual)), button("移除授权", #selector(forget))]),
             connectionLabel, separator(),
+            NSTextField(labelWithString: "拖动文件到屏幕顶部中央，展开投放区后松开发送。"),
             row([button("选择文件发送…", #selector(send)), button("预览投放区", #selector(preview)), button("取消当前传输", #selector(cancel))]),
             progressLabel, button("在 Finder 中显示最近收到的文件", #selector(reveal)), separator(),
             row([NSTextField(labelWithString: "收到后自动打开"), autoOpen]), openHint,
