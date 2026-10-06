@@ -4,7 +4,6 @@ private func XCTAssertTrue(_ value: Bool, file: StaticString = #file, line: UInt
 private func XCTAssertFalse(_ value: Bool, file: StaticString = #file, line: UInt = #line) { precondition(!value, "Expected false", file: file, line: line) }
 private func XCTAssertNil<T>(_ value: T?, file: StaticString = #file, line: UInt = #line) { precondition(value == nil, "Expected nil", file: file, line: line) }
 private func XCTAssertEqual<T: Equatable>(_ actual: T, _ expected: T, file: StaticString = #file, line: UInt = #line) { precondition(actual == expected, "Values differ: \(actual), \(expected)", file: file, line: line) }
-private func XCTAssertGreaterThan<T: Comparable>(_ actual: T, _ expected: T, file: StaticString = #file, line: UInt = #line) { precondition(actual > expected, "Expected greater value", file: file, line: line) }
 
 final class DropPresentationTests {
     func testDragTrackerRejectsStalePasteboardAndTextAndRequiresMovement() {
@@ -22,17 +21,19 @@ final class DropPresentationTests {
         XCTAssertFalse(tracker.update(pressed: true, location: origin, changeCount: 12, acceptsFiles: true))
         XCTAssertFalse(tracker.update(pressed: true, location: moved, changeCount: 12, acceptsFiles: true))
     }
-    func testPlainScreenTriggerUsesPhysicalEdgeButCardClearsMenuBar() {
+    func testPlainScreenApproachTriggersBeforeCardWithoutEnteringSystemEdge() {
         let screen = DropScreenMetrics(frame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
                                        visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1056))
         let g = DropPresentation(screen)
         XCTAssertNil(g.notch)
-        XCTAssertTrue(g.trigger.contains(NSPoint(x: 960, y: 1079)))
+        XCTAssertFalse(g.trigger.contains(NSPoint(x: 960, y: 1079)))
+        XCTAssertFalse(g.trigger.contains(NSPoint(x: 960, y: 1050)))
+        XCTAssertTrue(g.trigger.contains(NSPoint(x: 960, y: 920)))
+        XCTAssertTrue(g.trigger.contains(NSPoint(x: 960, y: g.card.midY)))
         XCTAssertFalse(g.trigger.contains(NSPoint(x: 300, y: 1079)))
         XCTAssertFalse(g.trigger.contains(NSPoint(x: 960, y: 500)))
-        XCTAssertEqual(g.card.maxY, 1048)
-        XCTAssertGreaterThan(g.hidden.minY, screen.frame.maxY)
-        XCTAssertTrue(g.retention.contains(NSPoint(x: 960, y: 1060)))
+        XCTAssertEqual(g.card.maxY, 1016)
+        XCTAssertFalse(g.retention.contains(NSPoint(x: 960, y: 1060)))
         XCTAssertTrue(g.retention.contains(NSPoint(x: 960, y: g.card.midY)))
     }
     func testDifferentNotchWidthsAreMeasuredAndContentsStayBelowHousing() {
@@ -44,9 +45,10 @@ final class DropPresentationTests {
             let g = DropPresentation(screen)
             XCTAssertEqual(g.notch?.width, width)
             XCTAssertEqual(g.card.midX, 756)
-            XCTAssertEqual(g.card.maxY, 942)
-            XCTAssertTrue(g.trigger.contains(NSPoint(x: 756, y: 949)))
-            XCTAssertTrue(g.retention.contains(NSPoint(x: 756, y: 943)))
+            XCTAssertEqual(g.card.maxY, 918)
+            XCTAssertFalse(g.trigger.contains(NSPoint(x: 756, y: 949)))
+            XCTAssertTrue(g.trigger.contains(NSPoint(x: 756, y: 810)))
+            XCTAssertTrue(g.retention.contains(NSPoint(x: 756, y: g.card.midY)))
         }
     }
     func testNegativeScreenOriginsAndHiddenMenuBar() {
@@ -54,9 +56,28 @@ final class DropPresentationTests {
                                        visibleFrame: NSRect(x: -1920, y: -200, width: 1920, height: 1080), scale: 2)
         let g = DropPresentation(screen)
         XCTAssertEqual(g.card.midX, -960)
-        XCTAssertEqual(g.card.maxY, 872)
-        XCTAssertTrue(g.trigger.contains(NSPoint(x: -960, y: 879)))
+        XCTAssertEqual(g.card.maxY, 816)
+        XCTAssertFalse(g.trigger.contains(NSPoint(x: -960, y: 879)))
+        XCTAssertTrue(g.trigger.contains(NSPoint(x: -960, y: 705)))
         XCTAssertFalse(g.retention.contains(NSPoint(x: 100, y: 879)))
+    }
+    func testUpwardApproachPrecedesCardAndMenuWithOrWithoutNotch() {
+        for safeTop: CGFloat in [0, 32, 48, 72] {
+            let frame = NSRect(x: -800, y: 200, width: 1600, height: 1000)
+            let metrics = DropScreenMetrics(frame: frame,
+                visibleFrame: NSRect(x: -800, y: 200, width: 1600, height: 1000 - safeTop),
+                safeTop: safeTop, scale: 2)
+            let g = DropPresentation(metrics)
+            let path = stride(from: frame.maxY - 250, through: frame.maxY - 1, by: 25)
+            let first = path.map { NSPoint(x: frame.midX, y: $0) }.first { g.trigger.contains($0) }
+            XCTAssertTrue(first != nil)
+            XCTAssertTrue(first!.y < g.card.minY)
+            XCTAssertTrue(frame.maxY - first!.y >= 140)
+            XCTAssertTrue(g.card.maxY <= frame.maxY - 64)
+            XCTAssertFalse(g.trigger.contains(NSPoint(x: frame.midX, y: frame.maxY - 10)))
+            XCTAssertTrue(g.retention.contains(first!))
+            XCTAssertTrue(g.retention.contains(NSPoint(x: g.card.midX, y: g.card.midY)))
+        }
     }
     func testMissingOrInvalidNotchDataFallsBackWithoutPuttingContentInSafeInset() {
         let frame = NSRect(x: 400, y: 100, width: 1440, height: 900)
@@ -66,7 +87,7 @@ final class DropPresentationTests {
                 safeTop: 30, leftArea: areas.0, rightArea: areas.1))
             XCTAssertNil(g.notch)
             XCTAssertEqual(g.card.midX, frame.midX)
-            XCTAssertEqual(g.card.maxY, 962)
+            XCTAssertEqual(g.card.maxY, 936)
         }
     }
 }
@@ -76,11 +97,12 @@ struct RunDropPresentationTests {
     static func main() throws {
         let tests = DropPresentationTests()
         tests.testDragTrackerRejectsStalePasteboardAndTextAndRequiresMovement()
-        tests.testPlainScreenTriggerUsesPhysicalEdgeButCardClearsMenuBar()
+        tests.testPlainScreenApproachTriggersBeforeCardWithoutEnteringSystemEdge()
         tests.testDifferentNotchWidthsAreMeasuredAndContentsStayBelowHousing()
         tests.testNegativeScreenOriginsAndHiddenMenuBar()
+        tests.testUpwardApproachPrecedesCardAndMenuWithOrWithoutNotch()
         tests.testMissingOrInvalidNotchDataFallsBackWithoutPuttingContentInSafeInset()
-        print("PASS: drag session checks and 4 screen geometry groups")
+        print("PASS: drag session checks and 5 screen geometry/path groups")
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.prohibited)
         let board = NSPasteboard.withUniqueName()

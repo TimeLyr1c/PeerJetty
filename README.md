@@ -46,7 +46,7 @@ If discovery fails, check network permissions and Wi-Fi client isolation. The se
 
 - Local network only; both devices must be online and awake. No cloud relay, SSH, account, or hardcoded device credentials.
 - No Windows client, automatic updater, offline queue, or resumable transfers yet. Retry interrupted transfers from the start.
-- The 0.2.5 local test candidate introduces an edge-triggered rounded card on both notch and non-notch screens. The current public 0.2.4 installer still uses the previous drop zone; see the [display design and validation checklist](Docs/DISPLAY-PLAN.md).
+- The 0.2.6 local test candidate opens a stationary rounded card when files approach the upper center below the menu bar, on both notch and non-notch screens. There is no need to touch the physical screen edge. The current public 0.2.4 installer still uses the previous drop zone; see the [display design and validation checklist](Docs/DISPLAY-PLAN.md).
 - Settings stay in `~/Library/Application Support/PeerJetty/`; private identity is stored in the local Keychain. Do not share these through Git or cloud sync.
 - Pairing uses this project's own protocol and has not undergone an independent security audit. See the [protocol documentation](Docs/PROTOCOL.md).
 

@@ -53,7 +53,7 @@ final class DropZoneView: NSView {
         progress.frame = NSRect(x: 16, y: 10, width: max(0, bounds.width - 32), height: 5)
         cancelButton.frame = NSRect(x: bounds.width - 47, y: 42, width: 40, height: 17)
     }
-    func idle() { show(title: "拖到这里", subtitle: targetName, symbol: "arrow.up.doc.fill", color: .white); progress.isHidden = true; cancelButton.isHidden = true }
+    func idle() { show(title: "拖入卡片发送", subtitle: targetName, symbol: "arrow.up.doc.fill", color: .white); progress.isHidden = true; cancelButton.isHidden = true }
     func show(title: String, subtitle: String, symbol: String = "arrow.up.circle.fill", color: NSColor = .systemBlue) {
         self.title.stringValue = title; self.subtitle.stringValue = subtitle
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title); icon.contentTintColor = color
@@ -111,11 +111,6 @@ final class DropZoneView: NSView {
     }
 }
 
-/// Prevent AppKit from moving the animation origin below the menu bar.
-private final class EdgeDropPanel: NSPanel {
-    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
-}
-
 final class DropPanelController {
     let view = DropZoneView(frame: NSRect(x: 0, y: 0, width: 320, height: 76))
     private let panel: NSPanel
@@ -131,7 +126,7 @@ final class DropPanelController {
     private var keepUntil = Date.distantPast
     var busy = false
     init() {
-        panel = EdgeDropPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel = NSPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .statusBar
         panel.hidesOnDeactivate = false; panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = view; panel.orderOut(nil)
@@ -157,10 +152,10 @@ final class DropPanelController {
         revision += 1; hidePending = false
         let geometry = DropPresentation(DropScreenMetrics(screen))
         cardFrame = geometry.card
-        panel.setFrame(visible ? geometry.card : geometry.hidden, display: true)
+        panel.setFrame(geometry.card, display: true)
     }
     func show() { show(on: nil) }
-    private func show(on screen: NSScreen?) {
+    private func show(on screen: NSScreen?, immediately: Bool = false) {
         if visible {
             if hidePending { revision += 1; hidePending = false }
             return
@@ -169,11 +164,15 @@ final class DropPanelController {
         guard let geometry = geometry() else { return }
         revision += 1; hidePending = false; visible = true
         cardFrame = geometry.card
-        panel.setFrame(geometry.hidden, display: true); panel.orderFrontRegardless()
+        panel.setFrame(geometry.card, display: true)
+        let animate = !immediately && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        panel.alphaValue = animate ? 0 : 1
+        panel.orderFrontRegardless()
+        // File drags get an immediate, stationary target; only status/preview
+        // presentation fades in. Never move a drop target from the top edge.
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().setFrame(geometry.card, display: true)
+            context.duration = animate ? 0.12 : 0
+            panel.animator().alphaValue = 1
         }
     }
     func hide(after seconds: Double = 0) {
@@ -189,7 +188,7 @@ final class DropPanelController {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.16
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                self.panel.animator().setFrame(geometry.hidden, display: true)
+                self.panel.animator().alphaValue = 0
             } completionHandler: { [weak self] in
                 guard let self, self.revision == token, !self.visible else { return }
                 self.panel.orderOut(nil)
@@ -222,7 +221,7 @@ final class DropPanelController {
                 if visible, !busy, screenID(screen) != selectedScreenID {
                     revision += 1; hidePending = false; visible = false; panel.orderOut(nil)
                 }
-                if !busy { view.idle() }; show(on: screen)
+                if !busy { view.idle() }; show(on: screen, immediately: true)
             } else if visible, !busy { hide(after: 0.25) }
         }
     }

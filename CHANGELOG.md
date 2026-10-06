@@ -1,5 +1,9 @@
 # Changes
 
+## 0.2.6 / build 8 — local test candidate, 2026-10-05
+
+Moves activation into an approach region below the menu bar: the drop card stays at least 64 points below the physical screen edge and clears the menu/notch area by at least 12 points. File drags show a stationary target immediately, removing the top-edge slide animation and the need to reach macOS’s Mission Control gesture region. Preview/status presentation uses a short fade. This reduces gesture overlap without modifying system preferences or intercepting system gestures; dragging past the card to the actual edge can still invoke macOS. Geometry, simulated approach-path, drag-session and isolated AppKit checks cover the new activation route; physical mini/Air gesture-conflict acceptance is pending. Pairing and transfer behavior are unchanged.
+
 ## 0.2.5 / build 7 — local test candidate, 2026-10-05
 
 Replaces the notch-style black rectangle with an independent rounded HUD card below the menu bar and display safe area. Opens only when a file drag reaches the current screen’s top-center trigger; uses actual auxiliary screen areas for notch location/width, supports cross-screen activation, and retains the card while moving into it. Handles screen-layout and menu-bar geometry changes, stale drag pasteboards, and Reduce Motion. Pairing, transfer protocol, and receive/open settings are unchanged. Automated geometry, drag-session and isolated AppKit layout checks pass; physical two-Mac/full-screen/Space acceptance is pending. Not yet installed or publicly released.
