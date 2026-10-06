@@ -39,3 +39,7 @@
 - release 编译与严格本地签名校验通过；核对 App 显示名称、可执行文件、0.2.2/build4、稳定 Bundle ID 和内附 MIT LICENSE。
 - Bundle ID、Keychain service、Bonjour、ALPN、SAS domain 与 exporter label 保持原值；真正的旧版/新版双机互通、生产 Keychain 授权、通知、登录启动及首次升级仍待实机验收。
 - 没有替换已安装的 OpenOnMini.app，也没有迁移生产配置、修改电脑管理档案、改动 Dropbox 历史归档或上传 GitHub。
+
+## 2026-10-05 用户反馈：0.2.2 双机试用
+
+用户表示“0.2.2 很完美，没什么问题”。记录为用户在其 MacBook Air / Mac mini 上的整体使用反馈，不等同于逐项完成全部边界测试或独立安全审计。用户未提供此次两台设备的系统版本和逐项验收记录，不作推断。本次未由助手远程操作或检查 mini。
