@@ -118,3 +118,7 @@ GitHub 远程仓库为 https://github.com/TimeLyr1c/PeerJetty，当前公开 Lat
 ## 0.3.1 应用内语言选择（2026-10-06）
 
 0.3.1/build10 为本地测试候选，归档路径 `outputs/releases/0.3.1-build10`。语言在应用设置里选择，自动保存在本机 UserDefaults；退出重开生效。该偏好不进入配对或传输配置，不更换设备身份。删除“微信文件访问权限”系统跳转按钮；不撤销用户先前在系统授予的权限。未自动安装或公开发布。
+
+## 0.3.2 手动检查更新（2026-10-06）
+
+本地候选 0.3.2/build11，归档 `outputs/releases/0.3.2-build11`。菜单和设置提供手动检查，公开更新源固定为 TimeLyr1c/PeerJetty 的 Latest 正式 Release。仅推送源码或增加本地版本不触发公开更新；发布流程与用户操作见 UPDATES.md。本轮不自动安装、不推送源码或创建公开 Release。

@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var engine: PeerEngine?
     private var drop: DropPanelController?
     private var settings: SettingsController?
+    private var updateWindow: UpdateWindow?
     private var menuItem: NSStatusItem?
     private var peers: [DiscoveredPeer] = []
     private var active: Set<UUID> = []
@@ -102,6 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let menu = NSMenu()
         for (title, action) in [(L10n.text("application.devices_settings"), #selector(showSettings)), (L10n.text("application.add_device_min"), #selector(addDevice)),
                                 (L10n.text("application.show_drop_card"), #selector(preview)), (L10n.text("application.show_recently_received_files"), #selector(revealReceived)),
+                                (L10n.text("updates.title"), #selector(checkUpdates)),
                                 (L10n.text("application.hide_menu_bar_icon"), #selector(hideMenu)), (L10n.text("application.about_peerjetty"), #selector(showAbout)), (L10n.text("settings.quit"), #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item)
         }
@@ -114,6 +116,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     @objc private func addDevice() { showSettings(); engine?.openPairing() }
     @objc private func preview() { drop?.preview() }
+    @objc private func checkUpdates() {
+        if updateWindow == nil {
+            updateWindow = UpdateWindow(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+        }
+        updateWindow?.present()
+    }
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(options: [.version: AppVersion.details])
         NSApp.activate(ignoringOtherApps: true)
@@ -147,6 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onPermissions = {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!)
             }
+            controller.onUpdates = { [weak self] in self?.checkUpdates() }
             controller.onLanguage = { selection in LanguagePreferences().save(selection) }
             controller.onAutoOpen = { [weak self] enabled in
                 do {

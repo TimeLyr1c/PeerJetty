@@ -14,6 +14,7 @@ final class SettingsController: NSWindowController {
     var onReveal: (() -> Void)?
     var onManual: (() -> Void)?
     var onPermissions: (() -> Void)?
+    var onUpdates: (() -> Void)?
     var onLanguage: ((DisplayLanguage) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
@@ -71,7 +72,7 @@ final class SettingsController: NSWindowController {
             progressLabel, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal)), separator(),
             row([NSTextField(labelWithString: L10n.text("settings.open_after_receiving")), autoOpen]), openHint,
             row([NSTextField(labelWithString: L10n.text("settings.start_at_login")), login, button(L10n.text("settings.local_network_access"), #selector(permissions))]),
-            row([button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
+            row([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
             statusLabel, version]
         let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -140,6 +141,7 @@ final class SettingsController: NSWindowController {
     }
     @objc private func toggleAutoOpen() { onAutoOpen?(autoOpen.state == .on) }
     @objc private func toggleLogin() { onLogin?(login.state == .on) }
+    @objc private func checkUpdates() { onUpdates?() }
     @objc private func reset() { onReset?() }
     @objc private func quit() { onQuit?() }
 }

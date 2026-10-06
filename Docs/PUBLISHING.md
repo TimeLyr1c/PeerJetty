@@ -68,3 +68,7 @@ https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
 公开上传的 Release 附件只保留 DMG；ZIP、JSON、签名记录和校验文件保留在本地 outputs/releases 归档中，用于追溯，不作为用户下载附件。GitHub 自动生成的 Source code ZIP/tar.gz 属于平台功能，不是项目上传的安装包。
 
 README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发布说明提供英文与简体中文，首页使用普通 Releases 链接，不添加大型下载标题。应用界面多语言另行实现，文档双语不代表应用已经支持英文。经验证可用的版本按正式版发布并设为 Latest；未经验收的试用构建标为 Pre-release。不要修改已经分发的二进制或移动已有版本标签。
+
+## 检查更新的发布要求（2026-10-06）
+
+0.3.2 起提供手动检查，发布新版本时遵循 [UPDATES.md](UPDATES.md)。正式 Release 使用三个数字版本标签、匹配 DMG，并设为 Latest；预发布不进入当前更新检查。产品版本必须增加，仅增加构建号不会被判为新版。上传源码/标签不等于创建 Release；不要为了验证提示制造虚假公开版本。

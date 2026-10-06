@@ -1,5 +1,11 @@
 # Changes
 
+## 0.3.2 / build 11 — local test candidate, 2026-10-06
+
+Adds manual Check for updates from the menu bar and Settings. Reads GitHub’s Latest stable Release without authentication, compares numeric product versions, displays notes and opens the matching release page for manual DMG installation. Handles no releases, missing installers, local builds ahead of public releases, network errors and rate limits. Does not download/install automatically or modify pairing and transfer settings.
+
+菜单栏和设置新增“检查更新”：主动查询 GitHub Latest 正式 Release，按数字比较版本，显示说明并引导手动下载 DMG。处理无正式版本、缺安装包、本地版本领先、断网和接口限流；不自动下载/安装，也不修改配对或传输设置。
+
 ## 0.3.1 / build 10 — local test candidate, 2026-10-06
 
 Adds a Language picker to Settings with Follow system, English and 简体中文. Choices save locally and apply after quitting and reopening PeerJetty; active transfers are not restarted. Existing installations follow system. Removes the misleading WeChat file-access shortcut, which only opened Full Disk Access settings; drag-and-drop support remains. Pairing and transfer configuration are unchanged. Native macOS dialogs retain OS language selection.
