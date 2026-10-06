@@ -10,3 +10,6 @@ Original/.module-cache/
 local-state/
 __pycache__/
 *.pyc
+
+# Preserve historical artwork locally; exclude it from publication.
+/Original/Assets/AppIcon.png

@@ -43,3 +43,9 @@
 - 首次推荐上传 main；不使用全量镜像推送或自动推送所有历史标签。首次 Release 推荐标为预发布并如实标注 ad hoc 签名、未公证、arm64 和 macOS 15+。
 - 创建远程空仓库时，不另生成 README、.gitignore 或 LICENSE。图标来源若未确认，先以私有仓库进行双方审查，公开前解决素材授权。
 - 后续需在 GitHub 设置中开启私密漏洞报告或提供实际私下联系方式；室友账号确认后再邀请协作者。
+
+## First source upload preparation, 2026-10-05
+
+The owner approved the 0.2.3 icon and authorized upload to https://github.com/TimeLyr1c/PeerJetty. The remote has been verified empty. All progress is on main. Legacy icon artwork is excluded from public history and the original history is preserved in a verified local Git bundle; see HISTORY.md for source-ID mapping. Prior sections describe historical preparation states. Actual upload success must be verified against the remote branch.
+
+Still pending: roommate public username/invitation, GitHub private vulnerability reporting settings, and a prerelease installer. This upload contains source only.

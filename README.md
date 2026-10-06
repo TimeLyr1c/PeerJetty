@@ -33,7 +33,7 @@ Bonjour 广播服务标识及公开证书指纹；显示名只在开启配对窗
 
 ## 本地测试候选
 
-当前源码为 **0.2.3 / 构建 5**：替换为用户提供的 PeerJetty 图标，投放面板逻辑尚未改变。0.2.2 / 构建 4：产品与构建改名为 PeerJetty，迁移旧配置，安装包附 MIT 声明；0.2.1 增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。用户已反馈 0.2.2 在 Air / mini 上双机试用正常；详见验证记录，这不代表全部边界场景已逐项覆盖。构建脚本不会自动替换已安装 App。
+当前源码为 **0.2.3 / 构建 5**：替换为用户提供的 PeerJetty 图标，投放面板逻辑尚未改变。0.2.2 / 构建 4：产品与构建改名为 PeerJetty，迁移旧配置，安装包附 MIT 声明；0.2.1 增加版本显示、构建来源和归档工具；此前安装的 0.2.0 / 构建 2 继续保留。用户已反馈 0.2.2 在 Air / mini 上双机试用正常，0.2.3 新图标也正常；详见验证记录，这不代表全部边界场景已逐项覆盖。构建脚本不会自动替换已安装 App。
 
 ## 从源码构建
 
@@ -62,7 +62,7 @@ cd /path/to/PeerJetty
 
 0.2.0 是首个双向开发版本。原始单向 SSH Starter 保留在 `Original/`，新传输代码位于 `Sources/`，没有复用 SSH 连接或自动打开逻辑。[开发计划](Docs/development-plan.md)、[验证与验收](Docs/VALIDATION.md)、[来源及授权](LICENSE-NOTES.md) 记录范围与限制。
 
-本项目采用 [MIT 许可证](LICENSE)，用户与提供 Starter 的室友已约定采用 MIT。原始来源及现有图标尚待核实的素材授权见 [来源及授权](LICENSE-NOTES.md)。目前未创建 GitHub 仓库，也未发布 Release。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
+本项目采用 [MIT 许可证](LICENSE)，用户与提供 Starter 的室友已约定采用 MIT。原始来源及现有图标尚待核实的素材授权见 [来源及授权](LICENSE-NOTES.md)。源码仓库为 [TimeLyr1c/PeerJetty](https://github.com/TimeLyr1c/PeerJetty)；目前未发布 Release。所有个人配置均在运行时生成，不需要编辑源码填设备信息。
 
 ## 开发目录与版本管理
 
@@ -72,8 +72,10 @@ cd /path/to/PeerJetty
 
 ## 改名兼容性
 
-用户界面、SwiftPM 主目标、可执行文件、App、源码目录和新安装包名称已改为 PeerJetty。Bundle ID `app.openonmini.desktop`、Keychain 服务 `app.openonmini.identity.v1`、Bonjour 和协议 v1 标识保留，避免现有身份失效并保持与旧版本通信。它们是稳定的内部兼容标识，不是用户需要填写的配置。Original 基线、旧安装包名称与过去验收记录保持原样；当前图标已替换，Original 与历史里的旧图标仍须在公开前处理。首次升级仍需在两台实体 Mac 上验证配对、权限和登录启动。
+用户界面、SwiftPM 主目标、可执行文件、App、源码目录和新安装包名称已改为 PeerJetty。Bundle ID `app.openonmini.desktop`、Keychain 服务 `app.openonmini.identity.v1`、Bonjour 和协议 v1 标识保留，避免现有身份失效并保持与旧版本通信。它们是稳定的内部兼容标识，不是用户需要填写的配置。Original 基线、旧安装包名称与过去验收记录保持原样；当前图标已替换，旧图标已从公开历史排除，原始记录仅保留在本地私有备份，详见 [历史整理](Docs/HISTORY.md)。首次升级仍需在两台实体 Mac 上验证配对、权限和登录启动。
 
 ## 参与与来源
 
 初始 OpenOnMini-Starter 由项目发起者的室友提供；PeerJetty 在其原生界面基础上开发双向局域网配对传输。双方约定采用 MIT，公开个人署名待提供。保留 Original 便于追溯。贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题反馈见 [SECURITY.md](SECURITY.md)。
+
+首次公开历史整理与旧安装包源码编号对应见 [HISTORY.md](Docs/HISTORY.md)。源码公开不代表已提供正式安装包；发布状态以 GitHub Releases 为准。
