@@ -6,7 +6,7 @@
 
 - 正式源码：`~/Developer/Projects/PeerJetty`。
 - Air 已安装 App：`/Applications/OpenOnMini.app`，仍为 0.2.0 / 构建 2。
-- 当前源码准备 PeerJetty 0.2.2 / 构建 4，本地测试候选，未安装、未公开发行。
+- 当前源码准备 PeerJetty 0.2.3 / 构建 5（新图标），本地测试候选，未安装、未公开发行。
 - 新版配置：`~/Library/Application Support/PeerJetty/configuration.json`；首次启动复制经校验的旧配置，保留旧文件；身份在 Keychain。
 - 0.2.0 安装包与源码包已逐字节核对；本地标签 v0.2.0 对应原实现提交 47f5254。
 - Air 历史包归档：`~/Dropbox/90_开发资料/OpenOnMini/安装包/0.2.0-build2/`。本地写入不代表其他电脑已同步完成。
@@ -37,7 +37,7 @@ App 的设置窗口显示产品版本和构建号；菜单“关于”及版本�
 ```sh
 python3 Scripts/release.py show
 # 示例：只有准备下一份交付时执行，不要对当前已交付构建重复使用
-python3 Scripts/release.py set 0.2.2 --build 5
+python3 Scripts/release.py set 0.2.3 --build 6
 ```
 
 set 要求版本格式为三个数字，产品版本不能倒退，构建号必须增加。它修改 Info.plist，不自动提交、不自动发布。
