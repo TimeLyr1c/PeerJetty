@@ -58,3 +58,5 @@ Still pending: roommate public username/invitation, GitHub private vulnerability
 https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
 
 标签 v0.2.4 指向安装包的源码提交 ef49e674889298a1dd8d9a75f118e89abcb5b85f。附件为 arm64 App ZIP、SHA256SUMS.txt、build-info.json、signature.txt；MIT 包含在 App 中。保持原包不覆盖，不把发布记录后续提交当作该包的构建来源。此版本供朋友试用，ad hoc 签名、未公证，支持 macOS 15+。尚未发送任何消息给室友；由用户转发链接。
+
+2026-10-05 为同一 v0.2.4 Release 增加 DMG 与 SHA256SUMS-DMG.txt，保留已发布 ZIP 及原校验文件。首页 README 与 Release 正文提供直接下载链接，无需展开 Assets。DMG 不改变版本标签或 App 源码来源。

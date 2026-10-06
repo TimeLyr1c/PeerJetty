@@ -1,12 +1,18 @@
 # PeerJetty — 双向局域网文件投放
 
+### [⬇ 直接下载 macOS 安装包（DMG）](https://github.com/TimeLyr1c/PeerJetty/releases/download/v0.2.4/PeerJetty-0.2.4-build6-arm64.dmg)
+
+**Apple Silicon（M 系列） · macOS 15+ · 0.2.4 / build 6**
+
+[版本说明](https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4) · [ZIP 备用下载](https://github.com/TimeLyr1c/PeerJetty/releases/download/v0.2.4/PeerJetty-0.2.4-build6-arm64.zip) · [DMG 校验文件](https://github.com/TimeLyr1c/PeerJetty/releases/download/v0.2.4/SHA256SUMS-DMG.txt)
+
 同一个原生 macOS App 安装在两台 Mac 上。选择文件或把文件拖到屏幕顶部的投放区，发送到默认配对设备。可信设备自动接收，默认只提示收到；可在接收端设置中开启“收到后自动打开”。
 
 ## 安装与初始化
 
 本版本需要 macOS 15 或更新系统。[PeerJetty 0.2.4 / build 6 预发布安装包](https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4) 已提供 Apple Silicon（arm64）版本，未做 Developer ID 签名或 Apple 公证；Intel Mac 需自行构建，尚未实机验证。
 
-1. 从 Release 的 Assets 下载 `PeerJetty-0.2.4-build6-arm64.zip`，解压后将 `PeerJetty.app` 放到 `/Applications/PeerJetty.app`，然后打开。也可按下文从源码构建。升级旧版时先退出 OpenOnMini，不要同时运行两个版本；确认新版配置和配对正常后再移除旧 App。不要长期从 Downloads 运行。
+1. 点击上方 DMG 直接下载，打开镜像，将 `PeerJetty.app` 拖到镜像内的 `Applications` 文件夹，推出镜像后从应用程序中打开。ZIP 是备用方式，解压后同样放到 Applications。也可按下文从源码构建。升级旧版时先退出 OpenOnMini，不要同时运行两个版本；确认新版配置和配对正常后再移除旧 App。不要长期从 Downloads 运行。
 2. 两台电脑各设置本机名称及接收目录，点击“保存 / 完成初始化”。名称只是方便辨认，不是账号或身份凭据。
 3. 允许系统请求的局域网访问。通知权限可选；不需要 SSH、远程登录、管理员密码或 Apple 账号。
 4. 两台电脑都点击“添加设备 · 2 分钟”，在一台电脑设备列表中选择另一台，点击“连接 / 配对”。

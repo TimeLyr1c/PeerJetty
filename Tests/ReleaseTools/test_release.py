@@ -28,6 +28,28 @@ class ReleaseSafetyTests(unittest.TestCase):
         self.override.stop()
         self.temp.cleanup()
 
+    def test_dmg_rejects_changed_archive_before_unpacking(self):
+        import json
+        archive = self.root / 'archive'; archive.mkdir()
+        (archive / 'build-info.json').write_text(json.dumps({
+            'product_version': '0.2.4', 'build_number': '6', 'architectures': ['arm64'], 'dirty': False}))
+        (archive / 'PeerJetty-0.2.4-build6-arm64.zip').write_bytes(b'changed')
+        (archive / 'SHA256SUMS.txt').write_text('incorrect checksum')
+        with patch.object(release.subprocess, 'run') as commands, self.assertRaises(ValueError):
+            release.disk_image(archive)
+        commands.assert_not_called()
+
+    def test_dmg_does_not_overwrite_existing_installer(self):
+        import json
+        archive = self.root / 'archive'; archive.mkdir()
+        (archive / 'build-info.json').write_text(json.dumps({
+            'product_version': '0.2.4', 'build_number': '6', 'architectures': ['arm64'], 'dirty': False}))
+        image = archive / 'PeerJetty-0.2.4-build6-arm64.dmg'; image.write_bytes(b'keep')
+        with patch.object(release.subprocess, 'run') as commands, self.assertRaises(ValueError):
+            release.disk_image(archive)
+        commands.assert_not_called()
+        self.assertEqual(image.read_bytes(), b'keep')
+
     def test_version_set_preserves_explicit_delivery_number(self):
         release.set_version('0.2.1', 3)
         self.assertEqual(release.info()['CFBundleShortVersionString'], '0.2.1')

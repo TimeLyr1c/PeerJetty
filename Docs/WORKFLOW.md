@@ -82,3 +82,13 @@ python3 Scripts/release.py package --destination "$HOME/Dropbox/90_开发资料/
 https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
 
 本机原归档仍在 outputs/releases/0.2.4-build6；本次未移动到 Dropbox，也未替换已安装 App。后续修改先保存提交和测试，再交付新版本/构建号，不能覆盖此次安装包。
+
+## DMG 安装镜像
+
+2026-10-05 同一 0.2.4/build6 App 新增 DMG 容器，未重新编译、未改变源码来源、未覆盖已发布 ZIP。DMG 包含 App、Applications 安装链接及安装文字，校验单独保存在 SHA256SUMS-DMG.txt。README 首页提供直接下载入口。
+
+今后 package 同时生成 ZIP 和 DMG；为已有 ZIP 归档补建 DMG，可执行：
+```sh
+python3 Scripts/release.py dmg outputs/releases/0.2.4-build6
+```
+该命令校验原 ZIP 与 App 来源，不重新构建；同名 DMG 或校验文件已存在时拒绝覆盖。容器格式改变不代表程序行为改变，也不会自动获得 Developer ID 签名或 Apple 公证。

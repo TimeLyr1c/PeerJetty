@@ -105,6 +105,7 @@ def package(destination):
             '- Validation: compilation and signature verification passed. Physical two-Mac acceptance is pending for this package.\n' +
             '- Distribution: local candidate; packaging does not upload to GitHub or establish redistribution permission.\n\n' +
             'Detailed toolchain and source provenance: build-info.json.\n')
+        disk_image(staged)
         # A single publisher may create a given archive; never replace an existing one.
         if target.exists():
             raise ValueError('Another package already created this archive')
@@ -113,6 +114,62 @@ def package(destination):
     finally:
         if staged.exists():
             shutil.rmtree(staged)
+
+
+def disk_image(archive):
+    """Add a new installer container around an already verified ZIP; never rebuild its app."""
+    archive = archive.expanduser().resolve()
+    metadata = json.loads((archive / 'build-info.json').read_text())
+    version, build = metadata['product_version'], metadata['build_number']
+    architectures = metadata['architectures']
+    if (not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version)
+            or not re.fullmatch(r'[0-9]+', build)
+            or not architectures or any(x not in ('arm64', 'x86_64') for x in architectures)
+            or metadata['dirty']):
+        raise ValueError('Invalid or uncommitted archived build')
+    stem = 'PeerJetty-{}-build{}-{}'.format(version, build, '-'.join(architectures))
+    zipped = archive / (stem + '.zip')
+    image = archive / (stem + '.dmg')
+    checksum = archive / 'SHA256SUMS-DMG.txt'
+    if image.exists() or checksum.exists():
+        raise ValueError('DMG or its checksum already exists; never overwrite an installer')
+    expected = '{}  {}\n'.format(hashlib.sha256(zipped.read_bytes()).hexdigest(), zipped.name)
+    if (archive / 'SHA256SUMS.txt').read_text() != expected:
+        raise ValueError('Archived ZIP does not match its checksum')
+    with tempfile.TemporaryDirectory(prefix='PeerJetty-dmg-') as directory:
+        scratch = Path(directory)
+        extracted = scratch / 'extracted'
+        subprocess.run(['/usr/bin/ditto', '-x', '-k', str(zipped), str(extracted)], check=True)
+        app = extracted / 'PeerJetty.app'
+        bundled = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+        provenance = json.loads((app / 'Contents/Resources/build-info.json').read_text())
+        if ((bundled['CFBundleShortVersionString'], bundled['CFBundleVersion']) != (version, build)
+                or provenance['git_commit'] != metadata['git_commit'] or provenance['dirty']):
+            raise ValueError('Archived application and build metadata disagree')
+        subprocess.run(['/usr/bin/codesign', '--verify', '--strict', str(app)], check=True)
+        content = scratch / 'content'
+        content.mkdir()
+        subprocess.run(['/usr/bin/ditto', '--noextattr', '--noqtn', str(app), str(content / app.name)], check=True)
+        (content / 'Applications').symlink_to('/Applications', target_is_directory=True)
+        (content / 'INSTALL.txt').write_text(
+            'PeerJetty {} / build {}\n\n'.format(version, build) +
+            'Drag PeerJetty.app to Applications, then eject this disk image.\n'
+            'Quit an older PeerJetty before replacing it. Run the app from Applications.\n'
+            'macOS 15+. See the architecture in this installer filename.\n'
+            'This build is ad hoc signed, not notarized.\n'
+            'This is a menu bar app; open Settings from its menu bar icon.\n'
+            'Source and instructions: https://github.com/TimeLyr1c/PeerJetty\n')
+        staged = scratch / image.name
+        subprocess.run(['/usr/bin/hdiutil', 'create', '-volname', 'PeerJetty', '-fs', 'HFS+',
+                        '-srcfolder', str(content), '-format', 'UDZO', str(staged)], check=True)
+        subprocess.run(['/usr/bin/hdiutil', 'verify', str(staged)], check=True)
+        # Exclusive final file creation also protects against simultaneous publishers.
+        with image.open('xb') as output, staged.open('rb') as source:
+            shutil.copyfileobj(source, output)
+        digest = hashlib.sha256(image.read_bytes()).hexdigest()
+        with checksum.open('x') as output:
+            output.write('{}  {}\n'.format(digest, image.name))
+        print(image)
 
 
 def main():
@@ -127,6 +184,8 @@ def main():
     stamping.add_argument('configuration', choices=['debug', 'release'])
     packaging = sub.add_parser('package')
     packaging.add_argument('--destination', type=Path, default=ROOT / 'outputs/releases')
+    installer = sub.add_parser('dmg')
+    installer.add_argument('archive', type=Path, help='Existing version-build ZIP archive directory')
     args = parser.parse_args()
     try:
         if args.command == 'show':
@@ -135,6 +194,8 @@ def main():
             set_version(args.version, args.build)
         elif args.command == 'stamp':
             stamp(args.app, args.configuration)
+        elif args.command == 'dmg':
+            disk_image(args.archive)
         else:
             package(args.destination)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
