@@ -92,3 +92,11 @@ https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
 python3 Scripts/release.py dmg outputs/releases/0.2.4-build6
 ```
 该命令校验原 ZIP 与 App 来源，不重新构建；同名 DMG 或校验文件已存在时拒绝覆盖。容器格式改变不代表程序行为改变，也不会自动获得 Developer ID 签名或 Apple 公证。
+
+## 当前公开发行约定（2026-10-05）
+
+0.2.4/build6 已转为正式版并设为 Latest，原标签与 DMG 内容保持不变。以上预发布、源码待上传及首页直接下载入口的描述属于历史记录，以本节为当前约定。
+
+公开上传的 Release 附件只保留 DMG；ZIP、JSON、签名记录和校验文件保留在本地 outputs/releases 归档中，用于追溯，不作为用户下载附件。GitHub 自动生成的 Source code ZIP/tar.gz 属于平台功能，不是项目上传的安装包。
+
+README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发布说明提供英文与简体中文，首页使用普通 Releases 链接，不添加大型下载标题。应用界面多语言另行实现，文档双语不代表应用已经支持英文。经验证可用的版本按正式版发布并设为 Latest；未经验收的试用构建标为 Pre-release。不要修改已经分发的二进制或移动已有版本标签。

@@ -60,3 +60,11 @@ https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
 标签 v0.2.4 指向安装包的源码提交 ef49e674889298a1dd8d9a75f118e89abcb5b85f。附件为 arm64 App ZIP、SHA256SUMS.txt、build-info.json、signature.txt；MIT 包含在 App 中。保持原包不覆盖，不把发布记录后续提交当作该包的构建来源。此版本供朋友试用，ad hoc 签名、未公证，支持 macOS 15+。尚未发送任何消息给室友；由用户转发链接。
 
 2026-10-05 为同一 v0.2.4 Release 增加 DMG 与 SHA256SUMS-DMG.txt，保留已发布 ZIP 及原校验文件。首页 README 与 Release 正文提供直接下载链接，无需展开 Assets。DMG 不改变版本标签或 App 源码来源。
+
+## 当前公开发行约定（2026-10-05）
+
+0.2.4/build6 已转为正式版并设为 Latest，原标签与 DMG 内容保持不变。以上预发布、源码待上传及首页直接下载入口的描述属于历史记录，以本节为当前约定。
+
+公开上传的 Release 附件只保留 DMG；ZIP、JSON、签名记录和校验文件保留在本地 outputs/releases 归档中，用于追溯，不作为用户下载附件。GitHub 自动生成的 Source code ZIP/tar.gz 属于平台功能，不是项目上传的安装包。
+
+README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发布说明提供英文与简体中文，首页使用普通 Releases 链接，不添加大型下载标题。应用界面多语言另行实现，文档双语不代表应用已经支持英文。经验证可用的版本按正式版发布并设为 Latest；未经验收的试用构建标为 Pre-release。不要修改已经分发的二进制或移动已有版本标签。
