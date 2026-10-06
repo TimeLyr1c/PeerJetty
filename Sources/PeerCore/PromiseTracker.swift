@@ -28,13 +28,13 @@ public final class PromiseTracker {
     }
     public func cancel() {
         lock.lock(); guard !done else { lock.unlock(); return }; done = true; cancelled = true; lock.unlock()
-        completion(.failure(PeerError.message("读取拖拽文件超时或已取消")))
+        completion(.failure(PeerError.localized("promisetracker.reading_dropped_files_timed_out_or_was_cancelled", [])))
     }
     public var wasCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
     private func finishIfReady() -> Result<[URL], Error>? {
         guard expected.indices.allSatisfy({ expected[$0] != nil && observed[$0] >= expected[$0]! }) else { return nil }
         done = true
         if let failure { return .failure(failure) }
-        return urls.isEmpty ? .failure(PeerError.message("拖拽来源未提供文件")) : .success(urls)
+        return urls.isEmpty ? .failure(PeerError.localized("promisetracker.the_source_app_did_not_provide_a_file", [])) : .success(urls)
     }
 }

@@ -13,7 +13,7 @@ public final class PreparedTransfer {
         do {
             var entries: [ManifestEntry] = []; var sources: [Int: URL] = [:]
             func visit(_ url: URL, root: Int, path: String, depth: Int) throws {
-                guard depth < 128, entries.count < 100_000 else { throw PeerError.message("目录层级或文件数量超出限制") }
+                guard depth < 128, entries.count < 100_000 else { throw PeerError.localized("filestore.directory_depth_or_file_count_exceeds_the_limit", []) }
                 let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
                 let type = attributes[.type] as? FileAttributeType
                 let mode = UInt16((attributes[.posixPermissions] as? NSNumber)?.uint16Value ?? 0o644) & 0o777
@@ -28,7 +28,7 @@ public final class PreparedTransfer {
                 } else if type == .typeSymbolicLink {
                     let target = try FileManager.default.destinationOfSymbolicLink(atPath: url.path)
                     entries.append(ManifestEntry(root: root, path: path, kind: .symlink, mode: mode, link: target))
-                } else { throw PeerError.message("不支持这种文件类型：\(url.lastPathComponent)") }
+                } else { throw PeerError.localized("filestore.unsupported_file_type", [String(describing: url.lastPathComponent)]) }
             }
             for (index, url) in urls.enumerated() { try visit(url, root: index, path: "", depth: 0) }
             manifest = TransferManifest(roots: urls.map(\.lastPathComponent), entries: entries)
@@ -38,9 +38,9 @@ public final class PreparedTransfer {
     }
     deinit { for url in accesses { url.stopAccessingSecurityScopedResource() }; cleanup?() }
     func openFile(index: Int) throws -> FileHandle {
-        guard let url = sources[index] else { throw PeerError.message("发送文件不存在") }
+        guard let url = sources[index] else { throw PeerError.localized("filestore.the_source_file_no_longer_exists", []) }
         let descriptor = Darwin.open(url.path, O_RDONLY | O_NOFOLLOW)
-        guard descriptor >= 0 else { throw PeerError.message("无法读取文件：\(url.lastPathComponent)") }
+        guard descriptor >= 0 else { throw PeerError.localized("filestore.could_not_read_file", [String(describing: url.lastPathComponent)]) }
         return FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
     }
 }
@@ -67,12 +67,12 @@ public final class ReceiveTransaction {
         fileIndices = manifest.entries.indices.filter { manifest.entries[$0].kind == .file }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: self.destination.path, isDirectory: &isDirectory), isDirectory.boolValue else {
-            throw PeerError.message("接收目录不存在，请在设置中重新选择")
+            throw PeerError.localized("filestore.the_receive_folder_does_not_exist_choose_it", [])
         }
-        guard FileManager.default.isWritableFile(atPath: self.destination.path) else { throw PeerError.message("接收目录无法写入") }
+        guard FileManager.default.isWritableFile(atPath: self.destination.path) else { throw PeerError.localized("filestore.the_receive_folder_is_not_writable", []) }
         let attributes = try FileManager.default.attributesOfFileSystem(forPath: self.destination.path)
         if let free = attributes[.systemFreeSize] as? NSNumber, manifest.byteCount > free.int64Value - 16 * 1024 * 1024 {
-            throw PeerError.message("接收设备磁盘空间不足")
+            throw PeerError.localized("filestore.the_receiving_device_has_insufficient_disk_space", [])
         }
         do {
             try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -87,28 +87,28 @@ public final class ReceiveTransaction {
         return entry.path.isEmpty ? root : root.appendingPathComponent(entry.path)
     }
     public func beginFile(index: Int) throws {
-        guard file == nil, nextFile < fileIndices.count, fileIndices[nextFile] == index else { throw PeerError.message("文件顺序无效") }
+        guard file == nil, nextFile < fileIndices.count, fileIndices[nextFile] == index else { throw PeerError.localized("filestore.invalid_file_order", []) }
         let path = location(manifest.entries[index]).path
         let descriptor = Darwin.open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
-        guard descriptor >= 0 else { throw PeerError.message("无法创建接收文件（\(errno)）") }
+        guard descriptor >= 0 else { throw PeerError.localized("filestore.could_not_create_the_received_file", [String(describing: errno)]) }
         file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         currentIndex = index; fileBytes = 0; hash = SHA256()
     }
     public func append(_ data: Data) throws {
         guard let file, let currentIndex, !data.isEmpty,
-              Int64(data.count) <= manifest.entries[currentIndex].size - fileBytes else { throw PeerError.message("文件数据长度不匹配") }
+              Int64(data.count) <= manifest.entries[currentIndex].size - fileBytes else { throw PeerError.localized("filestore.file_data_length_does_not_match", []) }
         try file.write(contentsOf: data); hash.update(data: data)
         fileBytes += Int64(data.count); received += Int64(data.count)
     }
     public func endFile(index: Int, expectedHash: String) throws {
-        guard let file, currentIndex == index, fileBytes == manifest.entries[index].size else { throw PeerError.message("文件未完整接收") }
+        guard let file, currentIndex == index, fileBytes == manifest.entries[index].size else { throw PeerError.localized("filestore.the_file_was_not_received_completely", []) }
         let actual = hash.finalize().map { String(format: "%02x", $0) }.joined()
-        guard actual == expectedHash else { throw PeerError.message("文件完整性校验失败") }
+        guard actual == expectedHash else { throw PeerError.localized("filestore.file_integrity_check_failed", []) }
         try file.synchronize(); try file.close(); self.file = nil; currentIndex = nil; nextFile += 1
         try FileManager.default.setAttributes([.posixPermissions: NSNumber(value: manifest.entries[index].mode)], ofItemAtPath: location(manifest.entries[index]).path)
     }
     public func finish() throws -> [URL] {
-        guard !complete, file == nil, nextFile == fileIndices.count, received == manifest.byteCount else { throw PeerError.message("传输尚未完成") }
+        guard !complete, file == nil, nextFile == fileIndices.count, received == manifest.byteCount else { throw PeerError.localized("filestore.the_transfer_is_not_complete", []) }
         for entry in manifest.entries where entry.kind == .symlink {
             try FileManager.default.createSymbolicLink(atPath: location(entry).path, withDestinationPath: entry.link!)
         }
@@ -123,7 +123,7 @@ public final class ReceiveTransaction {
                 let candidate = destination.appendingPathComponent(FileRules.collisionName(manifest.roots[root], directory: isDirectory, number: number))
                 // Same-volume atomic rename with exclusive destination, including dangling symlinks.
                 if renamex_np(source.path, candidate.path, UInt32(RENAME_EXCL)) == 0 { committed.append(candidate); break }
-                guard errno == EEXIST, number < 100_000 else { throw PeerError.message("提交接收文件失败（\(errno)）；已保存 \(committed.count) 项") }
+                guard errno == EEXIST, number < 100_000 else { throw PeerError.localized("filestore.could_not_commit_received_files_saved_count", [String(describing: errno), String(describing: committed.count)]) }
                 number += 1
             }
         }

@@ -16,10 +16,10 @@ public final class DeviceIdentity {
         var items: CFArray?
         let status = SecPKCS12Import(stored.archive as CFData, options as CFDictionary, &items)
         guard status == errSecSuccess, let entries = items as? [[String: Any]], let first = entries.first,
-              let item = first[kSecImportItemIdentity as String] else { throw PeerError.message("无法载入本机身份（\(status)）") }
+              let item = first[kSecImportItemIdentity as String] else { throw PeerError.localized("identity.could_not_load_the_local_identity", [String(describing: status)]) }
         identity = item as! SecIdentity
         var cert: SecCertificate?
-        guard SecIdentityCopyCertificate(identity, &cert) == errSecSuccess, let cert else { throw PeerError.message("本机证书无效") }
+        guard SecIdentityCopyCertificate(identity, &cert) == errSecSuccess, let cert else { throw PeerError.localized("identity.the_local_certificate_is_invalid", []) }
         certificate = cert
         fingerprint = Digest.hex(SecCertificateCopyData(cert) as Data)
     }
@@ -33,17 +33,17 @@ public final class DeviceIdentity {
         if status == errSecSuccess, let data = result as? Data {
             return try DeviceIdentity(JSONDecoder().decode(Stored.self, from: data))
         }
-        guard status == errSecItemNotFound else { throw PeerError.message("无法读取钥匙串身份（\(status)）") }
+        guard status == errSecItemNotFound else { throw PeerError.localized("identity.could_not_read_the_keychain_identity", [String(describing: status)]) }
         let stored = try generate()
         let identity = try DeviceIdentity(stored)
         let add: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                   kSecAttrService as String: service, kSecAttrAccount as String: "identity",
-                                  kSecAttrLabel as String: "PeerJetty 本机设备身份",
+                                  kSecAttrLabel as String: L10n.text("identity.peerjetty_device_identity"),
                                   kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
                                   kSecAttrSynchronizable as String: false,
                                   kSecValueData as String: try JSONEncoder().encode(stored)]
         let addStatus = SecItemAdd(add as CFDictionary, nil)
-        guard addStatus == errSecSuccess else { throw PeerError.message("无法保存钥匙串身份（\(addStatus)）") }
+        guard addStatus == errSecSuccess else { throw PeerError.localized("identity.could_not_save_the_keychain_identity", [String(describing: addStatus)]) }
         return identity
     }
 
@@ -54,12 +54,12 @@ public final class DeviceIdentity {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrService as String: service, kSecAttrAccount as String: "identity"]
         let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw PeerError.message("无法重置本机身份（\(status)）") }
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw PeerError.localized("identity.could_not_reset_the_local_identity", [String(describing: status)]) }
     }
 
     public static func random(_ count: Int) throws -> Data {
         var bytes = [UInt8](repeating: 0, count: count)
-        guard SecRandomCopyBytes(kSecRandomDefault, count, &bytes) == errSecSuccess else { throw PeerError.message("无法生成安全随机数") }
+        guard SecRandomCopyBytes(kSecRandomDefault, count, &bytes) == errSecSuccess else { throw PeerError.localized("identity.could_not_generate_secure_random_data", []) }
         return Data(bytes)
     }
 
@@ -90,7 +90,7 @@ public final class DeviceIdentity {
         if let input { try stdin.fileHandleForWriting.write(contentsOf: input); try stdin.fileHandleForWriting.close() }
         _ = errors.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw PeerError.message("本机身份生成失败（\(process.terminationStatus)）") }
+        guard process.terminationStatus == 0 else { throw PeerError.localized("identity.local_identity_generation_failed", [String(describing: process.terminationStatus)]) }
     }
 }
 
@@ -128,19 +128,19 @@ enum TLS {
         return parameters
     }
     static func peerFingerprint(_ connection: NWConnection) throws -> String {
-        guard let metadata = connection.metadata(definition: NWProtocolTLS.definition) as? NWProtocolTLS.Metadata else { throw PeerError.message("缺少 TLS 身份") }
+        guard let metadata = connection.metadata(definition: NWProtocolTLS.definition) as? NWProtocolTLS.Metadata else { throw PeerError.localized("identity.tls_identity_is_missing", []) }
         var certificate: SecCertificate?
         sec_protocol_metadata_access_peer_certificate_chain(metadata.securityProtocolMetadata) { entry in
             if certificate == nil { certificate = sec_certificate_copy_ref(entry).takeRetainedValue() }
         }
-        guard let certificate else { throw PeerError.message("对方没有提供身份") }
+        guard let certificate else { throw PeerError.localized("identity.the_other_device_did_not_provide_an_identity", []) }
         return Digest.hex(SecCertificateCopyData(certificate) as Data)
     }
     static func exporter(_ connection: NWConnection) throws -> Data {
-        guard let metadata = connection.metadata(definition: NWProtocolTLS.definition) as? NWProtocolTLS.Metadata else { throw PeerError.message("缺少 TLS 连接信息") }
+        guard let metadata = connection.metadata(definition: NWProtocolTLS.definition) as? NWProtocolTLS.Metadata else { throw PeerError.localized("identity.tls_connection_information_is_missing", []) }
         let label = "EXPORTER-OpenOnMini-Pairing-v1"
         let secret = label.withCString { sec_protocol_metadata_create_secret(metadata.securityProtocolMetadata, label.utf8.count, $0, 32) }
-        guard let secret else { throw PeerError.message("无法验证连接校验码") }
+        guard let secret else { throw PeerError.localized("identity.could_not_verify_the_pairing_code", []) }
         return Data(secret as DispatchData)
     }
 }

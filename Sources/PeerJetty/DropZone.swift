@@ -14,12 +14,12 @@ final class DropZoneView: NSView {
     var onFailure: ((String) -> Void)?
     var onReceivingPromise: (() -> Void)?
     private let icon = NSImageView()
-    private let title = NSTextField(labelWithString: "拖到这里")
-    private let subtitle = NSTextField(labelWithString: "请选择发送设备")
+    private let title = NSTextField(labelWithString: L10n.text("dropzone.drop_here"))
+    private let subtitle = NSTextField(labelWithString: L10n.text("dropzone.choose_a_destination"))
     private let progress = NSProgressIndicator()
-    private let cancelButton = NSButton(title: "取消", target: nil, action: nil)
+    private let cancelButton = NSButton(title: L10n.text("dropzone.cancel"), target: nil, action: nil)
     var onCancel: (() -> Void)?
-    var targetName = "请选择发送设备"
+    var targetName = L10n.text("dropzone.choose_a_destination")
     private let promises: OperationQueue = {
         let queue = OperationQueue(); queue.name = "PeerJetty.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
     }()
@@ -35,6 +35,7 @@ final class DropZoneView: NSView {
         addSubview(background)
         layer?.borderWidth = 0.5; layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
         icon.contentTintColor = .white
+        title.lineBreakMode = .byTruncatingTail
         title.textColor = .white; title.font = .systemFont(ofSize: 12.5, weight: .semibold)
         subtitle.textColor = NSColor.white.withAlphaComponent(0.65); subtitle.font = .systemFont(ofSize: 10)
         subtitle.lineBreakMode = .byTruncatingMiddle
@@ -48,18 +49,18 @@ final class DropZoneView: NSView {
     override func layout() {
         super.layout()
         icon.frame = NSRect(x: 16, y: 27, width: 22, height: 22)
-        title.frame = NSRect(x: 49, y: 42, width: max(0, bounds.width - 100), height: 17)
+        title.frame = NSRect(x: 49, y: 42, width: max(0, bounds.width - 49 - (cancelButton.isHidden ? 16 : 92)), height: 17)
         subtitle.frame = NSRect(x: 49, y: 24, width: max(0, bounds.width - 61), height: 15)
         progress.frame = NSRect(x: 16, y: 10, width: max(0, bounds.width - 32), height: 5)
-        cancelButton.frame = NSRect(x: bounds.width - 47, y: 42, width: 40, height: 17)
+        cancelButton.frame = NSRect(x: bounds.width - 80, y: 42, width: 64, height: 17)
     }
-    func idle() { show(title: "拖入卡片发送", subtitle: targetName, symbol: "arrow.up.doc.fill", color: .white); progress.isHidden = true; cancelButton.isHidden = true }
+    func idle() { show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .white); progress.isHidden = true; cancelButton.isHidden = true }
     func show(title: String, subtitle: String, symbol: String = "arrow.up.circle.fill", color: NSColor = .systemBlue) {
-        self.title.stringValue = title; self.subtitle.stringValue = subtitle
+        self.title.stringValue = title; self.subtitle.stringValue = subtitle; needsLayout = true
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title); icon.contentTintColor = color
     }
     func transfer(_ update: TransferUpdate) {
-        show(title: update.status, subtitle: (update.receiving ? "来自 " : "发往 ") + update.peerName,
+        show(title: update.status, subtitle: L10n.text(update.receiving ? "drop.receiving_peer" : "drop.sending_peer", update.peerName),
              symbol: update.finished ? (update.succeeded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill") : "arrow.up.arrow.down.circle.fill",
              color: update.finished ? (update.succeeded ? .systemGreen : .systemOrange) : .systemBlue)
         progress.isHidden = update.finished; cancelButton.isHidden = update.finished
@@ -68,7 +69,7 @@ final class DropZoneView: NSView {
     @objc private func cancel() { promiseTracker?.cancel(); onCancel?() }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         guard DragPayload.accepts(sender.draggingPasteboard) else { return [] }
-        show(title: "松开发送", subtitle: targetName, symbol: "plus.circle.fill"); return .copy
+        show(title: L10n.text("dropzone.release_to_send"), subtitle: targetName, symbol: "plus.circle.fill"); return .copy
     }
     override func draggingExited(_ sender: NSDraggingInfo?) { idle() }
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { DragPayload.accepts(sender.draggingPasteboard) }
@@ -84,7 +85,7 @@ final class DropZoneView: NSView {
     private func receive(_ receivers: [NSFilePromiseReceiver]) {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-Promises-\(UUID())")
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
-        catch { onFailure?("无法创建拖拽临时目录"); return }
+        catch { onFailure?(L10n.text("dropzone.could_not_create_a_temporary_folder_for_the")); return }
         let cleanup = { try? FileManager.default.removeItem(at: folder); return () }
         let tracker = PromiseTracker(receivers: receivers.count) { [weak self] result in
             DispatchQueue.main.async {
@@ -97,12 +98,12 @@ final class DropZoneView: NSView {
             }
         }
         promiseTracker = tracker; onReceivingPromise?()
-        show(title: "正在读取文件", subtitle: "等待拖拽来源提供文件"); cancelButton.isHidden = false
+        show(title: L10n.text("dropzone.reading_files"), subtitle: L10n.text("dropzone.waiting_for_the_source_app_to_provide_files")); cancelButton.isHidden = false
         for (index, receiver) in receivers.enumerated() {
             receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: promises) { url, error in
                 if tracker.wasCancelled { cleanup(); return }
                 tracker.expect(receiver: index, count: max(receiver.fileNames.count, 1))
-                let missing: Error? = error ?? (FileManager.default.fileExists(atPath: url.path) ? nil : PeerError.message("拖拽来源未提供可读取文件"))
+                let missing: Error? = error ?? (FileManager.default.fileExists(atPath: url.path) ? nil : PeerError.message(L10n.text("dropzone.the_source_app_did_not_provide_a_readable")))
                 tracker.record(receiver: index, url: url, error: missing)
             }
             tracker.expect(receiver: index, count: max(receiver.fileNames.count, 1))

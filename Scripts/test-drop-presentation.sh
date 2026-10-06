@@ -6,6 +6,7 @@ cd "$PROJECT_ROOT"
 BIN_DIR="$("$PROJECT_ROOT/Scripts/swift.sh" build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-drop-tests.XXXXXX)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
+/usr/bin/ditto "$BIN_DIR/PeerJetty_PeerCore.bundle" "$TEST_ROOT/PeerJetty_PeerCore.bundle"
 # Accommodate both SwiftPM's Xcode and native build-engine object layouts.
 if [[ -f "$BIN_DIR/PeerCore.o" ]]; then
   CORE_OBJECTS=("$BIN_DIR/PeerCore.o")

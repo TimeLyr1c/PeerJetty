@@ -1,5 +1,13 @@
 # Changes
 
+## 0.3.0 / build 9 — local test candidate, 2026-10-06
+
+Adds English and Simplified Chinese interface and diagnostics, selected from macOS system/per-app language preferences with English fallback. Uses stable .strings keys and native .stringsdict plural rules for item counts; permission descriptions ship in both languages. Wraps longer settings explanations, enlarges pairing guidance, and reserves space for translated drop-card controls.
+
+Known rejection diagnostics carry optional bounded error keys/arguments alongside legacy text, so new peers can render them in their own language while older protocol-v1 peers ignore the new fields. Pairing identifiers, device identity, file names, user device names, and receive/open settings are unchanged. Transfer throttling uses a language-independent flag. Explicit-language formatting/layout and legacy JSON checks are automated; physical mixed-language two-Mac acceptance is pending. The owner reports successful use of the preceding 0.2.6 candidate.
+
+新增英文和简体中文界面、通知、应用错误及系统权限说明，跟随系统或单应用语言偏好，缺失翻译回退英文。数量使用原生单复数规则，设置和配对说明支持较长文案，投放卡片为翻译后的按钮保留空间。已知拒收原因附带可选错误代码与参数，保留旧版可读文字；协议仍为 v1，设备身份、配对和接收/打开设置不变。中英文格式、布局、消息兼容及隔离传输检查已通过；实体 Mac 一中一英互传待验收。用户报告前一版 0.2.6 使用正常。
+
 ## 0.2.6 / build 8 — local test candidate, 2026-10-05
 
 Moves activation into an approach region below the menu bar: the drop card stays at least 64 points below the physical screen edge and clears the menu/notch area by at least 12 points. File drags show a stationary target immediately, removing the top-edge slide animation and the need to reach macOS’s Mission Control gesture region. Preview/status presentation uses a short fade. This reduces gesture overlap without modifying system preferences or intercepting system gestures; dragging past the card to the actual edge can still invoke macOS. Geometry, simulated approach-path, drag-session and isolated AppKit checks cover the new activation route; physical mini/Air gesture-conflict acceptance is pending. Pairing and transfer behavior are unchanged.

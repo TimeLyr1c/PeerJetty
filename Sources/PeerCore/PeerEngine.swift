@@ -21,7 +21,7 @@ private final class Session {
     let nonce: Data
     var expectedID: String?
     var peerID = ""
-    var name = "设备"
+    var name = L10n.text("peerengine.device")
     var exporter = Data()
     var commitment: String?
     var remoteNonce: Data?
@@ -82,8 +82,8 @@ public final class PeerEngine {
                 listener.stateUpdateHandler = { [weak self, weak listener] state in
                     guard let self else { return }
                     if case .ready = state, let port = listener?.port?.rawValue {
-                        DispatchQueue.main.async { self.onListening?(port) }; self.emit("已就绪，可以添加设备")
-                    } else if case .failed(let error) = state { self.emit("接收服务失败：\(error.localizedDescription)") }
+                        DispatchQueue.main.async { self.onListening?(port) }; self.emit(L10n.text("peerengine.ready_to_add_a_device"))
+                    } else if case .failed(let error) = state { self.emit(L10n.text("peerengine.receive_service_failed", String(describing: error.localizedDescription))) }
                 }
                 self.listener = listener
                 if discovery { self.advertise(); self.startBrowser() }
@@ -99,15 +99,15 @@ public final class PeerEngine {
         queue.async {
             self.gate.close(); self.browser?.cancel(); self.browser = nil; self.listener?.cancel(); self.listener = nil
             self.timer?.cancel(); self.timer = nil
-            for session in Array(self.sessions.values) { self.fail(session, PeerError.message("服务已停止")) }
+            for session in Array(self.sessions.values) { self.fail(session, PeerError.localized("peerengine.service_stopped", [])) }
             self.receiveAccess?.stopAccessingSecurityScopedResource(); self.receiveAccess = nil
         }
     }
-    public func openPairing() { queue.async { self.gate.open(); self.pairingWasOpen = true; self.advertise(); self.emit("配对窗口已开启，两分钟内在另一台设备上添加设备") } }
+    public func openPairing() { queue.async { self.gate.open(); self.pairingWasOpen = true; self.advertise(); self.emit(L10n.text("peerengine.pairing_is_open_for_two_minutes_add_this")) } }
     public func closePairing() {
         queue.async {
             self.gate.close(); self.advertise()
-            for session in Array(self.sessions.values) where !session.authorized { self.fail(session, PeerError.message("配对已取消")) }
+            for session in Array(self.sessions.values) where !session.authorized { self.fail(session, PeerError.localized("peerengine.pairing_cancelled", [])) }
         }
     }
     public func refresh() { queue.async { self.advertise(); self.publishPeers() } }
@@ -123,8 +123,8 @@ public final class PeerEngine {
     private func startBrowser() {
         let browser = NWBrowser(for: .bonjourWithTXTRecord(type: Self.serviceType, domain: nil), using: .tcp)
         browser.stateUpdateHandler = { [weak self] state in
-            if case .waiting(let error) = state { self?.emit("设备发现暂不可用：\(error.localizedDescription)。请检查局域网权限和网络隔离。") }
-            if case .failed(let error) = state { self?.emit("设备发现失败：\(error.localizedDescription)") }
+            if case .waiting(let error) = state { self?.emit(L10n.text("peerengine.discovery_is_unavailable_check_local_network_access_and", String(describing: error.localizedDescription))) }
+            if case .failed(let error) = state { self?.emit(L10n.text("peerengine.discovery_failed", String(describing: error.localizedDescription))) }
         }
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             guard let self else { return }
@@ -157,19 +157,19 @@ public final class PeerEngine {
     }
     public func connect(peerID: String) {
         queue.async {
-            guard let endpoint = self.endpoints[peerID]?.0 else { self.emit("设备离线或未被发现"); return }
+            guard let endpoint = self.endpoints[peerID]?.0 else { self.emit(L10n.text("peerengine.device_offline_or_not_discovered")); return }
             self.dial(endpoint, expected: peerID)
         }
     }
     // Used by the advanced manual address UI and isolated loopback harness; still performs TLS and SAS verification.
     public func connect(host: String, port: UInt16) {
         queue.async {
-            guard !host.isEmpty, host.count <= 255, !host.contains(where: { $0.isWhitespace }), let port = NWEndpoint.Port(rawValue: port) else { self.emit("地址或端口无效"); return }
+            guard !host.isEmpty, host.count <= 255, !host.contains(where: { $0.isWhitespace }), let port = NWEndpoint.Port(rawValue: port) else { self.emit(L10n.text("peerengine.invalid_address_or_port")); return }
             self.dial(.hostPort(host: NWEndpoint.Host(host), port: port), expected: nil)
         }
     }
     private func dial(_ endpoint: NWEndpoint, expected: String?) {
-        if let expected, sessions.values.contains(where: { $0.peerID == expected || $0.expectedID == expected }) { emit("设备已连接或正在配对"); return }
+        if let expected, sessions.values.contains(where: { $0.peerID == expected || $0.expectedID == expected }) { emit(L10n.text("peerengine.device_already_connected_or_pairing")); return }
         let parameters = TLS.parameters(identity: identity, store: store, gate: gate, expected: expected, queue: queue)
         attach(NWConnection(to: endpoint, using: parameters), expected: expected)
     }
@@ -190,7 +190,7 @@ public final class PeerEngine {
                             self.pairingAttempts.removeAll { Date().timeIntervalSince($0) > 120 }
                             guard self.gate.isOpen, self.pairingAttempts.count < 5,
                                   !self.sessions.values.contains(where: { $0.id != session.id && !$0.authorized && !$0.peerID.isEmpty }) else {
-                                throw PeerError.message("配对请求过多或另一个配对正在进行")
+                                throw PeerError.localized("peerengine.too_many_pairing_requests_or_another_pairing_is", [])
                             }
                             self.pairingAttempts.append(Date())
                         }
@@ -199,8 +199,8 @@ public final class PeerEngine {
                         session.wire.send(hello); session.wire.begin()
                     } catch { self.fail(session, error) }
                 case .failed(let error): self.fail(session, error)
-                case .waiting(let error): self.emit("连接等待中：\(error.localizedDescription)")
-                case .cancelled: self.fail(session, PeerError.message("连接已关闭"))
+                case .waiting(let error): self.emit(L10n.text("peerengine.waiting_to_connect", String(describing: error.localizedDescription)))
+                case .cancelled: self.fail(session, PeerError.localized("peerengine.connection_closed", []))
                 default: break
                 }
             }
@@ -210,7 +210,7 @@ public final class PeerEngine {
     public func confirm(sessionID: UUID, approved: Bool) {
         queue.async {
             guard let session = self.sessions[sessionID], session.remoteNonce != nil, !session.authorized else { return }
-            guard approved, self.gate.isOpen else { self.fail(session, PeerError.message("配对未获确认")); return }
+            guard approved, self.gate.isOpen else { self.fail(session, PeerError.localized("peerengine.pairing_was_not_confirmed", [])); return }
             session.localConfirmed = true; session.wire.send(Message("confirm")); self.authorizeIfReady(session)
         }
     }
@@ -218,14 +218,14 @@ public final class PeerEngine {
         queue.async {
             do {
                 try self.store.update { $0.peers.removeAll { $0.id == id }; if $0.preferredPeer == id { $0.preferredPeer = $0.peers.first?.id } }
-                for session in Array(self.sessions.values) where session.peerID == id { self.fail(session, PeerError.message("设备授权已撤销")) }
-                self.publishPeers(); self.emit("设备授权已撤销")
+                for session in Array(self.sessions.values) where session.peerID == id { self.fail(session, PeerError.localized("peerengine.device_trust_removed", [])) }
+                self.publishPeers(); self.emit(L10n.text("peerengine.device_trust_removed"))
             } catch { self.emit(error.localizedDescription) }
         }
     }
     private func authorizeIfReady(_ session: Session) {
         guard session.localConfirmed, session.remoteConfirmed, !session.authorized, session.remoteNonce != nil else { return }
-        guard store.snapshot.peers.contains(where: { $0.id == session.peerID }) || gate.isOpen else { fail(session, PeerError.message("配对窗口已关闭")); return }
+        guard store.snapshot.peers.contains(where: { $0.id == session.peerID }) || gate.isOpen else { fail(session, PeerError.localized("peerengine.pairing_is_closed", [])); return }
         do {
             try store.update { config in
                 if let index = config.peers.firstIndex(where: { $0.id == session.peerID }) { config.peers[index].name = session.name }
@@ -234,7 +234,7 @@ public final class PeerEngine {
             }
             session.authorized = true
             DispatchQueue.main.async { self.onPairingEnded?(session.id) }
-            publishPeers(); emit("已连接：\(session.name)"); sendNext(session)
+            publishPeers(); emit(L10n.text("peerengine.connected", String(describing: session.name))); sendNext(session)
         } catch { fail(session, error) }
     }
     private func handle(_ message: Message, session: Session) {
@@ -244,25 +244,25 @@ public final class PeerEngine {
             case "hello":
                 guard session.commitment == nil, message.version == 1, message.id == session.peerID,
                       let name = message.name, !name.isEmpty, name.utf8.count <= 256,
-                      let commitment = message.commitment, commitment.count == 64 else { throw PeerError.message("设备身份或协议不匹配") }
+                      let commitment = message.commitment, commitment.count == 64 else { throw PeerError.localized("peerengine.device_identity_or_protocol_does_not_match", []) }
                 session.name = name; session.commitment = commitment
                 var reveal = Message("reveal"); reveal.nonce = session.nonce; session.wire.send(reveal)
             case "reveal":
-                guard let commitment = session.commitment, session.remoteNonce == nil, let nonce = message.nonce else { throw PeerError.message("配对步骤无效") }
+                guard let commitment = session.commitment, session.remoteNonce == nil, let nonce = message.nonce else { throw PeerError.localized("peerengine.invalid_pairing_step", []) }
                 try PairingProof.verify(id: session.peerID, nonce: nonce, commitment: commitment); session.remoteNonce = nonce
                 if store.snapshot.peers.contains(where: { $0.id == session.peerID }) {
                     session.localConfirmed = true; session.wire.send(Message("confirm")); authorizeIfReady(session)
                 } else {
-                    guard gate.isOpen else { throw PeerError.message("配对窗口已关闭") }
+                    guard gate.isOpen else { throw PeerError.localized("peerengine.pairing_is_closed", []) }
                     let code = PairingProof.code(localID: identity.fingerprint, localNonce: session.nonce,
                                                  remoteID: session.peerID, remoteNonce: nonce, exporter: session.exporter)
                     DispatchQueue.main.async { self.onPairing?(session.id, session.name, code) }
                 }
             case "confirm":
-                guard session.remoteNonce != nil, !session.remoteConfirmed else { throw PeerError.message("重复或过早的配对确认") }
+                guard session.remoteNonce != nil, !session.remoteConfirmed else { throw PeerError.localized("peerengine.duplicate_or_premature_pairing_confirmation", []) }
                 session.remoteConfirmed = true; authorizeIfReady(session)
             default:
-                guard session.authorized else { throw PeerError.message("未配对设备不能发送文件") }
+                guard session.authorized else { throw PeerError.localized("peerengine.unpaired_devices_cannot_send_files", []) }
                 try handleTransfer(message, session: session)
             }
         } catch { fail(session, error) }
@@ -274,14 +274,14 @@ public final class PeerEngine {
                 let prepared = try PreparedTransfer(urls: urls, cleanup: cleanup)
                 self.queue.async {
                     DispatchQueue.main.async { self.onPreparation?(false) }
-                    guard self.store.snapshot.peers.contains(where: { $0.id == peerID }) else { self.emit("请先配对目标设备"); return }
+                    guard self.store.snapshot.peers.contains(where: { $0.id == peerID }) else { self.emit(L10n.text("peerengine.pair_with_the_destination_first")); return }
                     if let session = self.sessions.values.first(where: { $0.peerID == peerID || $0.expectedID == peerID }) {
-                        guard session.pending.count < 20 else { self.emit("发送队列已满"); return }
+                        guard session.pending.count < 20 else { self.emit(L10n.text("peerengine.the_send_queue_is_full")); return }
                         session.pending.append(prepared); self.sendNext(session)
                     } else if let endpoint = self.endpoints[peerID]?.0 {
                         let before = Set(self.sessions.keys); self.dial(endpoint, expected: peerID)
                         if let session = self.sessions.values.first(where: { !before.contains($0.id) }) { session.pending.append(prepared) }
-                    } else { self.emit("目标设备离线；请等它上线后重试") }
+                    } else { self.emit(L10n.text("peerengine.destination_offline_retry_when_it_is_available")) }
                 }
             } catch { cleanup?(); DispatchQueue.main.async { self.onPreparation?(false) }; self.emit(error.localizedDescription) }
         }
@@ -290,55 +290,60 @@ public final class PeerEngine {
         guard session.authorized, session.outgoing == nil, !session.pending.isEmpty else { return }
         let outgoing = Outgoing(session.pending.removeFirst()); session.outgoing = outgoing
         var offer = Message("offer"); offer.transfer = outgoing.id; offer.manifest = outgoing.prepared.manifest
-        session.lastActivity = Date(); session.wire.send(offer); update(session, outgoing: outgoing, status: "等待接收端确认")
+        session.lastActivity = Date(); session.wire.send(offer); update(session, outgoing: outgoing, status: L10n.text("peerengine.waiting_for_the_receiver"))
     }
     private func handleTransfer(_ message: Message, session: Session) throws {
-        guard let transferID = message.transfer else { throw PeerError.message("缺少传输标识") }
+        guard let transferID = message.transfer else { throw PeerError.localized("peerengine.transfer_identifier_is_missing", []) }
         switch message.kind {
         case "offer":
             guard session.incoming == nil, let manifest = message.manifest,
-                  sessions.values.filter({ $0.incoming != nil }).count < 4 else { throw PeerError.message("接收任务繁忙或清单无效") }
+                  sessions.values.filter({ $0.incoming != nil }).count < 4 else { throw PeerError.localized("peerengine.receiver_busy_or_invalid_manifest", []) }
             do {
                 session.incoming = try ReceiveTransaction(manifest: manifest, destination: URL(fileURLWithPath: store.snapshot.receivePath))
                 session.incomingID = transferID
                 var accept = Message("accept"); accept.transfer = transferID; session.wire.send(accept)
-                updateIncoming(session, status: "正在接收")
+                updateIncoming(session, status: L10n.text("peerengine.receiving"))
             } catch {
-                var reject = Message("reject"); reject.transfer = transferID; reject.text = error.localizedDescription; session.wire.send(reject)
+                var reject = Message("reject"); reject.transfer = transferID
+                if let peerError = error as? PeerError, case .localized(let key, let arguments) = peerError {
+                    reject.errorKey = key; reject.errorArguments = arguments
+                    reject.text = TranslationCatalog(preferences: ["en"]).format(key, arguments: arguments.map { $0 as CVarArg })
+                } else { reject.text = error.localizedDescription }
+                session.wire.send(reject)
                 emit(error.localizedDescription)
             }
         case "accept":
-            guard let outgoing = session.outgoing, outgoing.id == transferID, outgoing.index == -1 else { throw PeerError.message("无效接收确认") }
+            guard let outgoing = session.outgoing, outgoing.id == transferID, outgoing.index == -1 else { throw PeerError.localized("peerengine.invalid_acceptance_message", []) }
             advanceFile(session, outgoing: outgoing)
         case "file":
-            guard session.incomingID == transferID, let incoming = session.incoming, let index = message.index else { throw PeerError.message("无效文件起始消息") }
+            guard session.incomingID == transferID, let incoming = session.incoming, let index = message.index else { throw PeerError.localized("peerengine.invalid_file_start_message", []) }
             try incoming.beginFile(index: index)
         case "endFile":
-            guard session.incomingID == transferID, let incoming = session.incoming, let index = message.index, let hash = message.hash else { throw PeerError.message("无效文件完成消息") }
+            guard session.incomingID == transferID, let incoming = session.incoming, let index = message.index, let hash = message.hash else { throw PeerError.localized("peerengine.invalid_file_end_message", []) }
             try incoming.endFile(index: index, expectedHash: hash)
         case "finish":
-            guard session.incomingID == transferID, let incoming = session.incoming else { throw PeerError.message("无效传输完成消息") }
+            guard session.incomingID == transferID, let incoming = session.incoming else { throw PeerError.localized("peerengine.invalid_transfer_end_message", []) }
             let paths = try incoming.finish()
             var receipt = Message("receipt"); receipt.transfer = transferID; receipt.paths = paths.map(\.lastPathComponent); session.wire.send(receipt)
-            updateIncoming(session, status: "已接收 \(paths.count) 项", finished: true, succeeded: true)
+            updateIncoming(session, status: L10n.text("receive.completed", paths.count), finished: true, succeeded: true)
             session.incoming = nil; session.incomingID = nil
             DispatchQueue.main.async { self.onReceived?(session.name, paths) }
         case "receipt":
             guard let outgoing = session.outgoing, outgoing.id == transferID, outgoing.waitingForReceipt,
-                  message.paths?.count == outgoing.prepared.manifest.roots.count else { throw PeerError.message("无效保存确认") }
-            update(session, outgoing: outgoing, status: "对方已保存", finished: true, succeeded: true)
+                  message.paths?.count == outgoing.prepared.manifest.roots.count else { throw PeerError.localized("peerengine.invalid_save_receipt", []) }
+            update(session, outgoing: outgoing, status: L10n.text("peerengine.saved_by_the_other_mac"), finished: true, succeeded: true)
             session.outgoing = nil; sendNext(session)
         case "reject":
-            guard let outgoing = session.outgoing, outgoing.id == transferID else { throw PeerError.message("无效拒绝消息") }
-            update(session, outgoing: outgoing, status: message.text ?? "对方无法接收", finished: true)
+            guard let outgoing = session.outgoing, outgoing.id == transferID else { throw PeerError.localized("peerengine.invalid_rejection_message", []) }
+            update(session, outgoing: outgoing, status: L10n.remoteError(key: message.errorKey, arguments: message.errorArguments, fallback: message.text ?? L10n.text("peerengine.the_other_device_could_not_receive_the_files")), finished: true)
             session.outgoing = nil; sendNext(session)
         case "cancel":
             if session.incomingID == transferID {
-                updateIncoming(session, status: "传输已取消", finished: true); session.incoming?.cancel(); session.incoming = nil; session.incomingID = nil
+                updateIncoming(session, status: L10n.text("peerengine.transfer_cancelled"), finished: true); session.incoming?.cancel(); session.incoming = nil; session.incomingID = nil
             } else if let outgoing = session.outgoing, outgoing.id == transferID {
-                update(session, outgoing: outgoing, status: "传输已取消", finished: true); session.outgoing = nil; sendNext(session)
+                update(session, outgoing: outgoing, status: L10n.text("peerengine.transfer_cancelled"), finished: true); session.outgoing = nil; sendNext(session)
             }
-        default: throw PeerError.message("未知协议消息")
+        default: throw PeerError.localized("peerengine.unknown_protocol_message", [])
         }
     }
     private func advanceFile(_ session: Session, outgoing: Outgoing) {
@@ -350,7 +355,7 @@ public final class PeerEngine {
             if index == outgoing.prepared.manifest.entries.count {
                 outgoing.waitingForReceipt = true
                 var finish = Message("finish"); finish.transfer = outgoing.id; session.wire.send(finish)
-                update(session, outgoing: outgoing, status: "正在校验并保存"); return
+                update(session, outgoing: outgoing, status: L10n.text("peerengine.verifying_and_saving")); return
             }
             outgoing.file = try outgoing.prepared.openFile(index: index)
             outgoing.remaining = outgoing.prepared.manifest.entries[index].size; outgoing.hash = SHA256()
@@ -364,7 +369,7 @@ public final class PeerEngine {
         guard session.outgoing === outgoing, let file = outgoing.file else { return }
         do {
             if outgoing.remaining == 0 {
-                guard (try file.read(upToCount: 1) ?? Data()).isEmpty else { throw PeerError.message("发送期间文件发生变化，请重试") }
+                guard (try file.read(upToCount: 1) ?? Data()).isEmpty else { throw PeerError.localized("peerengine.the_file_changed_during_sending_try_again", []) }
                 try file.close(); outgoing.file = nil
                 var end = Message("endFile"); end.transfer = outgoing.id; end.index = outgoing.index
                 end.hash = outgoing.hash.finalize().map { String(format: "%02x", $0) }.joined()
@@ -373,10 +378,10 @@ public final class PeerEngine {
                 }; return
             }
             let data = try file.read(upToCount: Int(min(outgoing.remaining, 65536))) ?? Data()
-            guard !data.isEmpty else { throw PeerError.message("发送文件变短或无法读取") }
+            guard !data.isEmpty else { throw PeerError.localized("peerengine.the_source_file_became_shorter_or_unreadable", []) }
             outgoing.hash.update(data: data); outgoing.remaining -= Int64(data.count); outgoing.completed += Int64(data.count)
             session.lastActivity = Date()
-            update(session, outgoing: outgoing, status: "正在发送")
+            update(session, outgoing: outgoing, status: L10n.text("peerengine.sending"), throttle: true)
             session.wire.sendChunk(data) { [weak self, weak session, weak outgoing] error in
                 if error == nil, let session, let outgoing { self?.pump(session, outgoing: outgoing) }
             }
@@ -384,8 +389,8 @@ public final class PeerEngine {
     }
     private func chunk(_ data: Data, session: Session) {
         do {
-            guard session.authorized, let incoming = session.incoming else { throw PeerError.message("无效文件数据") }
-            try incoming.append(data); session.lastActivity = Date(); updateIncoming(session, status: "正在接收")
+            guard session.authorized, let incoming = session.incoming else { throw PeerError.localized("peerengine.invalid_file_data", []) }
+            try incoming.append(data); session.lastActivity = Date(); updateIncoming(session, status: L10n.text("peerengine.receiving"))
         } catch { fail(session, error) }
     }
     public func cancel(transferID: UUID) {
@@ -393,14 +398,14 @@ public final class PeerEngine {
             for session in Array(self.sessions.values) {
                 if session.outgoing?.id == transferID || session.incomingID == transferID {
                     // Closing prevents already-buffered chunks from being confused with the next task.
-                    self.fail(session, PeerError.message("传输已取消，请重新投放以重试"))
+                    self.fail(session, PeerError.localized("peerengine.transfer_cancelled_drop_the_files_again_to_retry", []))
                 }
             }
         }
     }
-    private func update(_ session: Session, outgoing: Outgoing, status: String, finished: Bool = false, succeeded: Bool = false) {
+    private func update(_ session: Session, outgoing: Outgoing, status: String, finished: Bool = false, succeeded: Bool = false, throttle: Bool = false) {
         let now = Date.timeIntervalSinceReferenceDate
-        if !finished, status == "正在发送", now - (session.uiUpdates[outgoing.id] ?? 0) < 0.1 { return }
+        if !finished, throttle, now - (session.uiUpdates[outgoing.id] ?? 0) < 0.1 { return }
         session.uiUpdates[outgoing.id] = now
         let update = TransferUpdate(id: outgoing.id, peerName: session.name, receiving: false, completed: outgoing.completed,
                                     total: outgoing.prepared.manifest.byteCount, status: status, finished: finished, succeeded: succeeded)
@@ -420,19 +425,19 @@ public final class PeerEngine {
         if let outgoing = session.outgoing { update(session, outgoing: outgoing, status: error.localizedDescription, finished: true) }
         if session.incoming != nil {
             let count = session.incoming?.committed.count ?? 0
-            updateIncoming(session, status: error.localizedDescription + (count > 0 ? "（已保存 \(count) 项）" : ""), finished: true)
+            updateIncoming(session, status: count > 0 ? L10n.text("receive.partial_error", count, error.localizedDescription) : error.localizedDescription, finished: true)
         }
-        if !session.pending.isEmpty { emit("\(session.pending.count) 项排队任务未发送，请重新投放") }
+        if !session.pending.isEmpty { emit(L10n.text("peerengine.queued_transfers_were_not_sent_drop_them_again", String(describing: session.pending.count))) }
         session.incoming?.cancel(); session.incoming = nil; session.outgoing = nil; session.pending.removeAll()
         session.wire.close(); DispatchQueue.main.async { self.onPairingEnded?(session.id) }
         emit(error.localizedDescription); publishPeers()
     }
     private func tick() {
-        if pairingWasOpen, !gate.isOpen { pairingWasOpen = false; advertise(); emit("配对窗口已关闭") }
+        if pairingWasOpen, !gate.isOpen { pairingWasOpen = false; advertise(); emit(L10n.text("peerengine.pairing_is_closed")) }
         for session in Array(sessions.values) {
-            if !session.authorized, Date().timeIntervalSince(session.created) > 120 { fail(session, PeerError.message("配对超时")) }
+            if !session.authorized, Date().timeIntervalSince(session.created) > 120 { fail(session, PeerError.localized("peerengine.pairing_timed_out", [])) }
             else if (session.outgoing != nil || session.incoming != nil || !session.pending.isEmpty), Date().timeIntervalSince(session.lastActivity) > 60 {
-                fail(session, PeerError.message("传输超时，请检查网络后重试"))
+                fail(session, PeerError.localized("peerengine.transfer_timed_out_check_the_network_and_retry", []))
             }
         }
     }

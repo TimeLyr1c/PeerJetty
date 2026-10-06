@@ -13,6 +13,8 @@ struct Message: Codable {
     var index: Int?
     var hash: String?
     var text: String?
+    var errorKey: String?
+    var errorArguments: [String]?
     var paths: [String]?
     init(_ kind: String) { self.kind = kind }
 }
@@ -33,7 +35,7 @@ final class FramedConnection {
     }
     func sendChunk(_ data: Data, completion: @escaping (Error?) -> Void) { send(data, type: 1, completion: completion) }
     private func send(_ body: Data, type: UInt8, completion: ((Error?) -> Void)?) {
-        guard !closed, body.count < Self.maxFrame else { completion?(PeerError.message("连接关闭或消息过大")); return }
+        guard !closed, body.count < Self.maxFrame else { completion?(PeerError.localized("framing.connection_closed_or_message_too_large", [])); return }
         var length = UInt32(body.count + 1).bigEndian
         var packet = withUnsafeBytes(of: &length) { Data($0) }
         packet.append(type); packet.append(body)
@@ -46,13 +48,13 @@ final class FramedConnection {
         readExact(4) { [weak self] data in
             guard let self else { return }
             let count = data.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
-            guard count > 1, count <= Self.maxFrame else { self.fail(PeerError.message("无效消息长度")); return }
+            guard count > 1, count <= Self.maxFrame else { self.fail(PeerError.localized("framing.invalid_message_length", [])); return }
             self.readExact(Int(count)) { [weak self] data in
                 guard let self else { return }
                 do {
                     if data[0] == 0 { self.onMessage?(try JSONDecoder().decode(Message.self, from: data.dropFirst())) }
                     else if data[0] == 1, data.count <= 65537 { self.onChunk?(Data(data.dropFirst())) }
-                    else { throw PeerError.message("无效消息类型") }
+                    else { throw PeerError.localized("framing.invalid_message_type", []) }
                     if !self.closed { self.readHeader() }
                 } catch { self.fail(error) }
             }
@@ -66,7 +68,7 @@ final class FramedConnection {
             var buffer = accumulated
             if let data { buffer.append(data) }
             if buffer.count == count { completion(buffer) }
-            else if isComplete { self.fail(PeerError.message("对方已断开连接")) }
+            else if isComplete { self.fail(PeerError.localized("framing.the_other_device_disconnected", [])) }
             else { self.readExact(count, accumulated: buffer, completion: completion) }
         }
     }

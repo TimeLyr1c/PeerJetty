@@ -9,7 +9,7 @@ public enum PairingProof {
     }
     public static func verify(id: String, nonce: Data, commitment: String) throws {
         guard id.count == 64, nonce.count == 32, self.commitment(id: id, nonce: nonce) == commitment else {
-            throw PeerError.message("配对证明不一致，连接已拒绝")
+            throw PeerError.localized("pairing.pairing_proof_does_not_match_connection_rejected", [])
         }
     }
     public static func code(localID: String, localNonce: Data, remoteID: String, remoteNonce: Data, exporter: Data) -> String {

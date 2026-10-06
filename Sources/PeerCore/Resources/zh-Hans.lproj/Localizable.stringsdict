@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>receive.completed</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>已接收 %#@items@</string>
+		<key>items</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+	</dict>
+	<key>receive.notification_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>收到 %#@items@文件</string>
+		<key>items</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+	</dict>
+	<key>receive.open_failures</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>已保存 %#@saved@；%#@failed@无法自动打开，可在 Finder 查看</string>
+		<key>failed</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+		<key>saved</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+	</dict>
+	<key>receive.partial_error</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%2$@（已保存 %1$#@items@）</string>
+		<key>items</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+	</dict>
+	<key>receive.saved</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>已保存 %#@items@；没有自动打开</string>
+		<key>items</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+	</dict>
+	<key>receive.saved_open</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>已保存 %#@items@；已请求自动打开</string>
+		<key>items</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>ld</string>
+			<key>other</key>
+			<string>%ld 项</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

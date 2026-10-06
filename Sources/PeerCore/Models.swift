@@ -3,7 +3,13 @@ import CryptoKit
 
 public enum PeerError: LocalizedError {
     case message(String)
-    public var errorDescription: String? { if case .message(let text) = self { return text }; return nil }
+    case localized(String, [String])
+    public var errorDescription: String? {
+        switch self {
+        case .message(let text): return text
+        case .localized(let key, let arguments): return L10n.message(key, arguments: arguments)
+        }
+    }
 }
 
 public enum Digest {
@@ -100,41 +106,41 @@ public struct TransferManifest: Codable {
     public var byteCount: Int64 { entries.reduce(0) { $0 + $1.size } }
     public init(roots: [String], entries: [ManifestEntry]) { self.roots = roots; self.entries = entries }
     public func validate() throws {
-        guard !roots.isEmpty, roots.count <= 1000, entries.count <= 100_000 else { throw PeerError.message("文件数量超出限制") }
+        guard !roots.isEmpty, roots.count <= 1000, entries.count <= 100_000 else { throw PeerError.localized("models.too_many_files", []) }
         try roots.forEach { try FileRules.validateName($0) }
         var paths: [String: ManifestEntry.Kind] = [:]
         var sum: Int64 = 0
         for entry in entries {
             guard roots.indices.contains(entry.root), entry.size >= 0, entry.size <= 1 << 50,
-                  entry.mode <= 0o777, entry.kind == .file || entry.size == 0 else { throw PeerError.message("无效文件清单") }
+                  entry.mode <= 0o777, entry.kind == .file || entry.size == 0 else { throw PeerError.localized("models.invalid_file_manifest", []) }
             let (next, overflow) = sum.addingReportingOverflow(entry.size)
-            guard !overflow else { throw PeerError.message("文件大小超出限制") }; sum = next
+            guard !overflow else { throw PeerError.localized("models.file_size_exceeds_the_limit", []) }; sum = next
             try FileRules.validateRelative(entry.path, allowEmpty: true)
             let key = "\(entry.root)/\(entry.path)"
-            guard paths[key] == nil else { throw PeerError.message("文件清单包含重复路径") }
+            guard paths[key] == nil else { throw PeerError.localized("models.the_file_manifest_contains_duplicate_paths", []) }
             if !entry.path.isEmpty {
                 let parent = (entry.path as NSString).deletingLastPathComponent
-                guard paths["\(entry.root)/\(parent)"] == .directory else { throw PeerError.message("文件父目录无效") }
+                guard paths["\(entry.root)/\(parent)"] == .directory else { throw PeerError.localized("models.invalid_parent_directory", []) }
             }
             if entry.kind == .symlink {
-                guard let link = entry.link else { throw PeerError.message("符号链接缺少目标") }
+                guard let link = entry.link else { throw PeerError.localized("models.symbolic_link_target_is_missing", []) }
                 try FileRules.validateLink(link, from: entry.path)
-            } else if entry.link != nil { throw PeerError.message("无效链接信息") }
-            if entry.path.isEmpty, entry.kind == .symlink { throw PeerError.message("不能发送顶层符号链接，请选择实际文件") }
+            } else if entry.link != nil { throw PeerError.localized("models.invalid_link_information", []) }
+            if entry.path.isEmpty, entry.kind == .symlink { throw PeerError.localized("models.select_the_actual_file_instead_of_a_top", []) }
             paths[key] = entry.kind
         }
-        for root in roots.indices { guard paths["\(root)/"] != nil else { throw PeerError.message("文件清单缺少根目录") } }
+        for root in roots.indices { guard paths["\(root)/"] != nil else { throw PeerError.localized("models.the_file_manifest_has_no_root_entry", []) } }
         // Resolve chains virtually before creating links: lexical checks alone miss `sub/link/..` escapes.
         let links = Dictionary(uniqueKeysWithValues: entries.filter { $0.kind == .symlink }.map { ("\($0.root)/\($0.path)", $0.link!) })
         for entry in entries where entry.kind == .symlink {
             var remaining = entry.path.split(separator: "/").map(String.init)
             var resolved: [String] = []; var steps = 0
             while !remaining.isEmpty {
-                steps += 1; guard steps < 4096 else { throw PeerError.message("符号链接包含循环或过长链条") }
+                steps += 1; guard steps < 4096 else { throw PeerError.localized("models.symbolic_links_form_a_cycle_or_an_excessively", []) }
                 let part = remaining.removeFirst()
                 if part == "." { continue }
                 if part == ".." {
-                    guard !resolved.isEmpty else { throw PeerError.message("符号链接链条指向接收目录外") }
+                    guard !resolved.isEmpty else { throw PeerError.localized("models.a_symbolic_link_chain_points_outside_the_receive", []) }
                     resolved.removeLast(); continue
                 }
                 resolved.append(part)
@@ -149,20 +155,20 @@ public struct TransferManifest: Codable {
 public enum FileRules {
     public static func validateName(_ name: String) throws {
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\0"),
-              name.utf8.count <= 255 else { throw PeerError.message("无效文件名") }
+              name.utf8.count <= 255 else { throw PeerError.localized("models.invalid_filename", []) }
     }
     public static func validateRelative(_ path: String, allowEmpty: Bool = false) throws {
         if path.isEmpty, allowEmpty { return }
-        guard !path.hasPrefix("/"), !path.contains("\0"), path.utf8.count <= 4096 else { throw PeerError.message("无效文件路径") }
+        guard !path.hasPrefix("/"), !path.contains("\0"), path.utf8.count <= 4096 else { throw PeerError.localized("models.invalid_file_path", []) }
         for part in path.split(separator: "/", omittingEmptySubsequences: false) { try validateName(String(part)) }
     }
     public static func validateLink(_ link: String, from path: String) throws {
-        guard !link.isEmpty, !link.hasPrefix("/"), !link.contains("\0"), !path.isEmpty else { throw PeerError.message("仅支持目录内部的相对符号链接") }
+        guard !link.isEmpty, !link.hasPrefix("/"), !link.contains("\0"), !path.isEmpty else { throw PeerError.localized("models.only_relative_symbolic_links_within_the_same_root", []) }
         var components = path.split(separator: "/").dropLast().map(String.init)
         for component in link.split(separator: "/", omittingEmptySubsequences: false) {
             if component == "." { continue }
             if component == ".." {
-                guard !components.isEmpty else { throw PeerError.message("符号链接不能指向接收目录外") }
+                guard !components.isEmpty else { throw PeerError.localized("models.a_symbolic_link_points_outside_the_receive_folder", []) }
                 components.removeLast()
             } else { try validateName(String(component)); components.append(String(component)) }
         }

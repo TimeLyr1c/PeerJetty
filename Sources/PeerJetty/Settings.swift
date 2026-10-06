@@ -22,47 +22,48 @@ final class SettingsController: NSWindowController {
     private let name = NSTextField()
     private let devices = NSPopUpButton()
     private let folderLabel = NSTextField(wrappingLabelWithString: "")
-    private let statusLabel = NSTextField(wrappingLabelWithString: "准备连接…")
-    private let progressLabel = NSTextField(wrappingLabelWithString: "暂无传输")
+    private let statusLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.preparing_to_connect"))
+    private let progressLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.no_transfers_yet"))
     private let connectionLabel = NSTextField(wrappingLabelWithString: "")
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
     private var peers: [DiscoveredPeer] = []
     init(configuration: Configuration) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: min(810, (NSScreen.main?.visibleFrame.height ?? 900) - 70)), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "PeerJetty · 双向文件投放"; window.isReleasedWhenClosed = false; window.center()
+        window.title = L10n.text("settings.peerjetty_file_handoff"); window.isReleasedWhenClosed = false; window.center()
         super.init(window: window)
         name.stringValue = configuration.name; folderLabel.stringValue = configuration.receivePath
-        let title = NSTextField(labelWithString: configuration.onboardingComplete ? "设备与设置" : "欢迎使用双向文件投放")
+        let title = NSTextField(labelWithString: configuration.onboardingComplete ? L10n.text("settings.devices_settings") : L10n.text("settings.welcome_to_peerjetty"))
         title.font = .systemFont(ofSize: 22, weight: .semibold)
-        let intro = NSTextField(wrappingLabelWithString: "两台 Mac 安装同一个 App，在同一局域网配对后即可互传。可信设备自动接收；默认只通知，可自行开启收到后自动打开。")
+        let intro = NSTextField(wrappingLabelWithString: L10n.text("settings.install_peerjetty_on_both_macs_and_pair_them"))
         intro.textColor = .secondaryLabelColor
         let version = NSTextField(labelWithString: AppVersion.summary)
         version.font = .systemFont(ofSize: 11); version.textColor = .secondaryLabelColor
         version.toolTip = AppVersion.details
         name.widthAnchor.constraint(greaterThanOrEqualToConstant: 290).isActive = true
         devices.widthAnchor.constraint(greaterThanOrEqualToConstant: 320).isActive = true
+        devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         folderLabel.lineBreakMode = .byTruncatingMiddle; folderLabel.maximumNumberOfLines = 2
         connectionLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular); connectionLabel.textColor = .secondaryLabelColor
         devices.target = self; devices.action = #selector(selectPeer)
         login.target = self; login.action = #selector(toggleLogin)
         autoOpen.target = self; autoOpen.action = #selector(toggleAutoOpen)
         autoOpen.state = configuration.autoOpenReceivedFiles ? .on : .off
-        let openHint = NSTextField(wrappingLabelWithString: "开启后，已配对设备发来的文件保存成功就会用默认应用打开；文件夹在 Finder 打开。请只对信任的设备开启。")
+        let openHint = NSTextField(wrappingLabelWithString: L10n.text("settings.when_enabled_saved_files_from_paired_devices_open"))
         openHint.font = .systemFont(ofSize: 11); openHint.textColor = .secondaryLabelColor
         let rows: [NSView] = [title, intro,
-            row([NSTextField(labelWithString: "本机名称"), name, button("保存 / 完成初始化", #selector(save))]),
-            row([NSTextField(labelWithString: "接收目录"), button("选择文件夹…", #selector(chooseFolder))]), folderLabel,
-            separator(), NSTextField(labelWithString: "设备列表（选择已配对设备即设为默认发送目标）"),
-            row([devices, button("连接 / 配对", #selector(connect))]),
-            row([button("添加设备 · 2 分钟", #selector(pair)), button("手动地址…", #selector(manual)), button("移除授权", #selector(forget))]),
+            row([NSTextField(labelWithString: L10n.text("settings.device_name")), name, button(L10n.text("settings.save_finish_setup"), #selector(save))]),
+            row([NSTextField(labelWithString: L10n.text("settings.receive_folder")), button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]), folderLabel,
+            separator(), NSTextField(wrappingLabelWithString: L10n.text("settings.devices_select_a_paired_device_as_your_default")),
+            row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
+            row([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual)), button(L10n.text("settings.remove_trust"), #selector(forget))]),
             connectionLabel, separator(),
-            NSTextField(labelWithString: "拖到屏幕上方中央、菜单栏下方，卡片出现后松开发送，无需碰顶边。"),
-            row([button("选择文件发送…", #selector(send)), button("预览投放区", #selector(preview)), button("取消当前传输", #selector(cancel))]),
-            progressLabel, button("在 Finder 中显示最近收到的文件", #selector(reveal)), separator(),
-            row([NSTextField(labelWithString: "收到后自动打开"), autoOpen]), openHint,
-            row([NSTextField(labelWithString: "登录时自动启动"), login, button("局域网权限…", #selector(permissions))]),
-            row([button("微信文件访问权限…", #selector(diskAccess)), button("重置身份…", #selector(reset)), button("退出", #selector(quit))]),
+            NSTextField(wrappingLabelWithString: L10n.text("settings.drag_toward_the_upper_center_below_the_menu")),
+            row([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview)), button(L10n.text("settings.cancel_transfer"), #selector(cancel))]),
+            progressLabel, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal)), separator(),
+            row([NSTextField(labelWithString: L10n.text("settings.open_after_receiving")), autoOpen]), openHint,
+            row([NSTextField(labelWithString: L10n.text("settings.start_at_login")), login, button(L10n.text("settings.local_network_access"), #selector(permissions))]),
+            row([button(L10n.text("settings.wechat_file_access"), #selector(diskAccess)), button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
             statusLabel, version]
         let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -79,6 +80,10 @@ final class SettingsController: NSWindowController {
                                      stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 25),
                                      stack.bottomAnchor.constraint(equalTo: document.bottomAnchor, constant: -20)])
         for label in [intro, openHint, folderLabel, statusLabel, progressLabel, connectionLabel] { label.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        for view in rows {
+            if view is NSStackView { view.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor).isActive = true }
+            if let label = view as? NSTextField { label.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        }
         for box in rows.compactMap({ $0 as? NSBox }) { box.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         statusLabel.textColor = .secondaryLabelColor; statusLabel.maximumNumberOfLines = 3
     }
@@ -89,8 +94,11 @@ final class SettingsController: NSWindowController {
     func updatePeers(_ peers: [DiscoveredPeer], preferred: String?) {
         let selected = devices.indexOfSelectedItem >= 0 && self.peers.indices.contains(devices.indexOfSelectedItem) ? self.peers[devices.indexOfSelectedItem].id : preferred
         self.peers = peers; devices.removeAllItems()
-        for peer in peers { devices.addItem(withTitle: "\(peer.name) · \(peer.paired ? (peer.connected ? "已配对 / 在线" : "已配对 / 离线") : "可配对") · \(peer.id.prefix(6))") }
-        if peers.isEmpty { devices.addItem(withTitle: "请在两台电脑上点击添加设备") }
+        for peer in peers {
+            let state = peer.paired ? (peer.connected ? L10n.text("settings.paired_online") : L10n.text("settings.paired_offline")) : L10n.text("settings.available_to_pair")
+            devices.addItem(withTitle: L10n.text("settings.peer_entry", peer.name, state, String(peer.id.prefix(6))))
+        }
+        if peers.isEmpty { devices.addItem(withTitle: L10n.text("settings.select_add_device_on_both_macs")) }
         if let id = selected ?? preferred, let index = peers.firstIndex(where: { $0.id == id }) { devices.selectItem(at: index) }
     }
     private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
@@ -101,7 +109,9 @@ final class SettingsController: NSWindowController {
     func autoOpenState(_ enabled: Bool) { autoOpen.state = enabled ? .on : .off }
     func progress(_ update: TransferUpdate) {
         let percent = update.total > 0 ? Int(Double(update.completed) / Double(update.total) * 100) : 0
-        progressLabel.stringValue = "\(update.receiving ? "接收自" : "发送至") \(update.peerName) · \(update.status)\(update.finished ? "" : " · \(percent)%")"
+        let key = update.receiving ? "settings.receiving_progress" : "settings.sending_progress"
+        let detail = L10n.text(key, update.peerName, update.status)
+        progressLabel.stringValue = update.finished ? detail : L10n.text("settings.progress_percent", detail, L10n.percent(percent))
     }
     @objc private func save() { onSave?(name.stringValue) }
     @objc private func selectPeer() { if let selected, selected.paired { onSelect?(selected.id) } }
