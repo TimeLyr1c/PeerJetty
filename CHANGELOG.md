@@ -1,10 +1,14 @@
 # Changes
 
-## 0.3.2 / build 11 — local test candidate, 2026-10-06
+## 0.3.2 / build 11 — stable release, 2026-10-07
 
 Adds manual Check for updates from the menu bar and Settings. Reads GitHub’s Latest stable Release without authentication, compares numeric product versions, displays notes and opens the matching release page for manual DMG installation. Handles no releases, missing installers, local builds ahead of public releases, network errors and rate limits. Does not download/install automatically or modify pairing and transfer settings.
 
 菜单栏和设置新增“检查更新”：主动查询 GitHub Latest 正式 Release，按数字比较版本，显示说明并引导手动下载 DMG。处理无正式版本、缺安装包、本地版本领先、断网和接口限流；不自动下载/安装，也不修改配对或传输设置。
+
+Published as Latest at https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.3.2, using the existing tested DMG from source `a5316f42c45122107cac2ad3843a443f05578cb5`. Includes the drop-card and bilingual UI improvements developed in the intervening local candidates. Only the DMG is uploaded; ad hoc signed and not notarized.
+
+已集中发布为 Latest 正式版，沿用原测试 DMG，标签指向实际源码提交；包含中间测试候选完成的投放卡片及应用双语改进。公开附件仅 DMG，仍为临时签名、未公证。
 
 ## 0.3.1 / build 10 — local test candidate, 2026-10-06
 

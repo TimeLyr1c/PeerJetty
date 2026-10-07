@@ -72,3 +72,7 @@ README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发
 ## 检查更新的发布要求（2026-10-06）
 
 0.3.2 起提供手动检查，发布新版本时遵循 [UPDATES.md](UPDATES.md)。正式 Release 使用三个数字版本标签、匹配 DMG，并设为 Latest；预发布不进入当前更新检查。产品版本必须增加，仅增加构建号不会被判为新版。上传源码/标签不等于创建 Release；不要为了验证提示制造虚假公开版本。
+
+## 已发布：0.3.2 / build11（2026-10-07）
+
+用户授权并反馈目前无问题后，将已测试候选集中发布为正式 Latest：https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.3.2 。标签指向二进制原源码 `a5316f42c45122107cac2ad3843a443f05578cb5`，公开附件仅 `PeerJetty-0.3.2-build11-arm64.dmg`；远端资产 SHA256 与本地归档一致。使用既有包，不重新编译；0.2.4 保留不变。发行说明中英文，继续如实标注临时签名、未公证、Apple Silicon/macOS 15+ 与功能边界。

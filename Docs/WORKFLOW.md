@@ -1,12 +1,12 @@
 # 开发、构建与版本工作流
 
-更新：2026-10-06。
+更新：2026-10-07。
 
 ## 当前状态
 
 - 正式源码：`~/Developer/Projects/PeerJetty`，远程仓库：https://github.com/TimeLyr1c/PeerJetty。
-- 最新已归档测试包：0.3.2/build11；App 安装目标 `/Applications/PeerJetty.app`。各机器的实际安装版本以各自检查为准。
-- 公开安装包与源码上传分别管理；当前公开正式 Release 是 0.2.4/build6，新源码推送不会自动改变它。
+- 最新已公开版本：0.3.2/build11；App 安装目标 `/Applications/PeerJetty.app`。各机器的实际安装版本以各自检查为准。
+- 公开安装包与源码上传分别管理；当前公开正式 Release 是 0.3.2/build11；后续源码推送不会自动发布安装包。
 - 配置：`~/Library/Application Support/PeerJetty/configuration.json`；身份在本机 Keychain，语言选择在本机应用偏好中。
 - 历史安装包保留在已核实的归档位置；本地 `outputs/releases/` 按版本/构建号保存，均不进 Git。旧 Dropbox 归档路径是历史记录，不推断其他机器已同步。
 - mini 和 Windows 的开发目录完整路径尚待各自核实。
@@ -134,3 +134,7 @@ GitHub 远程仓库为 https://github.com/TimeLyr1c/PeerJetty，当前公开 Lat
 ## 0.3.2 手动检查更新（2026-10-06）
 
 本地候选 0.3.2/build11，归档 `outputs/releases/0.3.2-build11`。菜单和设置提供手动检查，公开更新源固定为 TimeLyr1c/PeerJetty 的 Latest 正式 Release。仅推送源码或增加本地版本不触发公开更新；发布流程与用户操作见 UPDATES.md。本轮不自动安装、不推送源码或创建公开 Release。
+
+## 0.3.2 正式发布（2026-10-07）
+
+用户反馈当前无问题并明确授权正式发布。既有 `outputs/releases/0.3.2-build11/PeerJetty-0.3.2-build11-arm64.dmg` 已上传，标签 `v0.3.2` 固定到原构建提交 `a5316f42c45122107cac2ad3843a443f05578cb5`。没有重新编译、覆盖历史包或移动已有标签；正式版设为 Latest，公开附件仅 DMG。后续发布记录/README 提交不属于该二进制的构建来源。
