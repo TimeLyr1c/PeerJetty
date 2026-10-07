@@ -21,3 +21,10 @@ Changing historical snapshots changes commit IDs. Existing tested packages retai
 The tested 0.2.2/build4 and 0.2.3/build5 packages retain their original source IDs. This upload publishes source only, without Releases or old installers. Future packages use clean public-history commits and a new build number.
 
 For recovery, first save current work, then clone the bundle into a separate directory for inspection. Do not overwrite the active project or mirror-push private backups.
+
+
+## 2026-10-07：0.4.0 文本与本机历史测试交付
+
+已完成文本协议、顶部输入、接收查看与复制、始终记录本机 SQLite、历史隐藏／清空／保留规则及中英文说明。隔离自动检查通过，详见 VALIDATION.md；实体 Air／mini 验收见 TEXT.md。
+
+最终本地候选为 **0.4.0/build13**，归档：`outputs/releases/0.4.0-build13/`，安装包 `PeerJetty-0.4.0-build13-arm64.dmg`；实际代码提交 `18ffe6bf5c88259f559f8e1eec8313516f6ca6f8`。build12 保留为内部候选；build13 补齐菜单栏应用的标准文本编辑快捷键分发，不另增产品版本。签名仍为 ad hoc；安装包已校验，但本轮没有安装、修改设备配对、推送或发布 GitHub Release。后续文档提交不重建此归档。
