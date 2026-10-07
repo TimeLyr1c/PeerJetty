@@ -1,4 +1,5 @@
 import AppKit
+import PeerCore
 
 private func XCTAssertTrue(_ value: Bool, file: StaticString = #file, line: UInt = #line) { precondition(value, "Expected true", file: file, line: line) }
 private func XCTAssertFalse(_ value: Bool, file: StaticString = #file, line: UInt = #line) { precondition(!value, "Expected false", file: file, line: line) }
@@ -126,15 +127,64 @@ struct RunDropPresentationTests {
         XCTAssertEqual(view.layer?.cornerRadius, 16)
         XCTAssertEqual(view.layer?.masksToBounds, true)
         print("PASS: card layout and full corner clipping")
-        if CommandLine.arguments.count == 2 {
-            let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-            window.contentView = view
-            view.layoutSubtreeIfNeeded()
-            guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { fatalError("No bitmap") }
-            view.cacheDisplay(in: view.bounds, to: bitmap)
-            guard let data = bitmap.representation(using: .png, properties: [:]) else { fatalError("No PNG") }
-            try data.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
-            print("Card snapshot saved")
+        let labels = view.subviews.compactMap { $0 as? NSTextField }
+        let title = labels[0], subtitle = labels[1]
+        let progress = view.subviews.compactMap { $0 as? NSProgressIndicator }.first!
+        let cancel = view.subviews.compactMap { $0 as? NSButton }.first!
+        let icon = view.subviews.compactMap { $0 as? NSImageView }.first!
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = view
+        let snapshot = CommandLine.arguments.count == 2 ? URL(fileURLWithPath: CommandLine.arguments[1]) : nil
+        for language in ["en", "zh-Hans"] {
+            let catalog = TranslationCatalog(preferences: [language])
+            let peer = language == "en" ? "Mac mini — Shared workspace upstairs — Design and development machine" : "Mac mini — 楼上共享工作空间的设计与开发电脑"
+            for width: CGFloat in [320, 364] {
+                view.setFrameSize(NSSize(width: width, height: 76))
+                for state in ["idle", "hover", "loading", "transfer", "success", "failure"] {
+                    let key: String
+                    switch state {
+                    case "hover": key = "dropzone.release_to_send"
+                    case "loading": key = "dropzone.reading_files"
+                    default: key = "dropzone.drop_into_card_to_send"
+                    }
+                    let message: String
+                    if state == "success" { message = language == "en" ? "Files received" : "文件已收到" }
+                    else if state == "failure" { message = language == "en" ? "Transfer failed" : "传输失败" }
+                    else if state == "transfer" { message = language == "en" ? "Sending files…" : "正在发送文件…" }
+                    else { message = catalog.text(key) }
+                    view.show(title: message, subtitle: peer)
+                    // Exercise the same visibility combinations used by transfer and file promises.
+                    progress.isHidden = state != "transfer"
+                    cancel.isHidden = state != "transfer" && state != "loading"
+                    cancel.title = catalog.text("dropzone.cancel")
+                    progress.doubleValue = 0.45
+                    view.layoutSubtreeIfNeeded()
+                    let group = title.frame.union(subtitle.frame)
+                    XCTAssertEqual(group.midY, progress.isHidden ? view.bounds.midY : (20 + view.bounds.height - 12) / 2)
+                    XCTAssertEqual(icon.frame.midY, group.midY)
+                    XCTAssertTrue(title.frame.minY >= subtitle.frame.maxY + 4)
+                    XCTAssertTrue(title.fittingSize.height <= title.frame.height)
+                    XCTAssertTrue(subtitle.fittingSize.height <= subtitle.frame.height)
+                    XCTAssertEqual(subtitle.toolTip, peer)
+                    for child in view.subviews where !child.isHidden { XCTAssertTrue(view.bounds.contains(child.frame)) }
+                    if !progress.isHidden { XCTAssertTrue(subtitle.frame.minY >= progress.frame.maxY + 5) }
+                    if !cancel.isHidden {
+                        XCTAssertEqual(cancel.frame.midY, title.frame.midY)
+                        XCTAssertTrue(cancel.frame.minX >= title.frame.maxX + 12)
+                        XCTAssertFalse(cancel.frame.intersects(subtitle.frame))
+                    }
+                    if let snapshot, width == 320 {
+                        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { fatalError("No bitmap") }
+                        view.cacheDisplay(in: view.bounds, to: bitmap)
+                        guard let data = bitmap.representation(using: .png, properties: [:]) else { fatalError("No PNG") }
+                        let name = snapshot.deletingPathExtension().lastPathComponent
+                        let destination = snapshot.deletingLastPathComponent().appendingPathComponent("\(name)-\(language)-\(state).png")
+                        try data.write(to: destination)
+                        if language == "en", state == "idle" { try data.write(to: snapshot) }
+                    }
+                }
+            }
         }
+        print("PASS: bilingual card centering, text fit, long-name tooltips and controls across 24 layouts")
     }
 }

@@ -36,11 +36,11 @@ final class DropZoneView: NSView {
         layer?.borderWidth = 0.5; layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
         icon.contentTintColor = .white
         title.lineBreakMode = .byTruncatingTail
-        title.textColor = .white; title.font = .systemFont(ofSize: 12.5, weight: .semibold)
-        subtitle.textColor = NSColor.white.withAlphaComponent(0.65); subtitle.font = .systemFont(ofSize: 10)
+        title.textColor = .white; title.font = .systemFont(ofSize: 15, weight: .semibold)
+        subtitle.textColor = NSColor.white.withAlphaComponent(0.85); subtitle.font = .systemFont(ofSize: 13, weight: .medium)
         subtitle.lineBreakMode = .byTruncatingMiddle
         progress.style = .bar; progress.isIndeterminate = false; progress.maxValue = 1; progress.isHidden = true
-        cancelButton.bezelStyle = .inline; cancelButton.font = .systemFont(ofSize: 10); cancelButton.contentTintColor = .white
+        cancelButton.bezelStyle = .inline; cancelButton.font = .systemFont(ofSize: 12); cancelButton.contentTintColor = .white
         cancelButton.target = self; cancelButton.action = #selector(cancel); cancelButton.isHidden = true
         [icon, title, subtitle, progress, cancelButton].forEach(addSubview)
         registerForDraggedTypes(DragPayload.types); idle()
@@ -48,15 +48,22 @@ final class DropZoneView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
     override func layout() {
         super.layout()
-        icon.frame = NSRect(x: 16, y: 27, width: 22, height: 22)
-        title.frame = NSRect(x: 49, y: 42, width: max(0, bounds.width - 49 - (cancelButton.isHidden ? 16 : 92)), height: 17)
-        subtitle.frame = NSRect(x: 49, y: 24, width: max(0, bounds.width - 61), height: 15)
+        // Center the two-line group; reserve the progress band only while visible.
+        let contentBottom: CGFloat = progress.isHidden ? 0 : 20
+        let contentTop = progress.isHidden ? bounds.height : bounds.height - 12
+        let centerY = (contentBottom + contentTop) / 2
+        let subtitleY = centerY - 22
+        let titleY = subtitleY + 18 + 4
+        icon.frame = NSRect(x: 16, y: centerY - 11, width: 22, height: 22)
+        title.frame = NSRect(x: 49, y: titleY, width: max(0, bounds.width - 49 - (cancelButton.isHidden ? 16 : 92)), height: 22)
+        subtitle.frame = NSRect(x: 49, y: subtitleY, width: max(0, bounds.width - 65), height: 18)
         progress.frame = NSRect(x: 16, y: 10, width: max(0, bounds.width - 32), height: 5)
-        cancelButton.frame = NSRect(x: bounds.width - 80, y: 42, width: 64, height: 17)
+        cancelButton.frame = NSRect(x: bounds.width - 80, y: titleY, width: 64, height: 22)
     }
     func idle() { show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .white); progress.isHidden = true; cancelButton.isHidden = true }
     func show(title: String, subtitle: String, symbol: String = "arrow.up.circle.fill", color: NSColor = .systemBlue) {
-        self.title.stringValue = title; self.subtitle.stringValue = subtitle; needsLayout = true
+        self.title.stringValue = title; self.subtitle.stringValue = subtitle
+        self.title.toolTip = title; self.subtitle.toolTip = subtitle; needsLayout = true
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title); icon.contentTintColor = color
     }
     func transfer(_ update: TransferUpdate) {
