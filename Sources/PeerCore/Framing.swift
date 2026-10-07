@@ -15,6 +15,7 @@ struct Message: Codable {
     var text: String?
     var errorKey: String?
     var errorArguments: [String]?
+    var capabilities: [String]?
     var paths: [String]?
     init(_ kind: String) { self.kind = kind }
 }

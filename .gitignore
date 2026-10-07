@@ -13,3 +13,9 @@ __pycache__/
 
 # Preserve historical artwork locally; exclude it from publication.
 /Original/Assets/AppIcon.png
+
+# Local text history is private runtime data, never a source asset.
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm

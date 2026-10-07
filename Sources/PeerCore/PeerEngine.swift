@@ -28,6 +28,11 @@ private final class Session {
     var localConfirmed = false
     var remoteConfirmed = false
     var authorized = false
+    var supportsText = false
+    var textInbox = TextInbox()
+    var textPending: [TextPayload] = []
+    var textOutgoing: (TextPayload, Date)?
+    var retiredText: [UUID] = []
     var outgoing: Outgoing?
     var incoming: ReceiveTransaction?
     var incomingID: UUID?
@@ -49,9 +54,13 @@ public final class PeerEngine {
     public var onPairingEnded: ((UUID) -> Void)?
     public var onTransfer: ((TransferUpdate) -> Void)?
     public var onReceived: ((String, [URL]) -> Void)?
+    public var onTextReceived: ((TextPayload, @escaping () -> Void) -> Void)?
+    public var onTextResult: ((TextPayload, Error?) -> Void)?
     public var onListening: ((UInt16) -> Void)?
     public var onRejectedConnection: ((String) -> Void)?
     public var onPreparation: ((Bool) -> Void)?
+    // Internal capability override supports isolated legacy-compatibility tests.
+    var advertisedCapabilities: [String]? = ["text-v1"]
     private let queue = DispatchQueue(label: "PeerJetty.Network")
     private let gate = PairingGate()
     private var listener: NWListener?
@@ -151,7 +160,7 @@ public final class PeerEngine {
         let peers = ids.map { id -> DiscoveredPeer in
             let connected = sessions.values.contains { $0.peerID == id && $0.authorized }
             return DiscoveredPeer(id: id, name: config.peers.first { $0.id == id }?.name ?? endpoints[id]?.1 ?? "Mac",
-                                  paired: config.peers.contains { $0.id == id }, connected: connected || endpoints[id] != nil)
+                                  paired: config.peers.contains { $0.id == id }, connected: connected || endpoints[id] != nil, supportsText: sessions.values.first(where: { $0.peerID == id && $0.authorized }).map { $0.supportsText })
         }.sorted { $0.name < $1.name }
         DispatchQueue.main.async { self.onPeers?(peers) }
     }
@@ -195,7 +204,7 @@ public final class PeerEngine {
                             self.pairingAttempts.append(Date())
                         }
                         var hello = Message("hello"); hello.id = self.identity.fingerprint; hello.name = self.store.snapshot.name
-                        hello.version = 1; hello.commitment = PairingProof.commitment(id: self.identity.fingerprint, nonce: session.nonce)
+                        hello.capabilities = self.advertisedCapabilities; hello.version = 1; hello.commitment = PairingProof.commitment(id: self.identity.fingerprint, nonce: session.nonce)
                         session.wire.send(hello); session.wire.begin()
                     } catch { self.fail(session, error) }
                 case .failed(let error): self.fail(session, error)
@@ -245,6 +254,8 @@ public final class PeerEngine {
                 guard session.commitment == nil, message.version == 1, message.id == session.peerID,
                       let name = message.name, !name.isEmpty, name.utf8.count <= 256,
                       let commitment = message.commitment, commitment.count == 64 else { throw PeerError.localized("peerengine.device_identity_or_protocol_does_not_match", []) }
+                guard (message.capabilities?.count ?? 0) <= 32, message.capabilities?.allSatisfy({ $0.utf8.count <= 64 }) ?? true else { throw PeerError.localized("text.invalid_message", []) }
+                session.supportsText = message.capabilities?.contains("text-v1") == true
                 session.name = name; session.commitment = commitment
                 var reveal = Message("reveal"); reveal.nonce = session.nonce; session.wire.send(reveal)
             case "reveal":
@@ -263,9 +274,61 @@ public final class PeerEngine {
                 session.remoteConfirmed = true; authorizeIfReady(session)
             default:
                 guard session.authorized else { throw PeerError.localized("peerengine.unpaired_devices_cannot_send_files", []) }
-                try handleTransfer(message, session: session)
+                if message.kind == "text" || message.kind == "textReceipt" { try handleText(message, session: session) }
+                else { try handleTransfer(message, session: session) }
             }
         } catch { fail(session, error) }
+    }
+    @discardableResult
+    public func sendText(_ text: String, peerID: String) -> UUID {
+        let id = UUID()
+        queue.async {
+            let session = self.sessions.values.first { $0.peerID == peerID && $0.authorized }
+            let payload = TextPayload(id: id, peerID: peerID, peerName: session?.name ?? "Mac", text: text)
+            do {
+                try TextRules.validate(text)
+                guard let session else { throw PeerError.localized("text.offline", []) }
+                guard session.supportsText else { throw PeerError.localized("text.upgrade", []) }
+                guard session.textPending.count < 20 else { throw PeerError.localized("text.busy", []) }
+                session.textPending.append(payload); self.sendNextText(session)
+            } catch { self.textResult(payload, error) }
+        }
+        return id
+    }
+    private func textResult(_ payload: TextPayload, _ error: Error?) { DispatchQueue.main.async { self.onTextResult?(payload, error) } }
+    private func sendNextText(_ session: Session) {
+        guard session.textOutgoing == nil, !session.textPending.isEmpty else { return }
+        let payload = session.textPending.removeFirst(); session.textOutgoing = (payload, Date())
+        var message = Message("text"); message.transfer = payload.id; message.text = payload.text
+        session.wire.send(message)
+    }
+    private func handleText(_ message: Message, session: Session) throws {
+        guard session.supportsText, let id = message.transfer else { throw PeerError.localized("text.invalid_message", []) }
+        if message.kind == "textReceipt" {
+            if session.retiredText.contains(id) { return }
+            guard let outgoing = session.textOutgoing, outgoing.0.id == id else { throw PeerError.localized("text.invalid_message", []) }
+            session.textOutgoing = nil; session.retiredText.append(id); if session.retiredText.count > 256 { session.retiredText.removeFirst() }
+            textResult(outgoing.0, nil); sendNextText(session); return
+        }
+        guard let text = message.text else { throw PeerError.localized("text.invalid_message", []) }
+        switch try session.textInbox.receive(id, text: text) {
+        case .duplicate:
+            var receipt = Message("textReceipt"); receipt.transfer = id; session.wire.send(receipt)
+        case .pending: break
+        case .new:
+            let payload = TextPayload(id: id, peerID: session.peerID, peerName: session.name, text: text)
+            DispatchQueue.main.async { [weak self, weak session] in
+                guard let self, let session, let callback = self.onTextReceived else { return }
+                callback(payload) { [weak self, weak session] in
+                    guard let self, let session else { return }
+                    self.queue.async {
+                        guard self.sessions[session.id] != nil else { return }
+                        session.textInbox.complete(id)
+                        var receipt = Message("textReceipt"); receipt.transfer = id; session.wire.send(receipt)
+                    }
+                }
+            }
+        }
     }
     public func send(urls: [URL], peerID: String, cleanup: (() -> Void)? = nil) {
         DispatchQueue.main.async { self.onPreparation?(true) }
@@ -422,6 +485,9 @@ public final class PeerEngine {
     }
     private func fail(_ session: Session, _ error: Error) {
         guard sessions.removeValue(forKey: session.id) != nil else { return }
+        if let text = session.textOutgoing { textResult(text.0, error) }
+        for text in session.textPending { textResult(text, error) }
+        session.textOutgoing = nil; session.textPending.removeAll()
         if let outgoing = session.outgoing { update(session, outgoing: outgoing, status: error.localizedDescription, finished: true) }
         if session.incoming != nil {
             let count = session.incoming?.committed.count ?? 0
@@ -435,6 +501,11 @@ public final class PeerEngine {
     private func tick() {
         if pairingWasOpen, !gate.isOpen { pairingWasOpen = false; advertise(); emit(L10n.text("peerengine.pairing_is_closed")) }
         for session in Array(sessions.values) {
+            if let outgoing = session.textOutgoing, Date().timeIntervalSince(outgoing.1) >= 30 {
+                session.textOutgoing = nil; session.retiredText.append(outgoing.0.id)
+                if session.retiredText.count > 256 { session.retiredText.removeFirst() }
+                textResult(outgoing.0, PeerError.localized("text.unconfirmed", [])); sendNextText(session)
+            }
             if !session.authorized, Date().timeIntervalSince(session.created) > 120 { fail(session, PeerError.localized("peerengine.pairing_timed_out", [])) }
             else if (session.outgoing != nil || session.incoming != nil || !session.pending.isEmpty), Date().timeIntervalSince(session.lastActivity) > 60 {
                 fail(session, PeerError.localized("peerengine.transfer_timed_out_check_the_network_and_retry", []))
