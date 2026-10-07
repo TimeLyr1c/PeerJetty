@@ -10,6 +10,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var engine: PeerEngine?
     private var drop: DropPanelController?
     private var settings: SettingsController?
+    private var latestText: UUID?
+    private var composer: TextComposer?
+    private var textHistoryWindow: TextHistoryWindow?
+    private var textReader: TextReader?
+    private var historyMenu: NSMenuItem?
+    private let historyQueue = DispatchQueue(label:"PeerJetty.TextHistory")
+    private var history: TextHistory?
+    private var volatileTexts: [UUID:TextEntry] = [:]
+    private var volatileOrder: [UUID] = []
     private var updateWindow: UpdateWindow?
     private var menuItem: NSStatusItem?
     private var peers: [DiscoveredPeer] = []
@@ -44,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     private func finishStartup(store: ConfigurationStore, identity: DeviceIdentity) {
         self.store = store; let engine = PeerEngine(identity: identity, store: store); self.engine = engine
+        historyQueue.async { [weak self] in
+            do { _ = try self?.ensureHistory() } catch { DispatchQueue.main.async { self?.settings?.status(L10n.text("text.history_failed")) } }
+        }
+        historyMenu?.isHidden = !store.snapshot.showTextHistory
         let drop = DropPanelController(); self.drop = drop
         drop.view.onFiles = { [weak self] urls, cleanup in
             self?.promiseBusy = false
@@ -56,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         drop.view.onFailure = { [weak self] text in self?.promiseBusy = false; self?.refreshBusy(); self?.showStatus(text) }
         drop.view.onCancel = { [weak self] in if let id = self?.lastTransfer { self?.engine?.cancel(transferID: id) } }
         engine.onPeers = { [weak self] peers in
-            guard let self else { return }; self.peers = peers; self.settings?.updatePeers(peers, preferred: self.store?.snapshot.preferredPeer)
+            guard let self else { return }; self.peers = peers; self.composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); self.settings?.updatePeers(peers, preferred: self.store?.snapshot.preferredPeer)
             let name = peers.first { $0.id == self.store?.snapshot.preferredPeer }?.name ?? L10n.text("dropzone.choose_a_destination")
             self.drop?.view.targetName = name
             if self.active.isEmpty { self.drop?.view.idle() }
@@ -93,6 +106,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self.settings?.status(L10n.text(enabled ? "receive.saved_open" : "receive.saved", urls.count))
             }
         }
+        engine.onTextReceived = { [weak self] payload, acknowledge in
+            guard let self else { return }
+            self.saveText(TextEntry(payload:payload,direction:.received)) { id,saved in
+                self.latestText = id; self.notifyText(id:id,peerName:payload.peerName,saved:saved); acknowledge()
+            }
+        }
+        engine.onTextResult = { [weak self] payload, error in
+            guard let self else { return }; self.composer?.result(payload.id,error:error)
+            if error == nil { self.saveText(TextEntry(payload:payload,direction:.sent)) { _,_ in } }
+        }
         engine.onListening = { [weak self] port in self?.settings?.connectionInfo(L10n.text("connection.local_address", Self.localAddresses().joined(separator: " / "), String(port))) }
         initialized = true; engine.start()
         if !store.snapshot.onboardingComplete || pendingSettings { showSettings() }
@@ -102,10 +125,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         menuItem?.button?.image = NSImage(systemSymbolName: "arrow.up.arrow.down.square", accessibilityDescription: L10n.text("application.file_handoff"))
         let menu = NSMenu()
         for (title, action) in [(L10n.text("application.devices_settings"), #selector(showSettings)), (L10n.text("application.add_device_min"), #selector(addDevice)),
+                                (L10n.text("text.send_title"), #selector(sendText)), (L10n.text("text.latest"), #selector(openLatestText)), (L10n.text("text.history_title"), #selector(showTextHistory)),
                                 (L10n.text("application.show_drop_card"), #selector(preview)), (L10n.text("application.show_recently_received_files"), #selector(revealReceived)),
                                 (L10n.text("updates.title"), #selector(checkUpdates)),
                                 (L10n.text("application.hide_menu_bar_icon"), #selector(hideMenu)), (L10n.text("application.about_peerjetty"), #selector(showAbout)), (L10n.text("settings.quit"), #selector(quit))] {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item)
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; if action == #selector(showTextHistory) { historyMenu = item }; menu.addItem(item)
         }
         menuItem?.menu = menu
     }
@@ -155,6 +179,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onPermissions = {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!)
             }
+            controller.onSendText = { [weak self] in self?.sendText() }
+            controller.onTextHistory = { [weak self] in self?.showTextHistory() }
+            controller.onClearTextHistory = { [weak self] in self?.deleteTextHistory(nil) }
+            controller.onTextHistoryVisibility = { [weak self] value in self?.setHistoryVisible(value) }
+            controller.onTextRetention = { [weak self] value in self?.setTextRetention(value) }
             controller.onUpdates = { [weak self] in self?.checkUpdates() }
             controller.onLanguage = { selection in LanguagePreferences().save(selection) }
             controller.onAutoOpen = { [weak self] enabled in
@@ -244,6 +273,131 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             try DeviceIdentity.reset(); try store?.update { $0.peers = []; $0.preferredPeer = nil; $0.onboardingComplete = false }
             NSApp.terminate(nil)
         } catch { showError(error.localizedDescription) }
+    }
+    private func ensureHistory() throws -> TextHistory {
+        if let history { return history }
+        let base = FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0]
+        let value = try TextHistory(url:base.appendingPathComponent("PeerJetty/TextHistory/history.sqlite"))
+        try value.clean(retention:store?.snapshot.textRetention ?? .latest500); history = value; return value
+    }
+    private func saveText(_ entry:TextEntry, completion:@escaping (UUID,Bool)->Void) {
+        historyQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                let id = try self.ensureHistory().add(entry,retention:self.store?.snapshot.textRetention ?? .latest500)
+                DispatchQueue.main.async { completion(id,true); self.textHistoryWindow?.reload() }
+            } catch {
+                DispatchQueue.main.async {
+                    self.volatileTexts[entry.id] = entry; self.volatileOrder.append(entry.id)
+                    if self.volatileOrder.count > 500 { self.volatileTexts.removeValue(forKey:self.volatileOrder.removeFirst()) }
+                    self.settings?.status(L10n.text("text.history_failed")); self.composer?.historyFailure(); completion(entry.id,false)
+                }
+            }
+        }
+    }
+    @objc private func sendText() {
+        guard let store else { showSettings(); return }
+        if composer == nil {
+            let value = TextComposer(); composer = value
+            value.onSend = { [weak self] text,peer in self?.engine?.sendText(text,peerID:peer) }
+            value.onConnect = { [weak self] peer in self?.engine?.connect(peerID:peer) }
+            value.onVisibility = { [weak self] screen in self?.drop?.setEditingScreen(screen) }
+        }
+        composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); composer?.present()
+    }
+    @objc private func showTextHistory() {
+        guard store?.snapshot.showTextHistory == true else { settings?.status(L10n.text("text.hidden_hint")); return }
+        if textHistoryWindow == nil {
+            let value = TextHistoryWindow(); textHistoryWindow = value
+            value.onLoad = { [weak self] offset in
+                guard let self else { return }
+                self.historyQueue.async {
+                    do {
+                        let rows = try self.ensureHistory().list(retention:self.store?.snapshot.textRetention ?? .latest500,offset:offset)
+                        DispatchQueue.main.async { self.textHistoryWindow?.update(rows) }
+                    } catch { DispatchQueue.main.async { self.textHistoryWindow?.update([],error:error) } }
+                }
+            }
+            value.onOpen = { [weak self] id in self?.openText(id) }
+            value.onDelete = { [weak self] id in self?.deleteTextHistory(id) }
+        }
+        textHistoryWindow?.present()
+    }
+    @objc private func openLatestText() {
+        guard let id = latestText else { showError(L10n.text("text.no_received")); return }; openText(id)
+    }
+    private func openText(_ id:UUID) {
+        if let entry = volatileTexts[id] { textReader?.close(); textReader = TextReader(entry:entry,saved:false); textReader?.present(); return }
+        historyQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                let entry = try self.ensureHistory().get(id,retention:self.store?.snapshot.textRetention ?? .latest500)
+                DispatchQueue.main.async {
+                    guard let entry else { self.showError(L10n.text("text.expired")); return }
+                    self.textReader?.close(); self.textReader = TextReader(entry:entry); self.textReader?.present()
+                }
+            } catch { DispatchQueue.main.async { self.showError(error.localizedDescription) } }
+        }
+    }
+    private func confirmTextAction(_ key:String) -> Bool {
+        let alert = NSAlert(); alert.messageText = L10n.text(key)
+        alert.informativeText = L10n.text("text.delete_hint"); alert.addButton(withTitle:L10n.text("text.confirm")); alert.addButton(withTitle:L10n.text("dropzone.cancel"))
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+    private func deleteTextHistory(_ id:UUID?, completion:(()->Void)? = nil, confirmed:Bool = false) {
+        guard confirmed || confirmTextAction(id == nil ? "text.clear" : "text.delete") else { return }
+        historyQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                try self.ensureHistory().delete(id)
+                DispatchQueue.main.async {
+                    if let id { self.volatileTexts.removeValue(forKey:id); self.volatileOrder.removeAll { $0 == id } }
+                    else { self.volatileTexts.removeAll(); self.volatileOrder.removeAll() }
+                    self.textReader?.close(); self.textHistoryWindow?.reload(); completion?()
+                }
+            } catch { DispatchQueue.main.async { self.showError(error.localizedDescription); self.syncTextSettings() } }
+        }
+    }
+    private func syncTextSettings() {
+        if let config = store?.snapshot {
+            settings?.textHistoryState(config.showTextHistory,retention:config.textRetention)
+            historyMenu?.isHidden = !config.showTextHistory
+            if !config.showTextHistory { textHistoryWindow?.close() }
+        }
+    }
+    private func setHistoryVisible(_ value:Bool) {
+        let apply = { [weak self] in
+            do { try self?.store?.update { $0.showTextHistory = value }; self?.syncTextSettings() }
+            catch { self?.showError(error.localizedDescription); self?.syncTextSettings() }
+        }
+        guard !value else { apply(); return }
+        let alert = NSAlert(); alert.messageText = L10n.text("text.hide_title"); alert.informativeText = L10n.text("text.hide_hint")
+        for key in ["text.keep_hide","text.clear_hide","dropzone.cancel"] { alert.addButton(withTitle:L10n.text(key)) }
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: apply()
+        case .alertSecondButtonReturn: deleteTextHistory(nil,completion:apply,confirmed:true)
+        default: syncTextSettings()
+        }
+    }
+    private func setTextRetention(_ value:TextRetention) {
+        guard let old = store?.snapshot.textRetention, old != value else { return }
+        if value != .forever && !confirmTextAction("text.retention_confirm") { syncTextSettings(); return }
+        do { try store?.update { $0.textRetention = value }; syncTextSettings() }
+        catch { showError(error.localizedDescription); syncTextSettings(); return }
+        historyQueue.async { [weak self] in
+            do { try self?.ensureHistory().clean(retention:value); DispatchQueue.main.async { self?.textHistoryWindow?.reload() } }
+            catch { DispatchQueue.main.async { self?.showError(error.localizedDescription) } }
+        }
+    }
+    private func notifyText(id:UUID,peerName:String,saved:Bool) {
+        let content = textNotificationContent(id:id,peerName:peerName,saved:saved)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier:"text-"+id.uuidString,content:content,trigger:nil))
+    }
+    func userNotificationCenter(_ center:UNUserNotificationCenter, didReceive response:UNNotificationResponse, withCompletionHandler completion:@escaping ()->Void) {
+        if let value = response.notification.request.content.userInfo["textEntry"] as? String, let id = UUID(uuidString:value) {
+            DispatchQueue.main.async { [weak self] in self?.openText(id) }
+        }
+        completion()
     }
     private func requestNotifications() {
         guard !notificationRequested else { return }; notificationRequested = true

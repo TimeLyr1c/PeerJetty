@@ -14,6 +14,11 @@ final class SettingsController: NSWindowController {
     var onReveal: (() -> Void)?
     var onManual: (() -> Void)?
     var onPermissions: (() -> Void)?
+    var onTextHistoryVisibility: ((Bool) -> Void)?
+    var onTextRetention: ((TextRetention) -> Void)?
+    var onTextHistory: (() -> Void)?
+    var onClearTextHistory: (() -> Void)?
+    var onSendText: (() -> Void)?
     var onUpdates: (() -> Void)?
     var onLanguage: ((DisplayLanguage) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
@@ -29,6 +34,9 @@ final class SettingsController: NSWindowController {
     private let connectionLabel = NSTextField(wrappingLabelWithString: "")
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
+    private let historyOpen = NSButton()
+    private let showHistory = NSSwitch()
+    private let retention = NSPopUpButton()
     private var peers: [DiscoveredPeer] = []
     init(configuration: Configuration, displayLanguage: DisplayLanguage = LanguagePreferences().selection) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: min(810, (NSScreen.main?.visibleFrame.height ?? 900) - 70)), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
@@ -59,6 +67,16 @@ final class SettingsController: NSWindowController {
         openHint.font = .systemFont(ofSize: 11); openHint.textColor = .secondaryLabelColor
         let languageHint = NSTextField(wrappingLabelWithString: L10n.text("settings.language_restart"))
         languageHint.font = .systemFont(ofSize: 11); languageHint.textColor = .secondaryLabelColor
+        historyOpen.title = L10n.text("text.history_title"); historyOpen.target = self; historyOpen.action = #selector(openTextHistory); historyOpen.bezelStyle = .rounded
+        historyOpen.identifier = NSUserInterfaceItemIdentifier("textHistoryEntry"); showHistory.identifier = NSUserInterfaceItemIdentifier("textHistoryVisibility"); retention.identifier = NSUserInterfaceItemIdentifier("textRetention")
+        historyOpen.isHidden = !configuration.showTextHistory
+        showHistory.state = configuration.showTextHistory ? .on : .off
+        showHistory.target = self; showHistory.action = #selector(toggleTextHistory)
+        retention.addItems(withTitles:[L10n.text("text.keep500"),L10n.text("text.keep30"),L10n.text("text.keep_forever")])
+        retention.selectItem(at:TextRetention.allCases.firstIndex(of:configuration.textRetention) ?? 0)
+        retention.target = self; retention.action = #selector(changeRetention)
+        let historyHint = NSTextField(wrappingLabelWithString:L10n.text("text.history_setting_hint"))
+        historyHint.font = .systemFont(ofSize:11); historyHint.textColor = .secondaryLabelColor
         let rows: [NSView] = [title, intro,
             row([NSTextField(labelWithString: L10n.text("settings.language")), language]), languageHint,
             row([NSTextField(labelWithString: L10n.text("settings.device_name")), name, button(L10n.text("settings.save_finish_setup"), #selector(save))]),
@@ -71,6 +89,10 @@ final class SettingsController: NSWindowController {
             row([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview)), button(L10n.text("settings.cancel_transfer"), #selector(cancel))]),
             progressLabel, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal)), separator(),
             row([NSTextField(labelWithString: L10n.text("settings.open_after_receiving")), autoOpen]), openHint,
+            row([NSTextField(labelWithString:L10n.text("text.show_history")),showHistory,historyOpen]),
+            historyHint,
+            row([NSTextField(labelWithString:L10n.text("text.retention")),retention,button(L10n.text("text.clear"),#selector(clearTextHistory))]),
+            button(L10n.text("text.send_title"),#selector(sendText)),
             row([NSTextField(labelWithString: L10n.text("settings.start_at_login")), login, button(L10n.text("settings.local_network_access"), #selector(permissions))]),
             row([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
             statusLabel, version]
@@ -141,6 +163,15 @@ final class SettingsController: NSWindowController {
     }
     @objc private func toggleAutoOpen() { onAutoOpen?(autoOpen.state == .on) }
     @objc private func toggleLogin() { onLogin?(login.state == .on) }
+    func textHistoryState(_ visible:Bool, retention value:TextRetention) {
+        historyOpen.isHidden = !visible
+        showHistory.state = visible ? .on : .off; retention.selectItem(at:TextRetention.allCases.firstIndex(of:value) ?? 0)
+    }
+    @objc private func toggleTextHistory() { onTextHistoryVisibility?(showHistory.state == .on) }
+    @objc private func changeRetention() { if TextRetention.allCases.indices.contains(retention.indexOfSelectedItem) { onTextRetention?(TextRetention.allCases[retention.indexOfSelectedItem]) } }
+    @objc private func openTextHistory() { onTextHistory?() }
+    @objc private func clearTextHistory() { onClearTextHistory?() }
+    @objc private func sendText() { onSendText?() }
     @objc private func checkUpdates() { onUpdates?() }
     @objc private func reset() { onReset?() }
     @objc private func quit() { onQuit?() }

@@ -42,12 +42,19 @@ Wait for the confirmation that the other Mac has saved the files. Receiving is a
 
 If discovery fails, check network permissions and Wi-Fi client isolation. The settings window also provides an address and port for manual connection, with the same pairing checks. A new device must be paired again; remove the old device's trust when replacing it. Never copy or sync private device identities.
 
+## Text (0.4.0 source/test build)
+
+The menu bar’s **Send Text…** opens a multiline input panel. Pick a paired device, type or paste, then press ⌘Enter. Received text opens for viewing and explicit copying; it never replaces the clipboard or opens links automatically. Both devices need text support; older versions still transfer files.
+
+Successful text sends and receipts are **always saved on each Mac**. Settings can hide the history entry, but hiding does not stop recording. Retention defaults to the latest 500 entries, with 30-day and forever options. See [text usage and privacy](Docs/TEXT.md). The current public 0.3.2 installer does not include this feature; 0.4.0 is a local test candidate.
+
 ## Scope and privacy
 
 - Local network only; both devices must be online and awake. No cloud relay, SSH, account, or hardcoded device credentials.
 - PeerJetty includes manual Check for updates in Settings and the menu bar; see [update instructions](Docs/UPDATES.md). No Windows client, automatic installation, offline queue, or resumable transfers yet. Retry interrupted transfers from the start.
 - The app opens a stationary rounded card when files approach the upper center below the menu bar, on both notch and non-notch screens. There is no need to touch the physical screen edge. See the [display design and validation checklist](Docs/DISPLAY-PLAN.md).
 - Settings stay in `~/Library/Application Support/PeerJetty/`; private identity is stored in the local Keychain. Do not share these through Git or cloud sync.
+- Text history lives at `~/Library/Application Support/PeerJetty/TextHistory/history.sqlite` (current-user access only). It is separate from source and installers; do not sync it with Dropbox or Git.
 - Pairing uses this project's own protocol and has not undergone an independent security audit. See the [protocol documentation](Docs/PROTOCOL.md).
 
 ## Build from source

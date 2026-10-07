@@ -113,3 +113,10 @@
 2026-10-05 后续计划更新：版本管理、GitHub 准备、改名、多语言支持（i18n）和应用内更新分别见 [ROADMAP.md](ROADMAP.md)、[WORKFLOW.md](WORKFLOW.md)、[PUBLISHING.md](PUBLISHING.md)。原始计划留作设计背景。
 
 2026-10-05 改名补充：当前源码目录为 `~/Developer/Projects/PeerJetty/`，构建产物为 `outputs/PeerJetty.app`。以上 OpenOnMini 引用保留最初设计与历史来源语境；当前使用与升级兼容规则见 README 和 WORKFLOW。
+
+
+## 2026-10-07：纯文本与本机历史
+
+按用户确认方案扩展文本，协议版本与配对身份保持不变；实现与操作说明见 [TEXT.md](TEXT.md)，最新待验收项见 [ROADMAP.md](ROADMAP.md)。文本成功收发始终记录，不沿用最初“历史开关停录”的想法；当前开关只控制历史入口显示。文本独立于文件接收路径和自动打开，保留默认 500 条、30 天或一直保留。
+
+核心：`Sources/PeerCore/TextTransfer.swift`（规则与去重）、`TextHistory.swift`（系统 SQLite），传输仍由 `PeerEngine.swift` 统一认证和分发。界面：`Sources/PeerJetty/TextWindows.swift`，由 `Application.swift` 接入菜单、通知和串行存储，设置由 `Settings.swift` 管理。自动检查：`Tests/TextTests/TextTests.swift` / `Scripts/test-text.sh`。数据库为用户运行时状态，不放源码、Dropbox 或安装包。

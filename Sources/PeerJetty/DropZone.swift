@@ -157,6 +157,10 @@ final class DropPanelController {
     }
     func show() { show(on: nil) }
     private func show(on screen: NSScreen?, immediately: Bool = false) {
+        let destination = screen ?? (visible ? selectedScreen() : mouseScreen())
+        if let destination, editingScreenID != nil, screenID(destination) == editingScreenID {
+            revision += 1; hidePending = false; visible = false; panel.orderOut(nil); return
+        }
         if visible {
             if hidePending { revision += 1; hidePending = false }
             return
@@ -200,7 +204,16 @@ final class DropPanelController {
         if !busy { view.idle() }
         keepUntil = Date().addingTimeInterval(5); show(); hide(after: 5)
     }
+    var editingScreenID: NSNumber?
+    func setEditingScreen(_ screen:NSScreen?) {
+        editingScreenID = screen.flatMap { screenID($0) }
+        if let screen, let selected = selectedScreen(), screenID(selected) == screenID(screen) {
+            revision += 1; hidePending = false; visible = false; panel.orderOut(nil)
+        } else if busy { show(on:selectedScreen()) }
+    }
+    var isVisible: Bool { visible }
     private func poll() {
+        if let screen = mouseScreen(), screenID(screen) == editingScreenID, editingScreenID != nil { return }
         let pressed = NSEvent.pressedMouseButtons & 1 == 1
         let location = NSEvent.mouseLocation
         let board = NSPasteboard(name: .drag)

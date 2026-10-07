@@ -101,7 +101,24 @@ struct LocalizationChecks {
         if let picker = languagePicker, let action = picker.action { NSApp.sendAction(action, to: picker.target, from: picker) }
         check(changed == .simplifiedChinese, "Picker dispatches selected language")
         check(document.frame.height >= scroll.contentView.bounds.height, "Scrollable short screen")
+        func descendants(_ view:NSView) -> [NSView] { [view] + view.subviews.flatMap {descendants($0)} }
+        let controls = descendants(document)
+        let historyEntry = controls.first {$0.identifier?.rawValue == "textHistoryEntry"} as! NSButton
+        let historyVisibility = controls.first {$0.identifier?.rawValue == "textHistoryVisibility"} as! NSSwitch
+        let retentionControl = controls.first {$0.identifier?.rawValue == "textRetention"} as! NSPopUpButton
+        check(!historyEntry.isHidden && historyVisibility.state == .on && retentionControl.indexOfSelectedItem == 0,"History settings upgrade defaults")
+        settings.textHistoryState(false,retention:.thirtyDays)
+        check(historyEntry.isHidden && historyVisibility.state == .off && retentionControl.indexOfSelectedItem == 1,"Hidden history entry and persisted retention selection")
+        settings.textHistoryState(true,retention:.latest500)
         print("PASS: " + L10n.language + " settings layout at 650×600")
+        if let index = CommandLine.arguments.firstIndex(of: "--snapshot-bottom"), CommandLine.arguments.count > index+1 {
+            content.layoutSubtreeIfNeeded()
+            scroll.contentView.scroll(to:NSPoint(x:0,y:max(0,document.bounds.height-scroll.contentView.bounds.height)))
+            scroll.reflectScrolledClipView(scroll.contentView)
+            let bitmap = content.bitmapImageRepForCachingDisplay(in:content.bounds)!
+            content.cacheDisplay(in:content.bounds,to:bitmap)
+            try bitmap.representation(using:.png,properties:[:])!.write(to:URL(fileURLWithPath:CommandLine.arguments[index+1]))
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.arguments.count > index + 1 {
             guard let bitmap = content.bitmapImageRepForCachingDisplay(in: content.bounds) else { fatalError("No bitmap") }
             content.cacheDisplay(in: content.bounds, to: bitmap)

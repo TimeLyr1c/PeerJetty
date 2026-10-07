@@ -60,6 +60,7 @@ public final class TextHistory {
         lock.lock(); defer { lock.unlock() }
         try execute("BEGIN IMMEDIATE")
         do {
+            try prune(retention, now: now)
             let stmt = try statement("INSERT OR IGNORE INTO entries VALUES (?,?,?,?,?,?,?)"); defer { sqlite3_finalize(stmt) }
             for (index, value) in [entry.id.uuidString,entry.messageID.uuidString,entry.direction.rawValue,entry.peerID,entry.peerName].enumerated() { bind(value, Int32(index+1), stmt) }
             sqlite3_bind_double(stmt, 6, entry.date.timeIntervalSince1970); bind(entry.text, 7, stmt)
@@ -67,7 +68,11 @@ public final class TextHistory {
             let lookup = try statement("SELECT id,body FROM entries WHERE message=? AND direction=? AND peer=?"); defer { sqlite3_finalize(lookup) }
             bind(entry.messageID.uuidString,1,lookup); bind(entry.direction.rawValue,2,lookup); bind(entry.peerID,3,lookup)
             guard sqlite3_step(lookup) == SQLITE_ROW, let id = UUID(uuidString:string(lookup,0)), Data(string(lookup,1).utf8) == Data(entry.text.utf8) else { throw PeerError.localized("text.history_error", []) }
-            try prune(retention, now: now); try execute("COMMIT"); return id
+            try prune(retention, now: now)
+            let visible = try statement("SELECT id FROM entries WHERE id=?"); defer { sqlite3_finalize(visible) }
+            bind(id.uuidString,1,visible)
+            guard sqlite3_step(visible) == SQLITE_ROW else { throw PeerError.localized("text.history_error", []) }
+            try execute("COMMIT"); return id
         } catch { try? execute("ROLLBACK"); throw error }
     }
     public func list(retention: TextRetention, limit: Int = 100, offset: Int = 0, now: Date = Date()) throws -> [TextEntry] {
