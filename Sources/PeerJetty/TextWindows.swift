@@ -19,9 +19,38 @@ struct TextPanelPlacement {
 private final class TextPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
-final class ComposerTextView: NSTextView {
+/// Menu-bar apps have no standard Edit menu to dispatch these key equivalents.
+/// Delegate to native text actions only after an explicit user shortcut.
+class PlainTextView: NSTextView {
+    private func editShortcut(_ event:NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.command), !event.modifierFlags.contains(.option), !event.modifierFlags.contains(.control) else { return false }
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "a": selectAll(nil)
+        case "c": copy(nil)
+        case "x": if isEditable { cut(nil) }
+        case "v": if isEditable { pasteAsPlainText(nil) }
+        case "z":
+            if isEditable {
+                if event.modifierFlags.contains(.shift) { if undoManager?.canRedo == true { undoManager?.redo() } }
+                else if undoManager?.canUndo == true { undoManager?.undo() }
+            }
+        default: return false
+        }
+        return true
+    }
+    override func performKeyEquivalent(with event:NSEvent) -> Bool { editShortcut(event) || super.performKeyEquivalent(with:event) }
+    override func keyDown(with event:NSEvent) { if !editShortcut(event) { super.keyDown(with:event) } }
+}
+final class ComposerTextView: PlainTextView {
     var sendCommand: (() -> Void)?
     var closeCommand: (() -> Void)?
+    override func performKeyEquivalent(with event:NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command), event.keyCode == 36 {
+            guard !hasMarkedText() else { return false }
+            sendCommand?(); return true
+        }
+        return super.performKeyEquivalent(with:event)
+    }
     override func keyDown(with event: NSEvent) {
         if !hasMarkedText(), event.modifierFlags.contains(.command), event.keyCode == 36 { sendCommand?(); return }
         if !hasMarkedText(), event.keyCode == 53 { closeCommand?(); return }
@@ -30,7 +59,7 @@ final class ComposerTextView: NSTextView {
 }
 func plainTextScroll(_ text: NSTextView, frame: NSRect) -> NSScrollView {
     let scroll = NSScrollView(frame: frame); scroll.hasVerticalScroller = true; scroll.borderType = .bezelBorder
-    text.isRichText = false; text.importsGraphics = false; text.isAutomaticLinkDetectionEnabled = false
+    text.allowsUndo = true; text.isRichText = false; text.importsGraphics = false; text.isAutomaticLinkDetectionEnabled = false
     text.isAutomaticDataDetectionEnabled = false; text.isAutomaticTextReplacementEnabled = false
     text.isAutomaticSpellingCorrectionEnabled = false; text.smartInsertDeleteEnabled = false
     text.isAutomaticQuoteSubstitutionEnabled = false; text.isAutomaticDashSubstitutionEnabled = false
@@ -75,8 +104,8 @@ final class TextComposer: NSWindowController, NSWindowDelegate {
         [targets,connect,scroll,status,close,sendButton].forEach { panel.contentView?.addSubview($0) }
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
-    func updatePeers(_ value:[DiscoveredPeer], preferred:String?) {
-        let selected = selectedPeer?.id ?? preferred
+    func updatePeers(_ value:[DiscoveredPeer], preferred:String?, resetSelection:Bool = false) {
+        let selected = resetSelection && pending == nil && editor.string.isEmpty ? preferred : selectedPeer?.id ?? preferred
         peers = value.filter(\.paired); targets.removeAllItems()
         for peer in peers {
             let state = !peer.connected ? L10n.text("text.offline_short") : peer.supportsText == false ? L10n.text("text.old_peer") : L10n.text("text.online")
@@ -126,7 +155,7 @@ final class TextComposer: NSWindowController, NSWindowDelegate {
     }
 }
 final class TextReader: NSWindowController {
-    private let text = NSTextView()
+    private let text = PlainTextView()
     private let pasteboard: NSPasteboard
     init(entry:TextEntry, saved:Bool = true, pasteboard:NSPasteboard = .general) {
         self.pasteboard = pasteboard
@@ -147,7 +176,7 @@ final class TextReader: NSWindowController {
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
     @objc private func copyText() { pasteboard.clearContents(); pasteboard.setString(text.string,forType:.string) }
-    func present() { showWindow(nil); NSApp.activate(ignoringOtherApps:true); window?.makeKeyAndOrderFront(nil) }
+    func present() { showWindow(nil); NSApp.activate(ignoringOtherApps:true); window?.makeKeyAndOrderFront(nil); window?.makeFirstResponder(text) }
 }
 final class TextHistoryWindow: NSWindowController, NSTableViewDataSource, NSTableViewDelegate {
     var onLoad: ((Int) -> Void)?

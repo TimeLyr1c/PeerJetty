@@ -87,11 +87,30 @@ static func main() throws {
     composer.sendText(); composer.result(pending,error:nil); check(composer.editor.string.isEmpty,"only acknowledged draft cleared")
     check(composer.window!.canBecomeKey,"panel accepts focus"); check(composer.window!.makeFirstResponder(composer.editor),"editor first responder")
     check(!composer.editor.isRichText && !composer.editor.isAutomaticLinkDetectionEnabled,"plain inert text")
+    composer.editor.string = "Select me"; composer.editor.setSelectedRange(NSRange(location:0,length:0))
+    let commandA = NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:.command,timestamp:0,windowNumber:composer.window!.windowNumber,context:nil,characters:"a",charactersIgnoringModifiers:"a",isARepeat:false,keyCode:0)!
+    composer.editor.keyDown(with:commandA)
+    check(composer.editor.selectedRange().length == 9,"CmdA works without an application Edit menu")
+    let shortcuts = ClipboardShortcutSpy()
+    for (key,code) in [("c",8),("v",9),("x",7)] {
+        let event = NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:.command,timestamp:0,windowNumber:0,context:nil,characters:key,charactersIgnoringModifiers:key,isARepeat:false,keyCode:UInt16(code))!
+        check(shortcuts.performKeyEquivalent(with:event),"standard edit shortcut handled")
+    }
+    check(shortcuts.copied && shortcuts.pasted && shortcuts.cutText,"CmdC/V/X use native copy, plain paste and cut actions")
     composer.editor.string = "before"; composer.editor.keyDown(with:NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:[],timestamp:0,windowNumber:composer.window!.windowNumber,context:nil,characters:"\r",charactersIgnoringModifiers:"\r",isARepeat:false,keyCode:36)!)
     check(composer.editor.string.contains("\n"),"Enter inserts newline")
     composer.editor.string = "keyboard"; composer.editor.keyDown(with:NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:.command,timestamp:0,windowNumber:composer.window!.windowNumber,context:nil,characters:"\r",charactersIgnoringModifiers:"\r",isARepeat:false,keyCode:36)!)
     check(sent == "keyboard","CmdEnter sends")
     composer.result(pending,error:nil)
+    composer.editor.string = "native equivalent"
+    let commandReturn = NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:.command,timestamp:0,windowNumber:composer.window!.windowNumber,context:nil,characters:"\r",charactersIgnoringModifiers:"\r",isARepeat:false,keyCode:36)!
+    check(composer.editor.performKeyEquivalent(with:commandReturn) && sent == "native equivalent","native key-equivalent dispatch sends CmdEnter")
+    composer.result(pending,error:nil)
+    let alternative = DiscoveredPeer(id:"q",name:"Alternative",paired:true,connected:true,supportsText:true)
+    composer.updatePeers([peer,alternative],preferred:"q",resetSelection:true)
+    check(composer.selectedPeer?.id == "q","new empty composer follows current file target")
+    composer.editor.string = "draft"; composer.updatePeers([peer,alternative],preferred:"p",resetSelection:true)
+    check(composer.selectedPeer?.id == "q","unsent draft preserves temporary target")
     // Inspect resized controls without launching the production app.
     composer.window?.setContentSize(NSSize(width:450,height:300))
     for view in composer.window!.contentView!.subviews { check(view.frame.minX >= 0 && view.frame.maxX <= 450 && view.frame.minY >= 0 && view.frame.maxY <= 300,"small panel controls in bounds") }
@@ -123,6 +142,7 @@ static func main() throws {
     composer.editor.string = ""; composer.editor.setMarkedText("zhong",selectedRange:NSRange(location:5,length:0),replacementRange:NSRange(location:NSNotFound,length:0))
     check(composer.editor.hasMarkedText(),"input-method composition is active")
     let beforeComposition = sent
+    check(!composer.editor.performKeyEquivalent(with:commandReturn) && composer.editor.hasMarkedText() && sent == beforeComposition,"key-equivalent route leaves unfinished composition to the input method")
     composer.editor.keyDown(with:NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:.command,timestamp:0,windowNumber:composer.window!.windowNumber,context:nil,characters:"\r",charactersIgnoringModifiers:"\r",isARepeat:false,keyCode:36)!)
     check(sent == beforeComposition,"CmdEnter does not send unfinished composition"); composer.editor.unmarkText()
     composer.window?.orderFront(nil)
@@ -277,4 +297,11 @@ private final class RawPeer {
     func start(){wire.connection.start(queue:.main)}
     func close(){wire.close()}
     func text(_ id:UUID,_ body:String){var message=Message("text");message.transfer=id;message.text=body;wire.send(message)}
+}
+
+private final class ClipboardShortcutSpy: PlainTextView {
+    var copied=false,pasted=false,cutText=false
+    override func copy(_ sender:Any?) {copied=true}
+    override func pasteAsPlainText(_ sender:Any?) {pasted=true}
+    override func cut(_ sender:Any?) {cutText=true}
 }

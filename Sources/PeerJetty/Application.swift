@@ -303,7 +303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             value.onConnect = { [weak self] peer in self?.engine?.connect(peerID:peer) }
             value.onVisibility = { [weak self] screen in self?.drop?.setEditingScreen(screen) }
         }
-        composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); composer?.present()
+        composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer,resetSelection:true); composer?.present()
     }
     @objc private func showTextHistory() {
         guard store?.snapshot.showTextHistory == true else { settings?.status(L10n.text("text.hidden_hint")); return }
