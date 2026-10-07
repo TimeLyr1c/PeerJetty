@@ -1,5 +1,16 @@
 # Changes
 
+## 0.4.0 / build 12 — local test candidate, 2026-10-07
+
+Adds Send Text from the menu bar: a focused multiline panel with paired targets, ⌘Enter to send, Esc to close, and runtime-only drafts. Text uses existing paired TLS identities with optional `text-v1` negotiation, a 256 KiB UTF-8 limit, matching receipt IDs, bounded queues and duplicate protection. Unconfirmed sends time out after 30 seconds without automatic retries; older peers can still transfer files.
+
+Successful sends and receipts are always saved in a private local SQLite history. Show Text History hides the entry without stopping recording; keep the latest 500 entries, 30 days or forever, with explicit hide/clear/retention choices. Receipt notifications expose only device names; click to view and explicitly copy. Text never overrides the clipboard or opens links automatically and is independent of file auto-open. Includes bilingual UI/docs and isolated storage, AppKit and TLS checks. Physical two-Mac acceptance remains pending. This candidate is not a public GitHub Release.
+
+菜单栏新增“发送文本”：顶部多行输入、已配对目标、⌘Enter 发送、Esc 关闭、本次运行草稿。复用配对 TLS 身份，通过可选 `text-v1` 能力传输，单条最大 256 KiB UTF-8，匹配收到确认，限制队列并防重复；30 秒无确认提示未确认收到，不自动重发，旧版仍可传文件。
+
+成功收发始终保存到本机私有 SQLite 历史。“显示文本历史”仅隐藏入口，不停止记录；默认最近 500 条，可改为 30 天或一直保留，隐藏／清空／缩短保留前明确确认。通知仅显示设备名称，点击查看并主动复制，不自动改剪贴板或打开链接，不受文件自动打开影响。包含中英文和隔离检查，双机实机验收仍待完成；本轮不发布 GitHub Release。
+
+
 ## 0.3.2 / build 11 — stable release, 2026-10-07
 
 Adds manual Check for updates from the menu bar and Settings. Reads GitHub’s Latest stable Release without authentication, compares numeric product versions, displays notes and opens the matching release page for manual DMG installation. Handles no releases, missing installers, local builds ahead of public releases, network errors and rate limits. Does not download/install automatically or modify pairing and transfer settings.
