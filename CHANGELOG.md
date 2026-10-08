@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0 / build 20 — local visual experiment, 2026-10-08
+
+After confirmed file progress completes, the ring makes two vertical-axis turns with three faint fading trails, changing blue to green during rotation; only then draws the check. Suppresses trails for Reduce Transparency/Increase Contrast, respects Reduce Motion, and clears all effects on new progress or cancellation. Success hold includes the extra flip stage. Original payment-style visual experiment, not an exact Apple animation copy. Text and transfer protocol unchanged; local App/DMG only, build19 retained.
+
+文件确认成功并补齐后，圆环绕竖轴翻转两圈，带三层渐淡拖影，翻转中由蓝变绿，停稳后才画对勾。减少透明度／增强对比度禁用拖影，减少动态效果直接收稳，新任务或取消清除旧效果；成功停留覆盖新增翻转阶段。自行设计的支付式视觉试验，非精确复制 Apple 动画；文本与协议不变，仅本地 App／DMG，保留 build19。
+
 ## 0.4.0 / build 19 — local test candidate, 2026-10-08
 
 Gives the drop-card spring initial momentum for a faster far-away return and slower approach. The file ring now smoothly retargets from current position/velocity with a visual rate cap (Fast 300%, Natural 150%, Relaxed 100% per second), never exceeding real progress. Slows confirmed ring-to-check feedback to at least 650/1200/1750 ms; rate-limited final fill may extend it. Hold starts after the actual sequence, with new transfers/cancellation still preempting safely. No transfer delay, fake progress or new continuous task. Includes native motion, burst/tiny-update rate checks and bilingual layouts; physical Air/mini acceptance pending. Local App/DMG only; build18 retained.

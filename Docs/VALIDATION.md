@@ -232,3 +232,13 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - Native Natural preview captured 75 real frames (~7.9 s), saved with timestamps in ignored `outputs/previews/motion-build19/`. Contact sheets show real material, ring fill, delayed check and eventual disappearance. Capture remains low-resolution/~10 fps and can miss the first spring frames; it is not proof of exact subjective feel or single-frame flash absence. Air/mini full-resolution acceptance remains pending.
 
 完整动画及双语／几何回归通过；新增 14,472 个轨迹采样检查，覆盖限速、单调、不超真实进度和频繁更新连续性，实测瞬间成功的延长补齐及停留保护。原生低分辨率回放可见更慢的圆环／对勾；Air／mini 实际手感仍待用户确认。仅本地 build19，保留 build18，不安装、推送或发布。
+
+
+## Success ring flip experiment / 成功圆环翻转试验 — 2026-10-08, build20
+
+- Full `test-motion.sh --deliver-preview` passed on the unlocked desktop, including existing spring/rate/hold/native window/text checks and new two-turn/color/trail tests. 404 angle samples are forward-only and end at 4π; ring and all three lagged ghosts end facing forward. Color transition shares the flip interval; check begins only after the rotation ends.
+- Fixed six shape layers (track, three ghosts, arc, tick), at most 14 custom effects for this sequence. Gray stationary track is hidden during success. Models retain identity transforms and zero ghost opacity; every keyed effect is finite. Live Reduce Transparency/Increase Contrast removes ghost effects without cancelling success; disabling motion settles once; new progress invalidates old flip/ghost/completion callbacks.
+- `test-drop-presentation.sh` passed five geometry groups and 24 bilingual layouts; both `test-localization.sh` language runs passed 320 keys and 20 native layout/appearance groups each. No protocol, database, identity, actual transfer or text success change.
+- Captured 90 native preview frames (~9.3 s) with timestamps in ignored `outputs/previews/motion-build20/natural.gif`. Contact sheets visibly show the circle becoming edge-on/front-facing, blue-to-green progression, then the check. Capture remains low-resolution/~10 fps: faint trails and precise curvature still require full-resolution Air/mini acceptance. No long-run GPU benchmark is claimed; no continuous task, particle emitter or custom display loop was added.
+
+两圈翻转、三层渐淡拖影、颜色区间与对勾开始顺序检查通过，并回归了限速、停留、取消、新任务、系统辅助显示和原生窗口行为。真实低分辨率截帧可见圆环侧转、蓝绿变化与随后对勾；细微拖影及主观观感仍需 Air／mini 全分辨率试用。仅交付 build20 本地视觉试验包，保留 build19，不安装、推送或发布。
