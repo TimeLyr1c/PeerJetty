@@ -18,23 +18,39 @@ The native card sits in a transparent host with 32-point padding on each side. A
 
 ## Motion / 运动
 
-- Actual file drag: immediate, fixed card; the icon alone has a short feedback pulse.
-- Non-drag preview and first text composer/reader appearance: 240 ms, 0.98→1 content scale with a damped spring and smooth window opacity. Keyboard focus is immediate.
-- Dismissal: 160 ms. Status changes: 120 ms fade. Confirmed success: 220 ms icon pulse, once per file transfer ID; failed/unconfirmed text never produces success feedback.
-- No new custom opening animation for settings/history. Disabling motion presents final states and cancels active custom effects.
-- Reopening invalidates old hide completions. Core Animation uses bounded keyed effects, replacing previous feedback from its presentation scale. Hidden content clears custom animations. No particles, perpetual animations or added polling loops.
+General → Animation speed offers **Fast / Natural / Relaxed**, defaulting to Natural for new and legacy configurations (unknown stored values also fall back). A change applies to the next effect; an active effect retains its captured timing. Existing text opening/closing and confirmed success feedback share the speed. Settings/history receive no new custom opening effects.
 
-实际拖拽：卡片立即出现且固定，只对图标做轻微反馈。非拖拽预览、文本发送／查看首次出现：240 毫秒、0.98→1 轻微缩放与柔和显现，焦点立即可用。收起 160 毫秒，状态淡化 120 毫秒，已确认成功图标反馈 220 毫秒；失败／未确认不播放成功。设置和历史不增加自定义开合动画。关闭动画立即收稳；重新打开会使旧收起回调失效，反馈不叠加，隐藏后清除自定义动画。不增加持续动画、粒子或轮询。
+通用 → 动画速度提供 **快速／自然／舒缓**，新安装、旧配置和未知保存值均默认自然；修改从下一次效果生效，当前效果使用开始时的节奏。文本开合及确认成功反馈使用同一档，设置／历史不增加开合动画。
+
+| Stage / 阶段 | Fast / 快速 | Natural / 自然 | Relaxed / 舒缓 |
+|---|---:|---:|---:|
+| Appear / 展开 | 220 ms | 340 ms | 480 ms |
+| Status / 文字过渡 | 100 ms | 180 ms | 240 ms |
+| Ring and check / 圆环与对勾 | 320 ms | 650 ms | 950 ms |
+| Hold after check / 完成后停留 | 1 s | 1.8 s | 2.8 s |
+| Dismiss / 收起 | 160 ms | 240 ms | 320 ms |
+
+The card expands in place from 97% using the same damping ratio (0.72) at all speeds. Actual drag targets are immediately visible and interactive; only rendering scales, never the window, physical hit area or shadow padding. Repeated drag sampling does not interrupt the spring. Keyboard focus is immediate. Disabling animations or enabling Reduce Motion cancels custom effects and presents final states, retaining success hold time.
+
+卡片从 97% 原位展开，三档使用相同阻尼比 0.72、轻微一次回弹。拖拽目标立即可见、立即接收，只缩放视觉层，不改变窗口、命中范围或阴影边距；重复拖拽采样不截断弹簧，文本焦点立即可用。关闭动画／系统减少动态效果时立即展示最终状态，仍保留成功停留。
+
+A small vector ring replaces the horizontal file progress bar. Known byte progress is monotonic; preparation/unknown totals show no invented percentage. Full bytes without the real success event show Waiting for confirmation. Only confirmed success completes the green ring, draws the short and long check strokes, then gently settles. Small files receive the full success sequence without delaying the actual transfer or replaying fictional progress. Failure, cancellation and unconfirmed transfers do not draw a check. Text retains its existing confirmed-success feedback rather than adopting this ring.
+
+少量矢量图层组成圆环，替代文件横向进度条；真实字节进度不倒退，准备或未知总量不造百分比，传完但未确认显示“等待确认”。仅真实成功事件补齐绿色圆环、依次画出两笔对勾并收稳；小文件也完整展示，不延迟传输、不补演假进度。失败／取消／未确认不画对勾；文本保留原有确认反馈。
+
+The card controller owns the hold deadline, starting after the check sequence finishes. Transfer IDs deduplicate success and invalidate stale hide callbacks; new transfers/drops take over immediately. Concurrent active transfers remain visible instead of being replaced by another transfer's completion. Dismissal orders the window out before restoring opacity. Keyed finite effects are cancelled on hiding; no spinner, particles, per-frame loop or added background polling.
+
+控制器从对勾结束统一计时；传输 ID 防重复，旧隐藏回调失效，新传输／投放立即接管。并行任务未结束时保留活动任务进度；隐藏窗口之后才恢复透明度。有限图层动画在隐藏后清除，无持续旋转、粒子、逐帧循环或新增后台轮询。
 
 ## Preview and checks / 预览与检查
 
-Run `Scripts/test-motion.sh --deliver-preview` (or add `--static-checks` when animated rendering is unavailable), then open `outputs/GlassMotionPreview.app`. It contains replay, fixed drag-target, light/dark and isolated text-input controls, plus a quit button. Fake transfer progress never connects devices, sends files, uses production identities or opens history. Do not confuse this preview with the product app.
+General → Preview animation opens an isolated native glass preview. Its local speed selector and Replay button simulate preparation, progress, confirmation and dismissal without changing the saved speed. It refuses real file drops and never connects devices, transfers files, opens history or accesses production identity. The animation toggle/Reduce Motion still applies. Close this window normally; the separate `outputs/GlassMotionPreview.app` test harness also provides ⌘Q.
 
-运行以上脚本后打开隔离预览，可回放出现、拖入、进度、成功、失败和收起，反复点击检查中断；可切换浅／深色和动画，查看独立文本输入。预览不连接设备、不传文件、不使用日常身份或历史。退出预览请点“退出预览”。
+通用 → 预览动画打开隔离原生玻璃预览；局部速度选择与“重新播放”演示准备、进度、确认和收起，不修改保存速度。拒绝真实文件投放，不连接设备、传文件、打开历史或访问日常身份；总开关和减少动态效果仍生效。正常关闭即可；独立测试预览还支持 ⌘Q。
 
-`Scripts/test-motion.sh --compare` compares the pre-change card at `630a441` with the working tree using a short isolated CPU/RSS sample. Set `PEERJETTY_MOTION_BASELINE_REF` to override that reference. These measurements exclude WindowServer/GPU and are not a full app benchmark. See [validation](VALIDATION.md) for results and outstanding physical checks.
+`Scripts/test-motion.sh --deliver-preview` builds that standalone harness. `Scripts/test-motion.sh --compare` compares build16 at `52a3415` with the working tree; `PEERJETTY_MOTION_BASELINE_REF` overrides the reference. Short CPU/RSS samples exclude WindowServer/GPU and are not a full app benchmark. Native low-resolution replay captures live in ignored `outputs/previews/motion-build17/`; they supplement, rather than replace, full-resolution Air/mini acceptance. See [validation](VALIDATION.md).
 
-短时性能采样只比较隔离 UI 进程，未包含 WindowServer／GPU，也不是整机或完整应用基准；数据与待验收内容见验证记录。
+短时 CPU／内存采样仅覆盖独立 UI 进程，未包含 WindowServer／GPU。忽略的预览目录保存三档真实低分辨率截帧回放，不能替代 Air／mini 全分辨率实机验收；结果见验证记录。
 
 ## References / 参考
 

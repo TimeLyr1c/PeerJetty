@@ -198,3 +198,15 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 菜单、配置迁移、四种组合、临时恢复、保存失败及公开启动事件分类通过隔离检查；中英文各 20 组布局、310 项文案、临时说明与隐藏按钮通过。静态投影参数和透明边距命中通过，原有拖放、文件和文本隔离回归通过。
 
 **真实动画与合成未验收**：当前 Mac 锁屏，原始 build15 动画实现／测试也不能正常结束；本轮用于诊断的动画改动已撤回，产品动画保持不变。需解锁后及在 mini 上检查真实投影、辅助显示、边缘点透、跨屏和无闪回，并验证登录／手动启动和隐藏时双向收发。仅交付本地 build16，不安装、推送或公开发布。
+
+
+## Relaxed motion and confirmed ring / 从容动画与确认圆环 — 2026-10-08, build17
+
+- Full `test-motion.sh` passed in the unlocked graphical session: exact speed table, legacy/unknown fallback, persistence and failed writes, constant spring damping, monotonic real progress, unknown/preparation and waiting-for-confirmation states, confirmed two-stroke success, disabled/Reduce Motion settlement, captured timing, hold protection, duplicate/parallel/new-transfer interruption and stale callback protection.
+- Native window tests passed: immediate fixed drag geometry, bounded effect cleanup, order-out before opacity reset, rapid reopen and toggle mid-dismissal; text focus, draft and close/reopen remain correct. Preview refuses registered file-drop types and uses a private policy without production identity/network/history access.
+- `test-drop-presentation.sh` passed five geometry groups and 24 bilingual layouts; `test-localization.sh` passed 320 synchronized keys and 20 light/dark/small-window groups per language, including speed callbacks/rollback and preview controls.
+- `test-text.sh` passed Unicode/JSON framing, SQLite retention/failure, AppKit input/draft, hostile TLS cases, ephemeral two-peer text and parallel-file transfer, real 30-second timeout and old-peer compatibility. `test.sh` passed nine core groups and seven integration groups. Tests use isolated identities/data.
+- Native captures in ignored `outputs/previews/motion-build17/`: Fast 50 frames (~5.0 s), Natural 60 (~5.9 s), Relaxed 65 (~6.5 s), encoded using capture timestamps. Contact sheets visibly show real glass, byte ring, check and disappearance; no obvious clipping. Captures are low resolution (~192 × 194) and ~10 fps: they do not prove full-resolution readability, exact spring curves or absence of a one-frame flash. Native callback/order tests cover the dismissal invariant. Physical Air/mini checks remain pending.
+- Short isolated process comparison against build16 `52a3415`: baseline idle CPU 0.0035 s / 1 s, 30 updates 0.0614 s, hidden CPU 0.0004 s / 1 s, peak RSS 61.3 MiB; current 0.0036 / 0.0470 / 0.0003 s, 59.5 MiB. Both settled with zero custom animations. This is a small sample, excludes WindowServer/GPU/full app polling and does not establish a performance improvement; no new continuous task or frame loop was introduced.
+
+完整动画测试已在解锁图形会话通过，覆盖配置、三档精确时长、阻尼、真实进度、确认／失败、停留、去重、并行与中断。中英文、布局、文本及文件隔离回归通过；真实截帧可见玻璃、圆环、对勾与收起，但低分辨率约 10fps，不据此宣称全分辨率观感或单帧无闪烁。短时独立进程开销与 build16 接近，不含系统合成／GPU，不作性能提升承诺。Air／mini 实机及辅助显示、跨屏、边缘点透、实际手感仍待用户确认。保留旧归档，仅交付本地 build17，不自动安装、推送或发布。

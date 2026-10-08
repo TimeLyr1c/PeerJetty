@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0 / build 17 — local test candidate, 2026-10-08
+
+Adds locally saved Fast / Natural / Relaxed motion, default Natural, and an isolated animation preview. Fixed drag targets remain immediately usable while the card gently springs in place. Real byte progress now uses a vector ring; only confirmed success completes it and draws a two-stroke check, followed by the selected hold time. Small files retain full success feedback; new/parallel transfers, duplicate completion and stale hide callbacks are guarded. Text effects share the speed; animation-off/Reduce Motion settles immediately without losing the hold. Includes bilingual documentation, automated regression checks and native preview captures. Air/mini physical acceptance remains pending. Local App/DMG only; no install, push or public release.
+
+新增本机保存的快速／自然／舒缓（默认自然）及隔离动画预览；拖拽目标立即可用，卡片原位轻弹。真实字节圆环仅在确认成功后补齐、画出两笔对勾，按所选速度停留；小文件保留完整反馈，防并行／新任务被旧成功或隐藏回调覆盖。文本效果共用速度；关闭动画／减少动态效果立即收稳但保留停留。含双语说明、自动回归及原生预览截帧；Air／mini 实机验收待确认，仅本地 App／DMG，不安装、推送或公开发布。
+
 ## 0.4.0 / build 16 — local test candidate, 2026-10-08
 
 Adds a padded transparent glass-card host with one static rounded floating shadow, retaining the card/drop geometry. Uses an explicit 18-point medium menu-bar symbol. Menu and Dock visibility are now independent saved preferences; legacy configurations preserve their prior combination. Reopening with both hidden temporarily restores only the menu icon and opens Settings, without changing saved choices. Login/service launches retain hidden preferences. Includes bilingual recovery controls and isolated state/layout/transfer checks. Physical Air/mini composition, click-through and launch acceptance remain pending. Local App/DMG only; no automatic installation or public release.
