@@ -126,23 +126,48 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         MotionPolicy.shared.enabled=false; composer.close(); MotionPolicy.shared.enabled=true
     }
     static func cardShapeTests() {
-        let samples = (0...100).map { MotionEffects.cardTransform(at:Double($0)/100) }
-        check(abs(samples[0].m11-0.92)<1e-9 && abs(samples[0].m22-0.82)<1e-9,"card starts visibly compressed on unequal axes")
-        check(samples[1].m22-samples[0].m22 > 0.007,"spring starts with velocity instead of a linear-looking slow start")
-        check(samples.map(\.m22).max()! > 1.005 && samples.map(\.m22).max()! <= 1.02,"bounded perceptible jelly overshoot")
-        let peak = samples.indices.max { samples[$0].m22 < samples[$1].m22 }!
-        check(peak >= 42 && peak <= 46 && samples[10].m22-samples[0].m22 > 2*(samples[30].m22-samples[20].m22),"far-away motion is faster than the approach to equilibrium")
-        check(CATransform3DIsIdentity(samples.last!) && abs(samples[99].m22-1) < 0.001,"shape settles before finite endpoint")
+        for speed in AnimationSpeed.allCases {
+            let profile=MotionProfile(speed), parameters=SpringParameters(duration:profile.cardAppear)
+            let start=CACurrentMediaTime()
+            let y=SpringMotion(from:0.82,target:1,velocity:0.18*SpringParameters.ratio*parameters.frequency,parameters:parameters,started:start)
+            let samples=(0...1000).map { y.sample(at:start+Double($0)*profile.cardAppear/1000) }
+            check(abs(samples[0].value-0.82)<1e-9 && samples[0].velocity>0,"spring starts compressed with initial velocity")
+            check(samples.map(\.value).max()! <= 1.02 && samples.map(\.value).max()! > 1.005,"physical rebound remains bounded")
+            check(abs(samples.last!.value-1)<0.001 && abs(samples.last!.velocity)<0.02,"native-duration tail is already settled")
+            let animation=parameters.animation(keyPath:"transform.scale.y",from:0.82)
+            check(abs(animation.duration-profile.cardAppear)<0.01 && animation.duration == animation.settlingDuration,"native settling duration follows each speed without truncation")
+            let time=start+profile.cardAppear*0.18, state=y.sample(at:time)
+            let retarget=SpringMotion(from:state.value,target:1,velocity:state.velocity,parameters:parameters,started:time)
+            check(abs(retarget.sample(at:time).velocity-state.velocity)<1e-8,"retarget preserves physical velocity")
+            check(abs(retarget.sample(at:time+0.04).value-y.sample(at:time+0.04).value)<1e-8,"retarget continues same physical trajectory")
+        }
         let host=DropCardHost(card:DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76)))
         let frame=host.card.frame
-        MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
-        let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAKeyframeAnimation
-        check(animation?.values?.count == 61 && animation?.duration == 0.62,"finite spring sampling and natural card duration")
-        let transform=(animation!.values!.first as! NSValue).caTransform3DValue
+        let state=MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
+        let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAAnimationGroup
+        let springs=animation!.animations as! [CASpringAnimation]
+        check(springs.count == 4 && springs.allSatisfy {$0.duration == $0.settlingDuration},"native axis/anchor springs run to settlement")
         let anchor=host.layer!.anchorPoint, center=CGPoint(x:host.bounds.width*(0.5-anchor.x),y:host.bounds.height*(0.5-anchor.y))
-        check(abs(center.x*transform.m11+transform.m41-center.x)<0.001 && abs(center.y*transform.m22+transform.m42-center.y)<0.001,"visual card center stays fixed with AppKit layer anchor")
-        check(host.card.frame == frame && host.hitTest(NSPoint(x:4,y:4)) == nil,"visual deformation preserves physical card and transparent target boundary")
-        check(host.layer?.opacity == 1 && CATransform3DIsIdentity(host.layer!.transform),"model appearance remains ready for input and motion cancellation")
+        check(abs(center.x*0.92+(springs[2].fromValue as! Double)-center.x)<0.001 && abs(center.y*0.82+(springs[3].fromValue as! Double)-center.y)<0.001,"visual center is preserved with AppKit anchor")
+        check(state.duration == animation!.duration && host.card.frame == frame && host.hitTest(NSPoint(x:4,y:4)) == nil,"physical card and transparent target boundary stay fixed")
+        check(host.layer?.opacity == 1 && CATransform3DIsIdentity(host.layer!.transform),"model stays ready for input and cancellation")
+        let panel=NSPanel(contentRect:NSRect(x:100,y:150,width:384,height:140),styleMask:[.borderless],backing:.buffered,defer:false)
+        panel.contentView=host
+        let policy=MotionPolicy(reduceMotion:{false}), motion=WindowMotion(panel,policy:policy,cardAppearance:true)
+        MotionEffects.clear(host);motion.reveal(immediately:true) {panel.orderFrontRegardless()};wait(0.04)
+        let native=host.layer!.presentation()!.transform
+        check(native.m22 > 0.82 && native.m22 < 1.02,"native early spring frame remains bounded")
+        check(abs(center.x*native.m11+native.m41-center.x)<0.01 && abs(center.y*native.m22+native.m42-center.y)<0.01,"native presentation center is stationary")
+        let begin=host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime
+        motion.reveal(immediately:true) {panel.orderFrontRegardless()}
+        check(host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime == begin,"repeated reveal does not restart spring")
+        var hidden=false;motion.dismiss {hidden=true;panel.orderOut(nil)};wait(0.04)
+        let before=host.layer!.presentation()!.transform
+        motion.reveal(immediately:true) {panel.orderFrontRegardless()};wait(0.005)
+        let after=host.layer!.presentation()!.transform
+        check(abs(before.m22-after.m22)<0.04,"dismiss/reopen has no shape reset")
+        wait(0.9);check(!hidden && panel.isVisible && customAnimations(host)==0,"old dismiss cannot hide reopened card; springs are finite")
+        panel.orderOut(nil);motion.finishImmediately()
         MotionEffects.clear(host); check(customAnimations(host) == 0,"disabling/hiding removes shape and reveal together")
         let points=TransferGlyph.checkPoints, left=points[0], corner=points[1], right=points[2]
         let a=CGPoint(x:left.x-corner.x,y:left.y-corner.y), b=CGPoint(x:right.x-corner.x,y:right.y-corner.y)
@@ -150,7 +175,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check(angle > 74 && angle < 78,"compact check has sharper comfortable elbow")
         for point in points { check(12-hypot((point.x-0.5)*30,(point.y-0.5)*30)-2.2 > 2.5,"stroked check keeps breathing room inside the ring") }
         check(TransferGlyph.shortStrokeFraction > 0.34 && TransferGlyph.shortStrokeFraction < 0.35,"two stroke timing uses actual segment-length boundary")
-        print("PASS: buffered finite jelly curve, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
+        print("PASS: native physical springs, three settling durations, continuous retarget, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
     }
     static func progressRateTests() {
         for rate in [1.0,1.5,3.0] {

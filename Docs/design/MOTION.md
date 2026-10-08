@@ -9,8 +9,8 @@ Motion 库仅供参考；项目里的 Motion.swift 是自己的原生实现。�
 | Responsibility / 职责 | Owner / 归属 |
 |---|---|
 | Preference + accessibility | MotionPolicy; persisted animation enable/speed in PeerCore models |
-| Speed profiles / file stages | MotionProfile + FileSuccessSequence; values documented in ../APPEARANCE.md |
-| Simple fades, native springs, finite card deformation and keyed cleanup | MotionEffects |
+| Speed profiles / file stages | MotionProfile + FileSuccessSequence + SpringParameters; values documented in ../APPEARANCE.md |
+| Simple fades, physical axis springs, analytical interruption state and keyed cleanup | MotionEffects |
 | Show/hide ordering, interruption revisions | WindowMotion |
 | Monotonic rate-limited real progress | ProgressMotion |
 | File ring/check sequence + task-aware hold | TransferGlyph + DropPanelController in DropZone.swift |
@@ -55,3 +55,9 @@ For motion changes run Scripts/test-motion.sh; use --deliver-preview only when a
 Also run relevant drop/text/localization checks when those surfaces change. Record light/dark, complex backgrounds, long localized strings, notch/external screen, target boundaries and final-frame behavior. A locked/absent GUI cannot certify native appearance. Small captures and short CPU/RSS samples aren't full-resolution or WindowServer/GPU performance evidence. Compare changed effects for bounded layers/tasks and actual responsiveness; do not claim two-machine acceptance from single-machine tests.
 
 Official references: [Motion transitions](https://motion.dev/docs/react-transitions), [Motion accessibility](https://motion.dev/docs/react-accessibility), [Apple HIG motion](https://developer.apple.com/design/human-interface-guidelines/motion), [Apple springs](https://developer.apple.com/videos/play/wwdc2023/10158/). Apply principles natively and check current documentation; no third-party code is copied by this configuration.
+
+## Physical spring refinement / 物理弹簧精修
+
+SpringParameters calibrates the native settling estimate and preserves mass 1 / damping ratio 0.72 across speeds. SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 911df2d refinement against this candidate, both using native views and no production identity.
+
+原生物理弹簧负责形变，短淡化负责显现，真实限速曲线负责进度，共享完成时间线负责翻转／画勾／停留。预览比较上一轮精修与当前候选；不安装 Web 库、不改传输与配置，仍待用户视觉确认。

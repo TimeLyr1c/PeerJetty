@@ -266,3 +266,15 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - Version metadata, production installation and release archives unchanged. build21 App/DMG awaits owner preview confirmation. build20 DMG remains present: SHA256 4f0edca6900d094fd0ff3e84602fce351cf8eeb79e0d45a1a17bbeb2a594bbf7.
 
 已完成分组设置、减轻压缩、统一序列时钟与两笔衔接，通过隔离原生回归。旧新版模拟预览已可用；录制受窗口缩略合成影响，不能替代双机全分辨率验收。用户确认预览后再打 build21，不自动安装、推送或发布。
+
+## 2026-10-08：共享原生物理弹簧，仍为 build21 前置候选
+
+- PASS: SwiftPM production executable build; full `Scripts/test-motion.sh` native graph-session run after final code. New checks cover mass/damping, native 380/620/880ms settling estimates, 92%/82% initial shape, rebound below 102%, analytical position/velocity continuity, native early presentation bounds and stationary visual center, repeated reveal without restart, dismissal/reopen without reset or stale hide, finite cleanup. Existing real-progress cap, confirmation, parallel/deduplication, flip/trails/check stages, hold, accessibility and text draft/focus checks passed.
+- Shared SpringParameters uses native settlingDuration rather than a fixed cutoff. Feedback retargeting uses stored analytical state when a repeated trigger precedes the presentation commit; this fixes a discovered test failure where reading the model's final scale caused an excessively long replacement spring. No test requirement was weakened. Text retains its own 97% scale/timing and file success retains its captured stage sequence.
+- PASS: `Scripts/test-drop-presentation.sh`: five geometry/path groups, isolated file/text pasteboard checks and 24 bilingual card layouts. Actual hit geometry, shadow margins, cancel and placement unchanged.
+- PASS: separately compiled/signed Before (911df2d previous refinement) / After (current physical spring) previews; strict signature verification and native switching in both directions. No engine/store/Keychain identity or real connection is constructed. Native views use current production components.
+- Visible CUA captures are full native 1040×704 window images, rather than perspective thumbnails: Natural 70 frames / 3.456s, Relaxed 190 / 8.934s, Fast 115 / 5.676s. Sending, waiting, ring-to-green/check strokes and dismissal are visible. CUA click latency misses part of the first reveal, and Natural capture does not cover its full hold/dismiss: these are supplementary evidence, not initial-frame/final single-frame or two-machine acceptance. Native early transform checks complement them; owner live Before/After acceptance remains required.
+- No new layers, continuous rendering loop, polling task, dependencies or settings. Four finite native springs replace sampled card transforms; keyed cleanup/revisions remain bounded. No new GPU/WindowServer performance claim.
+- PASS: script syntax and diff whitespace. Existing CLT search-path warnings are nonfatal. Product metadata/production installation unchanged; build21 App/DMG still awaits preview approval. build20 DMG SHA256 is still 4f0edca6900d094fd0ff3e84602fce351cf8eeb79e0d45a1a17bbeb2a594bbf7. No push/release.
+
+原生弹簧与打断模型、三档收稳、固定视觉中心和命中区域、文本焦点及完成序列回归通过。完整原生窗口预览已可观察，录制未覆盖展开第一瞬间，不冒充 Air／mini 最终验收；用户确认预览后才生成同一组 build21 App／DMG。

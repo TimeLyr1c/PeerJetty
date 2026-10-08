@@ -2,8 +2,8 @@
 set -euo pipefail
 PROJECT_ROOT="${0:A:h:h}"
 cd "$PROJECT_ROOT"
-# Freeze the accepted build20 source. Never switch or alter the live checkout.
-BASELINE_REF=19e5343
+# Freeze the previous native refinement source. Never switch or alter the live checkout.
+BASELINE_REF=911df2d
 ./Scripts/swift.sh build --product PeerJetty -Xswiftc -enable-testing
 BIN_DIR="$(./Scripts/swift.sh build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-design-preview.XXXXXX)"

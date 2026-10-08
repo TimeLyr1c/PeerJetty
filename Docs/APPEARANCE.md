@@ -37,9 +37,9 @@ General → Animation speed offers **Fast / Natural / Relaxed**, defaulting to N
 | Hold after check / 完成后停留 | 1 s | 1.8 s | 2.8 s |
 | Dismiss / 收起 | 160 ms | 240 ms | 320 ms |
 
-The card uses an initial-velocity damped spring instead of accelerating from rest: the far-away compressed shape returns quickly, then slows near equilibrium and makes one small rebound. Damping is 0.68 and normalized frequency 7.5; initial size is 92% width / 82% height and maximum height is about 101.4% (below the 102% limit). Reveal starts at 35% opacity and finishes within 18% of the appearance duration, so it does not hide the fast opening phase. The 61 finite samples describe a nonlinear physical response, not constant-speed interpolation across the whole effect; a smooth envelope settles the tail with zero endpoint velocity. AppKit anchor compensation keeps the visual center fixed. No custom frame loop is introduced; text windows retain their smaller 97% uniform spring.
+The card now uses native CASpringAnimation axes and anchor compensation, not 61 sampled transforms. Shared SpringParameters uses mass 1 and damping ratio 0.72, calibrating frequency against the native settlingDuration; initial normalized velocity is 0.72 × frequency. Time scaling preserves the character at 380/620/880 ms. Initial size remains 92%/82%, with a rebound below 102%. Each spring runs to its actual native settlement; no tail envelope truncates motion. Opacity has a short non-spring fade on the same epoch. SpringMotion is sampled only on interruption, not per frame; repeated reveal does not restart, dismissal reopening carries current presentation size and physical velocity. Text retains 97% scaling and its existing timing, using the same parameters. Progress remains monotonic/rate-limited, not a spring.
 
-卡片改用带初速度的阻尼弹簧：离目标较远时迅速回到正常形状，靠近时明显减速，再轻微回弹一次。阻尼 0.68、归一化频率 7.5，初始尺寸为宽 92%／高 82%，最大高度约 101.4%（低于 102% 上限）；显现从 35% 不透明度开始，在展开时长的前 18% 内结束，避免掩盖开头的快速运动。61 个有限采样点描述非线性物理响应，并非全程匀速；尾部平滑收束，锚点补偿保持视觉中心不动。无自定义逐帧循环，文本仍使用原有轻微均匀缩放。
+卡片改为原生 CASpringAnimation，不再使用 61 点形变采样。共享参数质量为 1、阻尼比 0.72，根据系统收稳时长换算频率和初速度，三档仍接近 380／620／880ms。初始宽 92%／高 82%、回弹低于 102%；运行到原生收稳时长，不截断尾部。形变与短透明度显现共用时刻，重复展开不重播；收起中重新打开保留当前视觉尺寸和运动速度。解析状态只在打断时计算，没有逐帧循环。文本沿用 97% 缩放和原有节奏，进度继续真实限速追赶。
 
 The physical drag target is immediately available and fixed, independently of rendered deformation/opacity. Native window position, layout, transparent margins and registration never animate; keyboard focus remains immediate. Repeated drag sampling does not truncate the effect. Disabling animations/Reduce Motion presents the final state and retains confirmed-success hold time.
 
@@ -103,9 +103,9 @@ FileSuccessSequence captures fill/flip/draw/settlement from the selected profile
 
 完成序列集中计算补齐、翻转、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留两圈、三拖影、蓝绿转换、确认条件与停留规则。
 
-Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable build20 source at `19e5343`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous refinement source at `911df2d`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
 
-打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用固定 build20 源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。三档动画在动画窗口中选择；对比启动器不进入正式 App。
+打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮精修提交 911df2d 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。三档动画在动画窗口中选择；对比启动器不进入正式 App。
 
 This is a preview-first candidate: build21 App/DMG generation waits for owner confirmation. Existing version metadata and build20 packages are retained; no automatic installation, push or release.
 

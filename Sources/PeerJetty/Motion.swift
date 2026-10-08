@@ -46,6 +46,53 @@ struct MotionProfile {
     }
 }
 
+/// Shared physical units. Calibrate once per effect using the native settling estimate;
+/// changing the time scale preserves mass, damping ratio and normalized launch speed.
+struct SpringParameters {
+    let frequency: Double
+    static let ratio = 0.72
+    init(frequency: Double) { self.frequency = frequency }
+    init(duration: Double) {
+        let unit = CASpringAnimation(keyPath:"transform.scale")
+        unit.mass = 1; unit.stiffness = 1; unit.damping = 2 * Self.ratio
+        unit.fromValue = 0; unit.toValue = 1
+        unit.initialVelocity = Self.ratio
+        frequency = unit.settlingDuration / max(0.01,duration)
+    }
+    func animation(keyPath: String, from: Double, to: Double = 1, velocity: Double? = nil) -> CASpringAnimation {
+        let animation = CASpringAnimation(keyPath:keyPath)
+        animation.mass = 1; animation.stiffness = frequency * frequency
+        animation.damping = 2 * Self.ratio * frequency
+        animation.fromValue = from; animation.toValue = to
+        let delta = to-from
+        animation.initialVelocity = abs(delta) > 1e-10 ? (velocity ?? (delta * Self.ratio * frequency))/delta : 0
+        animation.duration = animation.settlingDuration
+        animation.timingFunction = .init(name:.linear)
+        return animation
+    }
+}
+
+/// Analytic state is sampled only on interruption/testing, never every frame.
+/// Rendering itself belongs to CASpringAnimation.
+struct SpringMotion {
+    let from: Double, target: Double, velocity: Double, parameters: SpringParameters, started: Double
+    func sample(at time: Double) -> (value: Double, velocity: Double) {
+        let t = max(0,time-started), w = parameters.frequency
+        let decay = SpringParameters.ratio*w, oscillation = w*sqrt(1-SpringParameters.ratio*SpringParameters.ratio)
+        let a = from-target, b = (velocity+decay*a)/oscillation
+        let c = cos(oscillation*t), sn = sin(oscillation*t), envelope = exp(-decay*t)
+        return (target+envelope*(a*c+b*sn), envelope*((-decay*a+oscillation*b)*c+(-decay*b-oscillation*a)*sn))
+    }
+}
+
+struct CardSpringState {
+    let x: SpringMotion, y: SpringMotion, duration: Double
+    func sample(at time: Double) -> (x: Double, y: Double, vx: Double, vy: Double) {
+        let a=x.sample(at:time), b=y.sample(at:time)
+        return (a.value,b.value,a.velocity,b.velocity)
+    }
+}
+
 /// A captured, finite completion timeline shared by production and native previews.
 struct FileSuccessSequence {
     let fill: Double, flip: Double, draw: Double, settle: Double
@@ -56,7 +103,7 @@ struct FileSuccessSequence {
         fill = max(progressDuration, profile.success * 0.25)
         flip = profile.ringFlip
         draw = profile.success * 0.60
-        settle = profile.success * 0.15
+        settle = MotionEffects.spring(duration:profile.success * 0.15,from:0.985).duration
     }
 }
 
@@ -100,58 +147,62 @@ enum MotionEffects {
         add(fade,to:view.layer,key:"PeerJetty.status")
     }
     static func spring(duration: Double, from: Double) -> CASpringAnimation {
-        let spring = CASpringAnimation(keyPath:"transform.scale")
-        let ratio = 0.72, frequency = 8 / (ratio * duration)
-        spring.fromValue = from; spring.toValue = 1; spring.mass = 1
-        spring.stiffness = frequency * frequency; spring.damping = 2 * ratio * frequency
-        spring.duration = duration
-        return spring
+        SpringParameters(duration:duration).animation(keyPath:"transform.scale",from:from)
     }
-    static func appear(_ view: NSView, duration: Double = appearDuration) {
+    @discardableResult
+    static func appear(_ view: NSView, duration: Double = appearDuration, previous: SpringMotion? = nil) -> SpringMotion {
         view.wantsLayer = true
-        add(spring(duration:duration, from:0.97),to:view.layer,key:"PeerJetty.appear")
+        let now=CACurrentMediaTime(), parameters=SpringParameters(duration:duration)
+        let current=previous?.sample(at:now), from=current?.value ?? 0.97
+        let velocity=current?.velocity ?? ((1-from)*SpringParameters.ratio*parameters.frequency)
+        add(parameters.animation(keyPath:"transform.scale",from:from,velocity:velocity),to:view.layer,key:"PeerJetty.appear",startTime:now)
+        return SpringMotion(from:from,target:1,velocity:velocity,parameters:parameters,started:now)
     }
-    // Sample a damped step response once, not in a display-link or rendering loop.
-    // Unequal axes give the glass a compressed-to-stretched silhouette without moving its target.
-    static func cardTransform(at time: Double) -> CATransform3D {
-        guard time < 1 else { return CATransform3DIdentity }
-        let t = max(0,time), damping = 0.68, frequency = 7.5
-        let decay = damping * frequency, oscillation = frequency * sqrt(1-damping*damping)
-        // Released with velocity toward equilibrium: fast while far away, slow near it.
-        var residual = exp(-decay*t) * cos(oscillation*t)
-        // Softly settle the small tail with zero endpoint velocity; don't truncate a spring.
-        let tail = max(0,min(1,(t-0.78)/0.22))
-        residual *= 1-tail*tail*(3-2*tail)
-        return CATransform3DMakeScale(1-0.08*residual,1-0.18*residual,1)
-    }
-    static func cardAppear(_ view: NSView, duration: Double) {
+    @discardableResult
+    static func cardAppear(_ view: NSView, duration: Double, previous: CardSpringState? = nil) -> CardSpringState {
         view.wantsLayer = true
-        let epoch = CACurrentMediaTime()
-        let shape = CAKeyframeAnimation(keyPath:"transform")
+        let epoch = CACurrentMediaTime(), parameters = SpringParameters(duration:duration)
+        let current = previous?.sample(at:epoch)
+        let presentation = view.layer?.presentation()
+        let startX = previous == nil ? 0.92 : (presentation.map { Double($0.transform.m11) } ?? current!.x)
+        let startY = previous == nil ? 0.82 : (presentation.map { Double($0.transform.m22) } ?? current!.y)
+        let vx = current?.vx ?? ((1-startX)*SpringParameters.ratio*parameters.frequency)
+        let vy = current?.vy ?? ((1-startY)*SpringParameters.ratio*parameters.frequency)
         let anchor = view.layer?.anchorPoint ?? CGPoint(x:0.5,y:0.5)
         let center = CGPoint(x:view.bounds.width*(0.5-anchor.x),y:view.bounds.height*(0.5-anchor.y))
-        shape.values = (0...60).map {
-            var transform = cardTransform(at:Double($0)/60)
-            // AppKit-backed layers need not use a centered anchor. Compensate in the
-            // presentation transform without changing anchorPoint, position or layout.
-            transform.m41 = center.x*(1-transform.m11); transform.m42 = center.y*(1-transform.m22)
-            return NSValue(caTransform3D:transform)
-        }
-        shape.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }
-        shape.calculationMode = .linear; shape.duration = duration
+        let shape = CAAnimationGroup(); shape.timingFunction = .init(name:.linear)
+        let x=parameters.animation(keyPath:"transform.scale.x",from:startX,velocity:vx)
+        let y=parameters.animation(keyPath:"transform.scale.y",from:startY,velocity:vy)
+        // Compensate AppKit's layer anchor without changing physical bounds/position.
+        let tx=parameters.animation(keyPath:"transform.translation.x",from:center.x*(1-startX),to:0,velocity:-center.x*vx)
+        let ty=parameters.animation(keyPath:"transform.translation.y",from:center.y*(1-startY),to:0,velocity:-center.y*vy)
+        shape.animations=[x,y,tx,ty]; shape.duration=max(x.duration,y.duration,tx.duration,ty.duration)
         add(shape,to:view.layer,key:"PeerJetty.cardShape",startTime:epoch)
         let opacity = CABasicAnimation(keyPath:"opacity")
-        opacity.fromValue = 0.35; opacity.toValue = 1; opacity.duration = duration*0.18
+        opacity.fromValue = previous == nil ? 0.35 : (presentation?.opacity ?? 1)
+        opacity.toValue = 1; opacity.duration = duration*0.18
         opacity.timingFunction = .init(name:.easeInEaseOut)
         add(opacity,to:view.layer,key:"PeerJetty.cardReveal",startTime:epoch)
+        return CardSpringState(x:SpringMotion(from:startX,target:1,velocity:vx,parameters:parameters,started:epoch),
+                               y:SpringMotion(from:startY,target:1,velocity:vy,parameters:parameters,started:epoch),duration:shape.duration)
     }
     static func pulse(_ view: NSView, policy: MotionPolicy = .shared) {
         guard policy.allowed, view.window?.isVisible == true else { return }
         view.wantsLayer = true
-        let interrupted = view.layer?.animation(forKey:"PeerJetty.feedback") != nil
-        let start = interrupted ? (view.layer?.presentation()?.value(forKeyPath:"transform.scale") as? NSNumber)?.doubleValue ?? 1 : 0.97
-        add(spring(duration:policy.profile.success,from:start),to:view.layer,key:"PeerJetty.feedback")
+        let now=CACurrentMediaTime(), layer=view.layer
+        let old=layer?.animation(forKey:"PeerJetty.feedback") as? CASpringAnimation
+        var start = old == nil ? 0.97 : (layer?.presentation()?.value(forKeyPath:"transform.scale") as? NSNumber)?.doubleValue ?? 1
+        let parameters=SpringParameters(duration:policy.profile.success)
+        var velocity: Double?
+        if let old, let from=(old.fromValue as? NSNumber)?.doubleValue, let target=(old.toValue as? NSNumber)?.doubleValue {
+            let prior=SpringMotion(from:from,target:target,velocity:old.initialVelocity*(target-from),
+                                   parameters:SpringParameters(frequency:sqrt(old.stiffness/old.mass)),started:old.beginTime)
+            let state=prior.sample(at:layer?.convertTime(now,from:nil) ?? now)
+            start=state.value; velocity=state.velocity
+        }
+        add(parameters.animation(keyPath:"transform.scale",from:start,velocity:velocity),to:layer,key:"PeerJetty.feedback",startTime:now)
     }
+
     static func add(_ animation: CAAnimation, to layer: CALayer?, key: String, delay: Double = 0, startTime: Double? = nil) {
         guard let layer else { return }
         let epoch = startTime ?? CACurrentMediaTime()
@@ -180,6 +231,8 @@ final class WindowMotion {
     private var revision = 0
     private var completion: (() -> Void)?
     private var observer: NSObjectProtocol?
+    private var cardState: CardSpringState?
+    private var contentState: SpringMotion?
     private(set) var appearing = false
     init(_ window: NSWindow, policy: MotionPolicy = .shared, cardAppearance: Bool = false) {
         self.window = window; self.policy = policy; self.cardAppearance = cardAppearance
@@ -190,15 +243,19 @@ final class WindowMotion {
     func reveal(immediately: Bool = false, animateImmediateContent: Bool = false, order: () -> Void) {
         guard let window else { return }
         let fresh = !window.isVisible
+        // A repeated show must not restart an in-flight shape. A pending dismissal
+        // instead resumes the captured physical state and cancels its old completion.
+        if window.isVisible, completion == nil { order(); return }
+        let reopening = completion != nil
         revision += 1; let token = revision; completion = nil
-        if let content = window.contentView { MotionEffects.clear(content) }
+        if !cardAppearance, let content = window.contentView { MotionEffects.clear(content) }
         appearing = policy.allowed && !immediately
         if fresh { window.alphaValue = appearing ? 0 : 1 }
         order()
         let duration = policy.profile.appear
-        if policy.allowed, fresh, let content = window.contentView {
-            if cardAppearance { MotionEffects.cardAppear(content,duration:policy.profile.cardAppear) }
-            else if !immediately || animateImmediateContent { MotionEffects.appear(content,duration:duration) }
+        if policy.allowed, fresh || reopening, let content = window.contentView {
+            if cardAppearance { cardState = MotionEffects.cardAppear(content,duration:policy.profile.cardAppear,previous:reopening ? cardState : nil) }
+            else if !immediately || animateImmediateContent { contentState = MotionEffects.appear(content,duration:duration,previous:reopening ? contentState : nil) }
         }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = self.appearing ? duration : 0; context.timingFunction = MotionEffects.smooth
@@ -220,10 +277,11 @@ final class WindowMotion {
         guard let window else { return }
         NSAnimationContext.runAnimationGroup { context in context.duration = 0; window.animator().alphaValue = 1 }
     }
-    func snapAppearance() { if appearing { reveal(immediately: true) {} } }
+    func snapAppearance() { if appearing { revision += 1; appearing = false; makeInteractive() } }
     func finishImmediately() {
         revision += 1; let token = revision; appearing = false
         let action = completion; completion = nil
+        cardState = nil; contentState = nil
         if let content = window?.contentView { MotionEffects.clear(content) }
         // Hide/close while still faded. Resetting alpha before this callback flashes the card.
         action?()

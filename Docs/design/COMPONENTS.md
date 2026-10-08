@@ -57,4 +57,6 @@ No production component was found clearly safe to delete as dead temporary code 
 
 Use checks affected by the actual change; don't run network/identity tests for a documentation-only rule update. Native composition, hardware input and two-device experience still need honest Air/mini acceptance.
 
-Native refinement reuses a local settings group helper and FileSuccessSequence. Scripts/preview-design.sh compares fixed build20/current production views without an engine. / 本轮增加本地分组与共享完成时间线，对比启动器只用于隔离测试。
+Native refinement reuses a local settings group helper and FileSuccessSequence. Scripts/preview-design.sh compares fixed 911df2d refinement/current production views without an engine. / 本轮增加本地分组与共享完成时间线，对比启动器只用于隔离测试。
+
+SpringParameters + SpringMotion/CardSpringState in Motion.swift share physical tuning and interruption state across card/text/success springs. No additional UI dependency or persistent setting. / 原生弹簧参数与打断状态集中在 Motion.swift，未新增依赖或配置字段。
