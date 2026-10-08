@@ -23,6 +23,8 @@ public struct TrustedPeer: Codable, Equatable {
     public init(id: String, name: String) { self.id = id; self.name = name; pairedAt = Date() }
 }
 
+public enum AnimationSpeed: String, Codable, CaseIterable { case fast, natural, relaxed }
+
 public struct Configuration: Codable {
     public var name: String
     public var receivePath: String
@@ -33,6 +35,7 @@ public struct Configuration: Codable {
     public var showTextHistory: Bool = true
     public var textRetention: TextRetention = .latest500
     public var animationsEnabled: Bool = true
+    public var animationSpeed: AnimationSpeed = .natural
     // Missing values identify the legacy AppKit-coupled visibility preference.
     public var showMenuBarIcon: Bool? = true
     public var showDockIcon: Bool? = false
@@ -41,7 +44,7 @@ public struct Configuration: Codable {
         self.name = name; self.receivePath = receivePath; peers = []; onboardingComplete = false; autoOpenReceivedFiles = false
     }
     private enum CodingKeys: String, CodingKey {
-        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled, showMenuBarIcon, showDockIcon
+        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled, animationSpeed, showMenuBarIcon, showDockIcon
     }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -53,6 +56,7 @@ public struct Configuration: Codable {
         onboardingComplete = try values.decode(Bool.self, forKey: .onboardingComplete)
         showMenuBarIcon = try values.decodeIfPresent(Bool.self, forKey: .showMenuBarIcon)
         showDockIcon = try values.decodeIfPresent(Bool.self, forKey: .showDockIcon)
+        animationSpeed = AnimationSpeed(rawValue: try values.decodeIfPresent(String.self, forKey: .animationSpeed) ?? "natural") ?? .natural
         animationsEnabled = try values.decodeIfPresent(Bool.self, forKey: .animationsEnabled) ?? true
         showTextHistory = try values.decodeIfPresent(Bool.self, forKey: .showTextHistory) ?? true
         textRetention = try values.decodeIfPresent(TextRetention.self, forKey: .textRetention) ?? .latest500
@@ -213,4 +217,8 @@ public struct TransferUpdate {
     public let status: String
     public let finished: Bool
     public let succeeded: Bool
+    public init(id: UUID, peerName: String, receiving: Bool, completed: Int64, total: Int64, status: String, finished: Bool, succeeded: Bool) {
+        self.id = id; self.peerName = peerName; self.receiving = receiving; self.completed = completed; self.total = total
+        self.status = status; self.finished = finished; self.succeeded = succeeded
+    }
 }

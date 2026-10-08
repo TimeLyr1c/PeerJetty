@@ -131,7 +131,7 @@ struct RunDropPresentationTests {
         print("PASS: card layout and full corner clipping")
         let labels = descendants(view).compactMap { $0 as? NSTextField }
         let title = labels[0], subtitle = labels[1]
-        let progress = descendants(view).compactMap { $0 as? NSProgressIndicator }.first!
+        let progress = view.progress
         let cancel = descendants(view).compactMap { $0 as? NSButton }.first!
         let icon = descendants(view).compactMap { $0 as? NSImageView }.first!
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -159,17 +159,17 @@ struct RunDropPresentationTests {
                     progress.isHidden = state != "transfer"
                     cancel.isHidden = state != "transfer" && state != "loading"
                     cancel.title = catalog.text("dropzone.cancel")
-                    progress.doubleValue = 0.45
+                    progress.update(id:UUID(),completed:45,total:100)
                     view.layoutSubtreeIfNeeded()
                     let group = title.frame.union(subtitle.frame)
-                    XCTAssertEqual(group.midY, progress.isHidden ? view.bounds.midY : (20 + view.bounds.height - 12) / 2)
+                    XCTAssertEqual(group.midY, view.bounds.midY)
                     XCTAssertEqual(icon.frame.midY, group.midY)
                     XCTAssertTrue(title.frame.minY >= subtitle.frame.maxY + 4)
                     XCTAssertTrue(title.fittingSize.height <= title.frame.height)
                     XCTAssertTrue(subtitle.fittingSize.height <= subtitle.frame.height)
                     XCTAssertEqual(subtitle.toolTip, peer)
                     for child in view.subviews where !child.isHidden { XCTAssertTrue(view.bounds.contains(child.frame)) }
-                    if !progress.isHidden { XCTAssertTrue(subtitle.frame.minY >= progress.frame.maxY + 5) }
+                    if !progress.isHidden { XCTAssertTrue(progress.frame.maxX + 5 <= title.frame.minX); XCTAssertEqual(progress.frame.midY,group.midY) }
                     if !cancel.isHidden {
                         XCTAssertEqual(cancel.frame.midY, title.frame.midY)
                         XCTAssertTrue(cancel.frame.minX >= title.frame.maxX + 12)

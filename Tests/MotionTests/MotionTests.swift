@@ -5,7 +5,14 @@ import Darwin
 private func check(_ value: Bool, _ message: String) { precondition(value, message) }
 private func wait(_ seconds: Double) { RunLoop.main.run(until: Date().addingTimeInterval(seconds)) }
 private func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap { descendants($0) } }
-private func customAnimations(_ view: NSView) -> Int { descendants(view).reduce(0) { $0 + ($1.layer?.animationKeys() ?? []).filter {$0.hasPrefix("PeerJetty.")}.count } }
+private func customAnimations(_ view:NSView) -> Int {
+    var visited = Set<ObjectIdentifier>()
+    func count(_ layer:CALayer) -> Int {
+        guard visited.insert(ObjectIdentifier(layer)).inserted else { return 0 }
+        return (layer.animationKeys() ?? []).filter {$0.hasPrefix("PeerJetty.")}.count + (layer.sublayers ?? []).reduce(0) {$0 + count($1)}
+    }
+    return descendants(view).reduce(0) {$0 + ($1.layer.map(count) ?? 0)}
+}
 private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usage); return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1_000_000 }
 
 @main struct MotionTests {
@@ -15,17 +22,31 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         NSApp.setActivationPolicy(preview ? .regular : .prohibited)
         if CommandLine.arguments.contains("--benchmark") { benchmark(); return }
         #if !BASELINE
-        if preview { showPreview(); NSApp.run() } else { try tests() }
+        if preview {
+            let menu = NSMenu(), appItem = NSMenuItem(), appMenu = NSMenu()
+            appMenu.addItem(withTitle: "Quit Preview", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            appItem.submenu = appMenu; menu.addItem(appItem); NSApp.mainMenu = menu
+            showPreview(); NSApp.run()
+        } else { try tests() }
         #endif
     }
     static func benchmark() {
         let view = DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76))
         let panel = NSPanel(contentRect:NSRect(x:100,y:250,width:320,height:76),styleMask:[.borderless],backing:.buffered,defer:false)
-        panel.isOpaque = false; panel.backgroundColor = .clear; panel.contentView = view; panel.orderFrontRegardless(); wait(0.4)
+        panel.isOpaque = false; panel.backgroundColor = .clear
+        #if !BASELINE || HOST_BASELINE
+        panel.hasShadow = false; panel.contentView = DropCardHost(card:view); panel.setFrame(DropCardHost.windowFrame(panel.frame),display:false); panel.contentView?.layoutSubtreeIfNeeded()
+        #else
+        panel.contentView = view
+        #endif
+        panel.orderFrontRegardless(); wait(0.4)
         let idleStart = cpu(); wait(1); let idle = cpu()-idleStart
         let activeStart = cpu()
-        for index in 0..<30 { view.show(title:"State \(index)",subtitle:"MacBook Air",symbol:"arrow.up.doc"); wait(0.02) }
-        wait(0.4); let active = cpu()-activeStart
+        let transfer = UUID()
+        for index in 0..<30 {
+            view.transfer(TransferUpdate(id:transfer,peerName:"MacBook Air",receiving:false,completed:Int64(index+1),total:30,status:"State \(index)",finished:index == 29,succeeded:index == 29)); wait(0.02)
+        }
+        wait(1.1); let active = cpu()-activeStart
         panel.orderOut(nil); wait(0.4)
         check(customAnimations(view) == 0,"no retained custom animations after settlement")
         let hiddenStart = cpu(); wait(1); let hidden = cpu()-hiddenStart
@@ -34,6 +55,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
     }
     #if !BASELINE
     static func tests() throws {
+        try ringTests()
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true}"#.utf8)
         var configuration = try JSONDecoder().decode(Configuration.self,from:legacy)
         check(configuration.animationsEnabled,"legacy defaults to animations enabled")
@@ -67,25 +89,23 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         wait(0.4) // Let AppKit attach the newly ordered layer tree before sampling feedback.
         MotionEffects.pulse(descendants(view).compactMap {$0 as? NSImageView}.first!,policy:policy); check(customAnimations(view)==1,"single bounded feedback animation")
         MotionEffects.pulse(descendants(view).compactMap {$0 as? NSImageView}.first!,policy:policy); check(customAnimations(view)==1,"feedback replaces rather than stacks")
-        wait(0.3); check(customAnimations(view)==0,"feedback settles and is removed")
-        let icon=descendants(view).compactMap {$0 as? NSImageView}.first!
+        wait(MotionPolicy.shared.profile.success + 0.10); check(customAnimations(view)==0,"feedback settles and is removed")
         let transferID=UUID()
         view.transfer(TransferUpdate(id:transferID,peerName:"Test",receiving:false,completed:10,total:10,status:"Confirmed",finished:true,succeeded:true))
-        check((icon.layer?.animation(forKey:"PeerJetty.feedback") != nil) == MotionPolicy.shared.allowed,"confirmed file success respects system motion policy")
-        let feedbackStarted = icon.layer?.animation(forKey:"PeerJetty.feedback")?.beginTime ?? 0
-        wait(0.3)
+        check(view.progress.isSuccess && !view.progress.isHidden,"confirmed success uses vector check")
+        wait(MotionPolicy.shared.profile.success + 0.10)
         view.transfer(TransferUpdate(id:transferID,peerName:"Test",receiving:false,completed:10,total:10,status:"Confirmed",finished:true,succeeded:true))
-        check((icon.layer?.animation(forKey:"PeerJetty.feedback")?.beginTime ?? feedbackStarted) == feedbackStarted,"duplicate success never restarts feedback")
+        check(customAnimations(view.progress) == 0,"duplicate success never restarts feedback")
         view.transfer(TransferUpdate(id:UUID(),peerName:"Test",receiving:false,completed:0,total:10,status:"Failed",finished:true,succeeded:false))
-        check(icon.layer?.animation(forKey:"PeerJetty.feedback") == nil,"failure has no success feedback")
+        check(!view.progress.isSuccess && view.progress.isHidden,"failure has no success feedback")
         var opacityAtRemoval:CGFloat = 1
         motion.dismiss { opacityAtRemoval=panel.alphaValue;panel.orderOut(nil) }
-        wait(0.3)
+        wait(MotionPolicy.shared.profile.success + 0.10)
         check(opacityAtRemoval < 0.01 && !panel.isVisible && panel.alphaValue == 1, "dismiss hides before restoring opacity, without final-frame flash")
         motion.reveal(immediately:true) {panel.orderFrontRegardless()}
         var closed=false
         motion.dismiss {closed=true;panel.orderOut(nil)}
-        wait(0.04); motion.reveal {panel.orderFrontRegardless()}; wait(0.35)
+        wait(0.04); motion.reveal {panel.orderFrontRegardless()}; wait(MotionPolicy.shared.profile.appear + 0.12)
         check(!closed && panel.isVisible && panel.frame == frame,"interrupted dismissal cannot hide a reopened window")
         motion.dismiss {closed=true;panel.orderOut(nil)}; policy.enabled=false
         check(closed && !panel.isVisible && customAnimations(view)==0,"switch disabled during dismissal settles immediately")
@@ -98,66 +118,79 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let composer=TextComposer(); composer.present(); check(composer.window?.firstResponder === composer.editor,"focus available immediately")
         composer.editor.string="中文🙂 draft"; composer.close(); wait(0.01); check(composer.editor.string=="中文🙂 draft","close preserves draft")
         MotionPolicy.shared.enabled=true
-        composer.present(); composer.close(); wait(0.04); composer.present(); wait(0.35)
+        composer.present(); composer.close(); wait(0.04); composer.present(); wait(MotionPolicy.shared.profile.appear + 0.12)
         check(composer.window?.isVisible == true && composer.window?.firstResponder === composer.editor && composer.editor.string == "中文🙂 draft", "animated close/reopen preserves focus and draft")
         MotionPolicy.shared.enabled=false; composer.close(); MotionPolicy.shared.enabled=true
     }
+    static func ringTests() throws {
+        let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)
+        check(try JSONDecoder().decode(Configuration.self,from:legacy).animationSpeed == .natural,"unknown speed falls back")
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-speed-\(UUID())")
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        defer { try? FileManager.default.removeItem(at:folder) }
+        let fallback = Configuration(name:"Test",receivePath:"/tmp")
+        let url = folder.appendingPathComponent("config.json"), blocked = folder.appendingPathComponent("blocked")
+        try Data().write(to:blocked)
+        let failing = try ConfigurationStore(url:blocked.appendingPathComponent("config.json"),fallback:fallback)
+        do { try failing.update {$0.animationSpeed = .fast}; preconditionFailure("must reject write") } catch {}
+        check(failing.snapshot.animationSpeed == .natural,"save failure keeps preference")
+        for speed in AnimationSpeed.allCases {
+            let store = try ConfigurationStore(url:url,fallback:fallback); try store.update {$0.animationSpeed=speed}
+            check(try ConfigurationStore(url:url,fallback:fallback).snapshot.animationSpeed == speed,"speed persists")
+            let profile = MotionProfile(speed)
+            let expected: [Double] = speed == .fast ? [0.22,0.10,0.32,1,0.16] : speed == .natural ? [0.34,0.18,0.65,1.8,0.24] : [0.48,0.24,0.95,2.8,0.32]
+            check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
+            let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
+            check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"constant damping ratio across speeds")
+            let policy = MotionPolicy(reduceMotion:{false}); policy.speed=speed
+            let glyph = TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
+            let id=UUID(); glyph.update(id:id,completed:55,total:100); glyph.update(id:id,completed:30,total:100)
+            check(glyph.fraction == 0.55 && !glyph.isSuccess,"real progress cannot retreat")
+            glyph.update(id:id,completed:150,total:100); check(glyph.fraction == 1 && !glyph.isSuccess,"full bytes does not imply success")
+            var completed = 0; glyph.succeed(id:id) {completed += 1}; glyph.succeed(id:id) {completed += 100}
+            check(completed == 0 && glyph.isSuccess,"success sequence is bounded and deduplicated")
+            policy.speed = .fast // Snapshot of the in-flight sequence must remain unchanged.
+            wait(profile.success + 0.10)
+            check(completed == 1 && customAnimations(glyph) == 0,"sequence settles once at captured speed")
+            glyph.reset(); glyph.succeed(id:UUID()) {completed += 100}; glyph.update(id:UUID(),completed:20,total:100)
+            wait(MotionProfile(.fast).success+0.10)
+            check(completed == 1 && glyph.fraction == 0.2 && !glyph.isSuccess,"old completion cannot replace newer progress")
+            glyph.reset(); glyph.succeed(id:UUID()) {completed += 1}; policy.enabled=false
+            check(completed == 2 && glyph.isSuccess && customAnimations(glyph) == 0,"disable settles success immediately")
+        }
+        var reduced=false
+        let policy = MotionPolicy(reduceMotion:{reduced}); policy.speed = .fast
+        let glyph=TransferGlyph(policy:policy); var settled=false
+        glyph.succeed(id:UUID()) {settled=true}; reduced=true; policy.notify()
+        check(settled && policy.enabled && policy.speed == .fast && customAnimations(glyph)==0,"reduced motion overrides without changing preferences")
+        let savedSpeed=MotionPolicy.shared.speed, savedEnabled=MotionPolicy.shared.enabled
+        defer { MotionPolicy.shared.speed=savedSpeed; MotionPolicy.shared.enabled=savedEnabled }
+        MotionPolicy.shared.speed = .fast; MotionPolicy.shared.enabled = false
+        let panel=DropPanelController(); let first=UUID(), second=UUID(), third=UUID()
+        panel.presentTransfer(TransferUpdate(id:first,peerName:"One",receiving:false,completed:10,total:10,status:"Done",finished:true,succeeded:true))
+        check(panel.currentFeedbackID == first && panel.feedbackRemaining > 0.8,"hold starts after final check")
+        panel.hide(after:0) // Polling/status callbacks cannot shorten the success hold.
+        check(panel.feedbackRemaining > 0.8,"ordinary hide preserves hold")
+        panel.presentTransfer(TransferUpdate(id:second,peerName:"Two",receiving:false,completed:20,total:100,status:"Sending",finished:false,succeeded:false))
+        panel.presentTransfer(TransferUpdate(id:first,peerName:"One",receiving:false,completed:10,total:10,status:"Done",finished:true,succeeded:true))
+        check(panel.currentFeedbackID == nil && panel.view.progress.fraction == 0.2,"new transfer preempts success and stale duplicates")
+        panel.presentTransfer(TransferUpdate(id:third,peerName:"Three",receiving:true,completed:0,total:0,status:"Preparing",finished:false,succeeded:false))
+        check(panel.view.progress.isHidden,"unknown total has no fake percentage")
+        panel.presentTransfer(TransferUpdate(id:third,peerName:"Three",receiving:true,completed:0,total:0,status:"Done",finished:true,succeeded:true))
+        check(!panel.view.progress.isHidden && !panel.view.progress.isSuccess && panel.view.progress.fraction == 0.2,"parallel active transfer retains progress")
+        panel.presentTransfer(TransferUpdate(id:second,peerName:"Two",receiving:false,completed:100,total:100,status:"Sending",finished:false,succeeded:false))
+        check(!panel.view.progress.isSuccess && descendants(panel.view).compactMap {$0 as? NSTextField}.first?.stringValue == L10n.text("drop.waiting_confirmation"),"awaiting receipt remains distinct")
+        panel.presentTransfer(TransferUpdate(id:second,peerName:"Two",receiving:false,completed:100,total:100,status:"Failed",finished:true,succeeded:false))
+        check(panel.view.progress.isHidden && !panel.view.progress.isSuccess,"failure cannot draw check")
+        panel.resetFeedback()
+        let preview = MotionPreviewWindow()
+        let previewCard = descendants(preview.window!.contentView!).compactMap {$0 as? DropZoneView}.first!
+        check(previewCard.registeredDraggedTypes.isEmpty,"isolated preview refuses actual file drops")
+        print("PASS: three speed profiles, migration/write failure, spring damping, monotonic ring, confirmation, deduplication, interruption, reduced motion, success hold and parallel transfer")
+    }
     private static var retained: [AnyObject] = []
     static func showPreview() {
-        let controller = PreviewController(); retained.append(controller); controller.present()
+        let controller = MotionPreviewWindow(); retained.append(controller); controller.present()
     }
     #endif
 }
-
-#if !BASELINE
-/// Isolated, manually replayable native renderer: no engine, Keychain, file history or clipboard access.
-private final class PreviewController: NSObject, NSWindowDelegate {
-    private let window = NSWindow(contentRect:NSRect(x:0,y:0,width:650,height:380),styleMask:[.titled,.closable],backing:.buffered,defer:false)
-    private let panel = NSPanel(contentRect:NSRect(x:0,y:0,width:320,height:76),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
-    private let card = DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76))
-    private var motion: WindowMotion!
-    private var replay = 0
-    private let enabled = NSButton(checkboxWithTitle:"Animations / 动画",target:nil,action:nil)
-    override init() {
-        super.init(); window.delegate=self; window.title="PeerJetty · Isolated Glass & Motion Preview"; window.isReleasedWhenClosed=false; window.center()
-        panel.isOpaque=false; panel.hasShadow=false; panel.backgroundColor = .clear; panel.level = .floating; panel.hasShadow=false; panel.contentView=DropCardHost(card:card)
-        motion=WindowMotion(panel)
-        let stack=NSStackView(); stack.orientation = .vertical; stack.spacing=14; stack.translatesAutoresizingMaskIntoConstraints=false
-        let info=NSTextField(wrappingLabelWithString:"Native glass on this Mac. Drag targets stay fixed.\n原生玻璃预览；不连接设备、不读取日常数据。\nChange system glass/accessibility settings to compare live behavior.")
-        stack.addArrangedSubview(info)
-        enabled.state = .on; enabled.target=self; enabled.action=#selector(toggle); stack.addArrangedSubview(enabled)
-        for (title,action) in [("Replay / 回放",#selector(play)),("Immediate drag target / 立即投放",#selector(drag)),("Text input / 文本输入",#selector(text)),("Light / 浅色",#selector(light)),("Dark / 深色",#selector(dark)),("Quit preview / 退出预览",#selector(quit))] {
-            let button=NSButton(title:title,target:self,action:action); button.bezelStyle = .rounded; stack.addArrangedSubview(button)
-        }
-        window.contentView!.addSubview(stack)
-        NSLayoutConstraint.activate([stack.leadingAnchor.constraint(equalTo:window.contentView!.leadingAnchor,constant:24),stack.trailingAnchor.constraint(equalTo:window.contentView!.trailingAnchor,constant:-24),stack.topAnchor.constraint(equalTo:window.contentView!.topAnchor,constant:20)])
-        card.targetName="MacBook Air · 中文🙂";card.idle()
-    }
-    func present() { window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps:true);position();play() }
-    private func position() { panel.setFrame(DropCardHost.windowFrame(NSRect(x:window.frame.midX-160,y:window.frame.maxY+12,width:320,height:76)), display:true); panel.contentView?.layoutSubtreeIfNeeded() }
-    func windowWillClose(_ notification: Notification) { quit() }
-    @objc private func quit() { replay+=1; motion.finishImmediately();panel.orderOut(nil);NSApp.terminate(nil) }
-    @objc private func toggle() { MotionPolicy.shared.enabled=enabled.state == .on }
-    @objc private func light() { panel.appearance=NSAppearance(named:.aqua) }
-    @objc private func dark() { panel.appearance=NSAppearance(named:.darkAqua) }
-    @objc private func drag() { replay+=1;position();card.idle();motion.reveal(immediately:true){panel.orderFrontRegardless()} }
-    @objc private func text() { let composer=TextComposer(); MotionTests.keep(composer); composer.present() }
-    @objc private func play() {
-        replay+=1;let token=replay;let transferID=UUID();position();card.idle();motion.reveal {panel.orderFrontRegardless()}
-        for (delay,title,symbol) in [(0.5,"Release to send / 松开以发送","plus.circle.fill"),(1.0,"Sending… / 正在发送…","arrow.up.arrow.down.circle.fill"),(1.8,"Saved / 已保存","checkmark.circle.fill"),(2.8,"Failure example / 失败示例","exclamationmark.triangle.fill")] {
-            DispatchQueue.main.asyncAfter(deadline:.now()+delay) { [weak self] in
-                guard let self,self.replay==token else{return}
-                if symbol == "arrow.up.arrow.down.circle.fill" || symbol == "checkmark.circle.fill" {
-                    let finished = symbol == "checkmark.circle.fill"
-                    self.card.transfer(TransferUpdate(id:transferID,peerName:self.card.targetName,receiving:false,completed:finished ? 100 : 45,total:100,status:title,finished:finished,succeeded:finished))
-                } else {
-                    self.card.show(title:title,subtitle:self.card.targetName,symbol:symbol,color:.labelColor)
-                    if symbol=="plus.circle.fill",let icon=descendants(self.card).compactMap({$0 as? NSImageView}).first {MotionEffects.pulse(icon)}
-                }
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline:.now()+4) { [weak self] in guard let self,self.replay==token else{return};self.motion.dismiss { [weak self] in self?.panel.orderOut(nil) } }
-    }
-}
-extension MotionTests { static func keep(_ value: AnyObject) { retained.append(value) } }
-#endif

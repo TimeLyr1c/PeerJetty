@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var store: ConfigurationStore?
     private var engine: PeerEngine?
     private var drop: DropPanelController?
+    private var motionPreview: MotionPreviewWindow?
     private var settings: SettingsController?
     private var latestText: UUID?
     private var composer: TextComposer?
@@ -66,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     private func finishStartup(store: ConfigurationStore, identity: DeviceIdentity) {
         MotionPolicy.shared.enabled = store.snapshot.animationsEnabled
+        MotionPolicy.shared.speed = store.snapshot.animationSpeed
         self.store = store
         let config = store.snapshot
         let flags = IconVisibilityController.migrated(config, nativeMenu: menuBar?.isVisible ?? true)
@@ -85,13 +87,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         let drop = DropPanelController(); self.drop = drop
         drop.view.onFiles = { [weak self] urls, cleanup in
-            self?.promiseBusy = false
+            self?.promiseBusy = false; self?.drop?.resetFeedback()
             guard let self, let peer = self.store?.snapshot.preferredPeer else {
                 cleanup?(); self?.showStatus(L10n.text("application.pair_and_select_a_destination_in_settings_first")); self?.showSettings(); return
             }
             self.engine?.send(urls: urls, peerID: peer, cleanup: cleanup)
         }
-        drop.view.onReceivingPromise = { [weak self] in self?.promiseBusy = true; self?.refreshBusy(); self?.drop?.show() }
+        drop.view.onReceivingPromise = { [weak self] in self?.promiseBusy = true; self?.drop?.resetFeedback(); self?.refreshBusy(); self?.drop?.show() }
         drop.view.onFailure = { [weak self] text in self?.promiseBusy = false; self?.refreshBusy(); self?.showStatus(text) }
         drop.view.onCancel = { [weak self] in if let id = self?.lastTransfer { self?.engine?.cancel(transferID: id) } }
         engine.onPeers = { [weak self] peers in
@@ -106,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         engine.onPreparation = { [weak self] value in
             guard let self else { return }; self.preparing = max(0, self.preparing + (value ? 1 : -1)); self.refreshBusy()
-            if value { self.drop?.show(); self.drop?.view.show(title: L10n.text("application.preparing_files"), subtitle: self.drop?.view.targetName ?? "") }
+            if value { self.drop?.resetFeedback(); self.drop?.show(); self.drop?.view.show(title: L10n.text("application.preparing_files"), subtitle: self.drop?.view.targetName ?? "") }
         }
         engine.onPairing = { [weak self] id, name, code in self?.showPairing(id: id, name: name, code: code) }
         engine.onPairingEnded = { [weak self] id in
@@ -115,9 +117,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         engine.onTransfer = { [weak self] update in
             guard let self else { return }
             if update.finished { self.active.remove(update.id) } else { self.active.insert(update.id); self.lastTransfer = update.id }
-            self.refreshBusy(); self.drop?.show(); self.drop?.view.transfer(update)
+            self.refreshBusy(); self.drop?.presentTransfer(update)
             self.settings?.progress(update)
-            if update.finished, self.active.isEmpty { self.lastTransfer = nil; self.drop?.hide(after: update.succeeded ? 1.5 : 5) }
+            if update.finished, self.active.isEmpty { self.lastTransfer = nil }
         }
         engine.onReceived = { [weak self] name, urls in
             guard let self else { return }; self.lastReceived = urls; self.notifyReceived(name: name, count: urls.count)
@@ -224,6 +226,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onTextRetention = { [weak self] value in self?.setTextRetention(value) }
             controller.onUpdates = { [weak self] in self?.checkUpdates() }
             controller.onLanguage = { selection in LanguagePreferences().save(selection) }
+            controller.onMotionPreview = { [weak self] in
+                if self?.motionPreview == nil { self?.motionPreview = MotionPreviewWindow() }
+                self?.motionPreview?.present()
+            }
+            controller.onAnimationSpeed = { [weak self] speed in
+                do { try store.update { $0.animationSpeed = speed }; MotionPolicy.shared.speed = speed }
+                catch { self?.settings?.animationSpeedState(store.snapshot.animationSpeed); self?.showError(error.localizedDescription) }
+            }
             controller.onAnimations = { [weak self] enabled in
                 do { try store.update { $0.animationsEnabled = enabled }; MotionPolicy.shared.enabled = enabled }
                 catch { self?.settings?.animationState(store.snapshot.animationsEnabled); self?.showError(error.localizedDescription) }
@@ -253,6 +263,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let lastStatus { settings?.status(lastStatus) }
         settings?.updatePeers(peers, preferred: store.snapshot.preferredPeer)
         settings?.animationState(store.snapshot.animationsEnabled)
+        settings?.animationSpeedState(store.snapshot.animationSpeed)
         settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
         settings?.loginState(SMAppService.mainApp.status == .enabled)
         settings?.showWindow(nil); NSApp.activate(ignoringOtherApps: true); settings?.window?.makeKeyAndOrderFront(nil)
@@ -456,7 +467,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completion: @escaping (UNNotificationPresentationOptions) -> Void) { completion([.banner, .sound]) }
     private func showStatus(_ text: String) {
-        lastStatus = text; settings?.status(text); drop?.show(); drop?.view.show(title: L10n.text("application.see_settings"), subtitle: L10n.text("application.status_details_hint"), symbol: "exclamationmark.triangle.fill", color: .systemOrange); drop?.hide(after: 5)
+        lastStatus = text; settings?.status(text); drop?.resetFeedback(); drop?.show(); drop?.view.show(title: L10n.text("application.see_settings"), subtitle: L10n.text("application.status_details_hint"), symbol: "exclamationmark.triangle.fill", color: .systemOrange); drop?.hide(after: 5)
     }
     private func showError(_ text: String) {
         let alert = NSAlert(); alert.messageText = "PeerJetty"; alert.informativeText = text; alert.addButton(withTitle: L10n.text("application.ok"))

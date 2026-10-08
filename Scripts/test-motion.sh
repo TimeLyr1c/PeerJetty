@@ -30,10 +30,20 @@ PY
 fi
 if [[ "${1:-}" == --compare ]]; then
   # Read the pre-change card from HEAD into temporary files; never switch the live checkout.
-  git show "${PEERJETTY_MOTION_BASELINE_REF:-630a44172aeb82a498fd39e6d812eb7ebc9d464a}:Sources/PeerJetty/DropZone.swift" > "$TEST_ROOT/LegacyDropZone.swift"
-  /usr/bin/swiftc -D BASELINE -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" Sources/PeerJetty/DropPresentation.swift "$TEST_ROOT/LegacyDropZone.swift" Tests/MotionTests/MotionTests.swift -o "$TEST_ROOT/baseline"
-  print 'Before (old material, no custom status animation):'
+  BASELINE_REF="${PEERJETTY_MOTION_BASELINE_REF:-52a341573cd2b317d34606a8edf674382e0982b2}"
+  git show "$BASELINE_REF:Sources/PeerJetty/DropZone.swift" > "$TEST_ROOT/LegacyDropZone.swift"
+  BASELINE_SOURCES=()
+  BASELINE_FLAGS=(-D BASELINE)
+  if git cat-file -e "$BASELINE_REF:Sources/PeerJetty/Motion.swift" 2>/dev/null; then
+    git show "$BASELINE_REF:Sources/PeerJetty/Motion.swift" > "$TEST_ROOT/LegacyMotion.swift"
+    BASELINE_SOURCES+=("$TEST_ROOT/LegacyMotion.swift")
+  fi
+  if rg -q 'final class DropCardHost' "$TEST_ROOT/LegacyDropZone.swift"; then
+    BASELINE_FLAGS+=(-D HOST_BASELINE)
+  fi
+  /usr/bin/swiftc "${BASELINE_FLAGS[@]}" -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${BASELINE_SOURCES[@]}" Sources/PeerJetty/DropPresentation.swift "$TEST_ROOT/LegacyDropZone.swift" Tests/MotionTests/MotionTests.swift -o "$TEST_ROOT/baseline"
+  print 'Before (build16 glass card and bar progress):'
   "$TEST_ROOT/baseline" --benchmark
-  print 'After (native glass, custom status animation):'
+  print 'After (three speeds and vector progress/check):'
   "$TEST_ROOT/checks" --benchmark
 fi

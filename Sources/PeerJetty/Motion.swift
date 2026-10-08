@@ -1,11 +1,14 @@
 import AppKit
 import QuartzCore
+import PeerCore
 
 /// Local preference plus the live system accessibility policy. No polling or private defaults.
 final class MotionPolicy {
     static let changed = Notification.Name("PeerJetty.MotionPolicyChanged")
     static let shared = MotionPolicy()
     var enabled = true { didSet { if enabled != oldValue { notify() } } }
+    var speed: AnimationSpeed = .natural
+    var profile: MotionProfile { MotionProfile(speed) }
     private let reduceMotion: () -> Bool
     private var observer: NSObjectProtocol?
     var allowed: Bool { enabled && !reduceMotion() }
@@ -17,36 +20,74 @@ final class MotionPolicy {
     deinit { if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) } }
 }
 
+extension AnimationSpeed {
+    var localizedTitle: String {
+        switch self {
+        case .fast: return L10n.text("settings.speed_fast")
+        case .natural: return L10n.text("settings.speed_natural")
+        case .relaxed: return L10n.text("settings.speed_relaxed")
+        }
+    }
+}
+
+struct MotionProfile {
+    let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
+    init(_ speed: AnimationSpeed) {
+        switch speed {
+        case .fast: (appear,status,success,hold,dismiss) = (0.22,0.10,0.32,1,0.16)
+        case .natural: (appear,status,success,hold,dismiss) = (0.34,0.18,0.65,1.8,0.24)
+        case .relaxed: (appear,status,success,hold,dismiss) = (0.48,0.24,0.95,2.8,0.32)
+        }
+    }
+}
+
 enum MotionEffects {
-    static let appearDuration = 0.24, disappearDuration = 0.16, statusDuration = 0.12, successDuration = 0.22
+    static var appearDuration: Double { MotionPolicy.shared.profile.appear }
+    static var disappearDuration: Double { MotionPolicy.shared.profile.dismiss }
+    static var statusDuration: Double { MotionPolicy.shared.profile.status }
+    static var successDuration: Double { MotionPolicy.shared.profile.success }
     static let smooth = CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
     static let exit = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.6, 1)
     static func transition(_ view: NSView, policy: MotionPolicy = .shared) {
         guard policy.allowed, view.window?.isVisible == true else { return }
         view.wantsLayer = true
-        let fade = CATransition(); fade.type = .fade; fade.duration = statusDuration; fade.timingFunction = .init(name: .easeInEaseOut)
-        view.layer?.add(fade, forKey: "PeerJetty.status")
+        let fade = CATransition(); fade.type = .fade; fade.duration = policy.profile.status; fade.timingFunction = .init(name: .easeInEaseOut)
+        add(fade,to:view.layer,key:"PeerJetty.status")
     }
-    static func appear(_ view: NSView) {
+    static func spring(duration: Double, from: Double) -> CASpringAnimation {
+        let spring = CASpringAnimation(keyPath:"transform.scale")
+        let ratio = 0.72, frequency = 8 / (ratio * duration)
+        spring.fromValue = from; spring.toValue = 1; spring.mass = 1
+        spring.stiffness = frequency * frequency; spring.damping = 2 * ratio * frequency
+        spring.duration = duration
+        return spring
+    }
+    static func appear(_ view: NSView, duration: Double = appearDuration) {
         view.wantsLayer = true
-        let spring = CASpringAnimation(keyPath: "transform.scale")
-        spring.fromValue = 0.98
-        spring.toValue = 1; spring.mass = 1; spring.stiffness = 520; spring.damping = 36
-        spring.duration = appearDuration
-        view.layer?.add(spring, forKey: "PeerJetty.appear")
+        add(spring(duration:duration, from:0.97),to:view.layer,key:"PeerJetty.appear")
     }
     static func pulse(_ view: NSView, policy: MotionPolicy = .shared) {
         guard policy.allowed, view.window?.isVisible == true else { return }
         view.wantsLayer = true
-        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
-        let start = (view.layer?.presentation()?.value(forKeyPath: "transform.scale") as? NSNumber)?.doubleValue ?? 1
-        scale.values = [start, 1.065, 0.995, 1]; scale.keyTimes = [0, 0.42, 0.78, 1]
-        scale.timingFunctions = [smooth, .init(name: .easeInEaseOut), smooth]; scale.duration = successDuration
-        scale.beginTime = view.layer?.convertTime(CACurrentMediaTime(), from: nil) ?? CACurrentMediaTime()
-        view.layer?.add(scale, forKey: "PeerJetty.feedback")
+        let interrupted = view.layer?.animation(forKey:"PeerJetty.feedback") != nil
+        let start = interrupted ? (view.layer?.presentation()?.value(forKeyPath:"transform.scale") as? NSNumber)?.doubleValue ?? 1 : 0.97
+        add(spring(duration:policy.profile.success,from:start),to:view.layer,key:"PeerJetty.feedback")
+    }
+    static func add(_ animation: CAAnimation, to layer: CALayer?, key: String, delay: Double = 0) {
+        guard let layer else { return }
+        let token = layer.convertTime(CACurrentMediaTime(),from:nil) + delay
+        animation.beginTime = token; layer.add(animation,forKey:key)
+        DispatchQueue.main.asyncAfter(deadline:.now()+delay+animation.duration) { [weak layer] in
+            guard let layer, layer.animation(forKey:key)?.beginTime == token else { return }
+            layer.removeAnimation(forKey:key)
+        }
     }
     static func clear(_ view: NSView) {
-        for key in view.layer?.animationKeys() ?? [] where key.hasPrefix("PeerJetty.") { view.layer?.removeAnimation(forKey: key) }
+        func clearLayer(_ layer: CALayer) {
+            for key in layer.animationKeys() ?? [] where key.hasPrefix("PeerJetty.") { layer.removeAnimation(forKey:key) }
+            layer.sublayers?.forEach(clearLayer)
+        }
+        if let layer = view.layer { clearLayer(layer) }
         view.subviews.forEach(clear)
     }
 }
@@ -65,7 +106,7 @@ final class WindowMotion {
             guard let self, !self.policy.allowed else { return }; self.finishImmediately()
         }
     }
-    func reveal(immediately: Bool = false, order: () -> Void) {
+    func reveal(immediately: Bool = false, animateImmediateContent: Bool = false, order: () -> Void) {
         guard let window else { return }
         let fresh = !window.isVisible
         revision += 1; let token = revision; completion = nil
@@ -73,9 +114,10 @@ final class WindowMotion {
         appearing = policy.allowed && !immediately
         if fresh { window.alphaValue = appearing ? 0 : 1 }
         order()
-        if appearing, fresh, let content = window.contentView { MotionEffects.appear(content) }
+        let duration = policy.profile.appear
+        if policy.allowed, fresh, (!immediately || animateImmediateContent), let content = window.contentView { MotionEffects.appear(content, duration:duration) }
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = self.appearing ? MotionEffects.appearDuration : 0; context.timingFunction = MotionEffects.smooth
+            context.duration = self.appearing ? duration : 0; context.timingFunction = MotionEffects.smooth
             window.animator().alphaValue = 1
         } completionHandler: { [weak self] in if self?.revision == token { self?.appearing = false } }
     }
@@ -84,11 +126,15 @@ final class WindowMotion {
         guard let window, window.isVisible, policy.allowed else { completion = action; finishImmediately(); return }
         revision += 1; let token = revision; completion = action; appearing = false
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = MotionEffects.disappearDuration; context.timingFunction = MotionEffects.exit
+            context.duration = self.policy.profile.dismiss; context.timingFunction = MotionEffects.exit
             window.animator().alphaValue = 0
         } completionHandler: { [weak self] in
             guard let self, self.revision == token else { return }; self.finishImmediately()
         }
+    }
+    func makeInteractive() {
+        guard let window else { return }
+        NSAnimationContext.runAnimationGroup { context in context.duration = 0; window.animator().alphaValue = 1 }
     }
     func snapAppearance() { if appearing { reveal(immediately: true) {} } }
     func finishImmediately() {
