@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0 / build 18 — local test candidate, 2026-10-08
+
+Softens the drop-card reveal with a buffered fade and centered squash/stretch rebound (Fast 380 ms, Natural 620 ms, Relaxed 880 ms). The physical drag target remains immediately usable. Insets the success check, sharpens its elbow and gives the two strokes different pacing with a brief corner pause. Text opening, transfer confirmation and success hold rules stay unchanged. Native interruption/reduction, geometry and bilingual layout checks passed; full-resolution Air/mini visual acceptance remains pending. Local App/DMG only; build17 is retained.
+
+投放卡片改为柔和显现、原位压缩／拉伸／轻弹收稳：快速 380ms、自然 620ms、舒缓 880ms，实际投放立即可用。对勾缩小并向圆心收进、折角更尖，两笔采用不同节奏并在转角略停。文本开合、传输确认与成功停留规则不变；原生中断／减少动态效果、几何与中英文布局检查通过，Air／mini 全分辨率观感待确认。仅本地 App／DMG，保留 build17。
+
 ## 0.4.0 / build 17 — local test candidate, 2026-10-08
 
 Adds locally saved Fast / Natural / Relaxed motion, default Natural, and an isolated animation preview. Fixed drag targets remain immediately usable while the card gently springs in place. Real byte progress now uses a vector ring; only confirmed success completes it and draws a two-stroke check, followed by the selected hold time. Small files retain full success feedback; new/parallel transfers, duplicate completion and stale hide callbacks are guarded. Text effects share the speed; animation-off/Reduce Motion settles immediately without losing the hold. Includes bilingual documentation, automated regression checks and native preview captures. Air/mini physical acceptance remains pending. Local App/DMG only; no install, push or public release.

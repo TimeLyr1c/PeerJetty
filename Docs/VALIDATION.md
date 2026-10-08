@@ -210,3 +210,14 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - Short isolated process comparison against build16 `52a3415`: baseline idle CPU 0.0035 s / 1 s, 30 updates 0.0614 s, hidden CPU 0.0004 s / 1 s, peak RSS 61.3 MiB; current 0.0036 / 0.0470 / 0.0003 s, 59.5 MiB. Both settled with zero custom animations. This is a small sample, excludes WindowServer/GPU/full app polling and does not establish a performance improvement; no new continuous task or frame loop was introduced.
 
 完整动画测试已在解锁图形会话通过，覆盖配置、三档精确时长、阻尼、真实进度、确认／失败、停留、去重、并行与中断。中英文、布局、文本及文件隔离回归通过；真实截帧可见玻璃、圆环、对勾与收起，但低分辨率约 10fps，不据此宣称全分辨率观感或单帧无闪烁。短时独立进程开销与 build16 接近，不含系统合成／GPU，不作性能提升承诺。Air／mini 实机及辅助显示、跨屏、边缘点透、实际手感仍待用户确认。保留旧归档，仅交付本地 build17，不自动安装、推送或发布。
+
+
+## Jelly reveal and inset check / 果冻弹出与对勾留白 — 2026-10-08, build18
+
+- Read-only Apple completion references are linked in APPEARANCE.md. They establish the confirmed-completion/check/dismiss sequence, not exact geometry or timing; our path/curve is original.
+- `test-motion.sh --deliver-preview` passed after the desktop was unlocked: legacy speed/persistence tests, monotonic progress, confirmation, hold, duplicate/parallel/new-transfer callbacks, window dismissal ordering, reopening, animation-off/Reduce Motion and text focus/drafts. An earlier locked-session attempt failed the native dismissal check; it is superseded by the successful unlocked run, not silently treated as passing.
+- New focused checks passed: buffered initial velocity, 86%/62% unequal-axis start, height overshoot bounded between 104–105%, peak near the timeline midpoint, smooth identity endpoint, compensated AppKit anchor with fixed visual center, unchanged hit area/transparent padding, finite 61-sample animation cleanup. Check elbow measured ~75.7°; conservative stroke clearance exceeds 2.5 points, and short-stroke boundary uses actual path lengths.
+- `test-drop-presentation.sh` passed five screen groups, isolated pasteboard checks and 24 bilingual card/control layouts. Both language runs of `test-localization.sh` passed 320 keys and 20 appearance/short-window layouts each. No protocol, identities, database or transfer-engine change.
+- Final native preview captured 60 real frames (~6.3 s) in ignored `outputs/previews/motion-build18/natural.gif`, with timestamps/contact sheets. Real glass, progress, inset check and disappearance are visible. UI capture is low-resolution and ~10 fps; action/capture latency can miss the beginning of the reveal, so this does not establish exact subjective spring feel or single-frame absence of flash. Native ordering/curve checks cover objective invariants; full-resolution Air/mini acceptance remains pending.
+
+已解锁会话完整动画测试通过，包含新的形变缓冲、固定中心与命中、对勾留白检查，以及确认／停留／中断／减少动态效果回归。中英文和布局通过；原生低分辨率截帧可见玻璃与新对勾，但采样可能错过展开起始，不能替代用户在 Air／mini 的实际观感确认。保留 build17，生成独立本地 build18；不自动安装、推送或公开发布。

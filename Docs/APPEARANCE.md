@@ -24,19 +24,28 @@ General → Animation speed offers **Fast / Natural / Relaxed**, defaulting to N
 
 | Stage / 阶段 | Fast / 快速 | Natural / 自然 | Relaxed / 舒缓 |
 |---|---:|---:|---:|
-| Appear / 展开 | 220 ms | 340 ms | 480 ms |
+| Card appear / 卡片展开 | 380 ms | 620 ms | 880 ms |
+| Text appear / 文本展开 | 220 ms | 340 ms | 480 ms |
 | Status / 文字过渡 | 100 ms | 180 ms | 240 ms |
 | Ring and check / 圆环与对勾 | 320 ms | 650 ms | 950 ms |
 | Hold after check / 完成后停留 | 1 s | 1.8 s | 2.8 s |
 | Dismiss / 收起 | 160 ms | 240 ms | 320 ms |
 
-The card expands in place from 97% using the same damping ratio (0.72) at all speeds. Actual drag targets are immediately visible and interactive; only rendering scales, never the window, physical hit area or shadow padding. Repeated drag sampling does not interrupt the spring. Keyboard focus is immediate. Disabling animations or enabling Reduce Motion cancels custom effects and presents final states, retaining success hold time.
+The card now reveals softly from 12% opacity while expanding from 86% width / 62% height. A sampled damped step response (damping ratio 0.56, normalized frequency 7.5) gives one visible squash/stretch rebound: maximum height about 105%, with the peak near halfway through the sequence rather than concentrated in its first frames. A smooth envelope settles the tiny remaining tail to identity with zero endpoint velocity. Only a finite, precomputed set of 61 layer transforms is used; there is no custom frame loop. Presentation translation compensates AppKit layer anchors to keep the visual center fixed. Text windows retain their smaller 97% uniform spring.
 
-卡片从 97% 原位展开，三档使用相同阻尼比 0.72、轻微一次回弹。拖拽目标立即可见、立即接收，只缩放视觉层，不改变窗口、命中范围或阴影边距；重复拖拽采样不截断弹簧，文本焦点立即可用。关闭动画／系统减少动态效果时立即展示最终状态，仍保留成功停留。
+卡片从 12% 不透明度柔和显现，初始宽度 86%／高度 62%，使用阻尼比 0.56、归一化频率 7.5 的阶跃响应形成一次明显压缩／拉伸回弹；最大高度约 105%，峰值在时间轴中段，避免动作挤在开头。尾部平滑收束到单位变换，端点速度为零。只预先生成 61 个图层变换，无自定义逐帧循环；按 AppKit 锚点补偿视觉中心，文字窗口保留原有 97% 轻微均匀缩放。
+
+The physical drag target is immediately available and fixed, independently of rendered deformation/opacity. Native window position, layout, transparent margins and registration never animate; keyboard focus remains immediate. Repeated drag sampling does not truncate the effect. Disabling animations/Reduce Motion presents the final state and retains confirmed-success hold time.
+
+实际投放区域立即可用，独立于视觉形变和显现；窗口位置、排版、透明边距及拖放注册均不变，键盘焦点立即可用。重复拖拽采样不截断效果；关闭动画／减少动态效果立即展示最终状态并保留成功停留。
 
 A small vector ring replaces the horizontal file progress bar. Known byte progress is monotonic; preparation/unknown totals show no invented percentage. Full bytes without the real success event show Waiting for confirmation. Only confirmed success completes the green ring, draws the short and long check strokes, then gently settles. Small files receive the full success sequence without delaying the actual transfer or replaying fictional progress. Failure, cancellation and unconfirmed transfers do not draw a check. Text retains its existing confirmed-success feedback rather than adopting this ring.
 
 少量矢量图层组成圆环，替代文件横向进度条；真实字节进度不倒退，准备或未知总量不造百分比，传完但未确认显示“等待确认”。仅真实成功事件补齐绿色圆环、依次画出两笔对勾并收稳；小文件也完整展示，不延迟传输、不补演假进度。失败／取消／未确认不画对勾；文本保留原有确认反馈。
+
+The compact check uses a sharper ~76° elbow, an inset right endpoint, and round caps. At the normal 30-point glyph size, conservative stroke-to-ring clearance is over 2.5 points. Short-stroke completion is computed from actual segment lengths; it accelerates into a brief corner pause, followed by a longer decelerating upward stroke. Circle completion and overall speed/hold settings are unchanged. This is our own geometry/timing inspired by Apple's completion feedback, not Apple's private animation or an exact reproduction.
+
+对勾使用约 76° 更尖的折角、向圆心收进的右端和圆头；30 点图标中保守计算的描边留白超过 2.5 点。按真实线段长度定位短笔结束点，短笔加速、转角略停、长笔减速向上画出。圆环完成条件、整体成功时长和停留不变；路径与节奏自行设计，借鉴 Apple 完成反馈，并非精确复刻其私有动画。
 
 The card controller owns the hold deadline, starting after the check sequence finishes. Transfer IDs deduplicate success and invalidate stale hide callbacks; new transfers/drops take over immediately. Concurrent active transfers remain visible instead of being replaced by another transfer's completion. Dismissal orders the window out before restoring opacity. Keyed finite effects are cancelled on hiding; no spinner, particles, per-frame loop or added background polling.
 
@@ -57,3 +66,9 @@ General → Preview animation opens an isolated native glass preview. Its local 
 [Apple Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/), [Apple spring animations](https://developer.apple.com/videos/play/wwdc2023/10158/), [NotchDrop](https://github.com/Lakr233/NotchDrop), [Dropover](https://dropoverapp.com/). These informed material, top-screen handoff and restrained feedback decisions. This change copies no third-party code and adds no UI/animation dependency.
 
 以上作为材质、顶部交接和克制反馈的参考；本轮未复制第三方代码，也未增加 UI 或动画框架依赖。
+
+### Success references / 成功反馈参考
+
+[Apple Pay on the Web](https://developer.apple.com/videos/play/tech-talks/111381/) describes confirmed completion followed by a check and dismissal. [Apple's related Tap to Pay cashier guide](https://developer.apple.com/tap-to-pay/files/Tap-to-Pay-on-iPhone-Cashier-Guide-July2023.pdf) documents the completion check. These public sources do not specify exact path coordinates or per-stroke durations; our proportions and timing are independently implemented. No Apple artwork or third-party animation code is bundled.
+
+Apple 公开资料说明确认完成、展示对勾与收起，但未给出精确路径和逐笔时长；本项目自行实现比例与节奏，不打包 Apple 图像或第三方动画代码。
