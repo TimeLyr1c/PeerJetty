@@ -1,3 +1,4 @@
+func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap { descendants($0) } }
 import AppKit
 import PeerCore
 
@@ -124,14 +125,15 @@ struct RunDropPresentationTests {
         for child in view.subviews {
             XCTAssertTrue(view.bounds.contains(child.frame))
         }
-        XCTAssertEqual(view.layer?.cornerRadius, 16)
-        XCTAssertEqual(view.layer?.masksToBounds, true)
+        if #available(macOS 26.0, *) {
+            XCTAssertEqual((view.subviews.first as? NSGlassEffectView)?.cornerRadius, 16)
+        } else { XCTAssertEqual(view.subviews.first?.layer?.cornerRadius, 16); XCTAssertEqual(view.subviews.first?.layer?.masksToBounds, true) }
         print("PASS: card layout and full corner clipping")
-        let labels = view.subviews.compactMap { $0 as? NSTextField }
+        let labels = descendants(view).compactMap { $0 as? NSTextField }
         let title = labels[0], subtitle = labels[1]
-        let progress = view.subviews.compactMap { $0 as? NSProgressIndicator }.first!
-        let cancel = view.subviews.compactMap { $0 as? NSButton }.first!
-        let icon = view.subviews.compactMap { $0 as? NSImageView }.first!
+        let progress = descendants(view).compactMap { $0 as? NSProgressIndicator }.first!
+        let cancel = descendants(view).compactMap { $0 as? NSButton }.first!
+        let icon = descendants(view).compactMap { $0 as? NSImageView }.first!
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = view
         let snapshot = CommandLine.arguments.count == 2 ? URL(fileURLWithPath: CommandLine.arguments[1]) : nil

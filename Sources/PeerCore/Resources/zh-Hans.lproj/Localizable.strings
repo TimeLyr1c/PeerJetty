@@ -294,3 +294,6 @@
 "text.copied" = "已复制";
 "text.copy_failed" = "无法复制文本。";
 "text.history_heading" = "文本历史";
+
+"settings.animations" = "启用界面动画";
+"settings.animations_hint" = "立即生效。系统“减少动态效果”优先，不改变这里保存的选择。";

@@ -97,7 +97,7 @@ static func main() throws {
     rejects("symlink database refused"){_ = try TextHistory(url:link)}
     print("PASS: migration, SQLite reopen, 500/30day/forever, hiding, deletion, permissions, write failure")
 
-    _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
+    _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited); MotionPolicy.shared.enabled = false
     let composer = TextComposer(); let peer = DiscoveredPeer(id:"p",name:"Test",paired:true,connected:true,supportsText:true)
     composer.updatePeers([peer],preferred:"p"); composer.editor.string = original
     var sent = ""; let pending = UUID(); composer.onSend = { text,id in check(id == "p","temporary target"); sent = text; return pending }

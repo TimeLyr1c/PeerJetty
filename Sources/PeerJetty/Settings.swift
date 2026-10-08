@@ -44,6 +44,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onSendText: (() -> Void)?
     var onUpdates: (() -> Void)?
     var onLanguage: ((DisplayLanguage) -> Void)?
+    var onAnimations: ((Bool) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
     var onReset: (() -> Void)?
@@ -55,6 +56,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private let statusLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.preparing_to_connect"))
     private let progressLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.no_transfers_yet"))
     private let connectionLabel = NSTextField(wrappingLabelWithString: "")
+    private let animations = NSSwitch()
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
     private let historyOpen = NSButton()
@@ -91,6 +93,9 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         devices.target = self; devices.action = #selector(selectPeer)
         connectionLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         connectionLabel.textColor = .secondaryLabelColor
+        animations.state = configuration.animationsEnabled ? .on : .off
+        animations.identifier = NSUserInterfaceItemIdentifier("interfaceAnimations")
+        animations.target = self; animations.action = #selector(toggleAnimations)
         login.target = self; login.action = #selector(toggleLogin)
         autoOpen.target = self; autoOpen.action = #selector(toggleAutoOpen)
         autoOpen.state = configuration.autoOpenReceivedFiles ? .on : .off
@@ -112,7 +117,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         general += [heading(L10n.text("settings.device_name")),
             row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]),
             separator(), setting("settings.language", language), hint("settings.language_restart"),
-            separator(), setting("settings.start_at_login", login)]
+            separator(), setting("settings.start_at_login", login),
+            separator(), setting("settings.animations", animations), hint("settings.animations_hint")]
         let deviceRows: [NSView] = [heading(SettingsSection.devices.title), hint("settings.devices_select_a_paired_device_as_your_default"),
             row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))]),
@@ -276,6 +282,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         let detail = L10n.text(key, update.peerName, update.status)
         progressLabel.stringValue = update.finished ? detail : L10n.text("settings.progress_percent", detail, L10n.percent(percent))
     }
+    func animationState(_ enabled: Bool) { animations.state = enabled ? .on : .off }
+    @objc private func toggleAnimations() { onAnimations?(animations.state == .on) }
     @objc private func save() { onSave?(name.stringValue) }
     @objc private func selectPeer() { if let selected, selected.paired { onSelect?(selected.id) } }
     @objc private func connect() { if let selected { onConnect?(selected.id) } }

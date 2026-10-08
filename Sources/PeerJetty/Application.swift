@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
     private func finishStartup(store: ConfigurationStore, identity: DeviceIdentity) {
+        MotionPolicy.shared.enabled = store.snapshot.animationsEnabled
         self.store = store; let engine = PeerEngine(identity: identity, store: store); self.engine = engine
         historyQueue.async { [weak self] in
             do { _ = try self?.ensureHistory() } catch { DispatchQueue.main.async { self?.settings?.status(L10n.text("text.history_failed")) } }
@@ -186,6 +187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onTextRetention = { [weak self] value in self?.setTextRetention(value) }
             controller.onUpdates = { [weak self] in self?.checkUpdates() }
             controller.onLanguage = { selection in LanguagePreferences().save(selection) }
+            controller.onAnimations = { [weak self] enabled in
+                do { try store.update { $0.animationsEnabled = enabled }; MotionPolicy.shared.enabled = enabled }
+                catch { self?.settings?.animationState(store.snapshot.animationsEnabled); self?.showError(error.localizedDescription) }
+            }
             controller.onAutoOpen = { [weak self] enabled in
                 do {
                     try store.update { $0.autoOpenReceivedFiles = enabled }
@@ -206,6 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onQuit = { NSApp.terminate(nil) }
         }
         settings?.updatePeers(peers, preferred: store.snapshot.preferredPeer)
+        settings?.animationState(store.snapshot.animationsEnabled)
         settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
         settings?.loginState(SMAppService.mainApp.status == .enabled)
         settings?.showWindow(nil); NSApp.activate(ignoringOtherApps: true); settings?.window?.makeKeyAndOrderFront(nil)

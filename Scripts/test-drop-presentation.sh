@@ -20,6 +20,6 @@ fi
 /usr/bin/swiftc -parse-as-library -target "$(uname -m)-apple-macos15.0" \
   -module-cache-path "$PROJECT_ROOT/.module-cache" \
   -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" \
-  Sources/PeerJetty/DropPresentation.swift Sources/PeerJetty/DropZone.swift \
+  Sources/PeerJetty/Motion.swift Sources/PeerJetty/DropPresentation.swift Sources/PeerJetty/DropZone.swift \
   Tests/DropPresentationTests/DropPresentationTests.swift -o "$TEST_ROOT/tests"
 "$TEST_ROOT/tests" "$@"

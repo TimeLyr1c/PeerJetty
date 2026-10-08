@@ -1,16 +1,10 @@
 # Changes
 
-## Unreleased — settings interface / 设置界面
+## 0.4.0 / build 14 — local test candidate, 2026-10-08
 
-Replaces the long settings form with a native five-category preferences toolbar, per-page scrolling, aligned controls and shared status. Keeps existing configuration and callbacks, unsaved name edits, history confirmations and transfer behavior. Adds an About page with MIT terms and a collapsed maintenance section. No product version bump or public installer release.
+Combines categorized native settings, unified text composer/reader/history layouts, larger centered drop-card text, and native drop-card glass (macOS 26+, system frosted fallback on macOS 15). Adds a local, live Enable interface animations switch, overridden by system Reduce Motion. Actual drag targets stay immediate and stationary; previews and text windows use short, restrained elastic feedback with cancellation-safe transitions. Protocol, identities and text-history rules remain unchanged. Automated checks pass; physical Air/mini, accessibility material and macOS 15 acceptance remain pending. Local App/DMG only; not a public Release.
 
-将长列表设置改为原生顶部五分类，各页独立滚动、控件对齐、底部共享状态；保留原有配置、操作回调、未保存名称、历史确认及传输行为。关于页新增 MIT 条款和折叠维护区域；不增加产品版本、不公开发布安装包。
-
-## Unreleased — text interfaces / 文本界面
-
-Unifies the composer, reader and history with native AppKit controls and Auto Layout. Adds a 14-point plain text surface with rounded borders, a display-only placeholder, compact target controls, icon-labelled status, reader metadata and copy feedback. History uses resizable 64-point native rows and separate clear controls. Keeps transport, drafts, clipboard and history rules unchanged; animations remain a later task. No version bump or installer release.
-
-发送、收件查看与历史统一为原生 AppKit 控件和自动布局：14 点正文、圆角细边框、仅显示的占位提示、紧凑目标操作、图标状态、收件信息与复制反馈；历史使用可缩放的 64 点原生列表，独立清空操作。保留传输、草稿、剪贴板和记录规则；动画另做，不增加版本或发布安装包。
+集中交付原生分类设置、统一文本发送／查看／历史排版、投放卡片字体与居中优化，以及原生玻璃卡片（macOS 26+；macOS 15 系统磨砂）。通用页新增立即生效的本机动画开关，系统减少动态效果优先。实际拖拽目标立即出现且固定，预览与文本窗口使用短促克制的弹性反馈，动画可中断。协议、配对身份、历史规则不变。自动检查通过，Air／mini 实机、辅助显示材质及 macOS 15 验收待完成；仅本地 App／DMG，不公开发布。
 
 ## 0.4.0 / build 13 — local test candidate, 2026-10-07
 

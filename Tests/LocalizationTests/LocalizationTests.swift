@@ -112,6 +112,13 @@ struct LocalizationChecks {
             check(window.toolbar!.selectedItemIdentifier == item.itemIdentifier, "Toolbar changes selected page")
         }
         check(window.toolbar!.items.count == 5, "Five native toolbar categories")
+        let animationSwitch = control("interfaceAnimations", as:NSSwitch.self)
+        check(animationSwitch.state == .on, "Animations enabled by default")
+        var changedAnimation: Bool?
+        settings.onAnimations = { changedAnimation=$0 }
+        animationSwitch.state = .off; NSApp.sendAction(animationSwitch.action!,to:animationSwitch.target,from:animationSwitch)
+        check(changedAnimation == false, "Animation switch callback")
+        settings.animationState(true); check(animationSwitch.state == .on, "Failed save can restore animation choice")
         let maintenance = control("settingsMaintenance", as: NSStackView.self)
         let disclosure = control("settingsMaintenanceToggle", as: NSButton.self)
         check(maintenance.isHidden, "Maintenance starts collapsed")

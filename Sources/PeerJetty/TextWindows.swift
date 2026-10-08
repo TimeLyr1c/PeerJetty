@@ -17,7 +17,15 @@ struct TextPanelPlacement {
 }
 
 private final class TextPanel: NSPanel {
+    lazy var motion = WindowMotion(self)
     override var canBecomeKey: Bool { true }
+    override func close() { motion.dismiss { [weak self] in self?.closeNow() } }
+    private func closeNow() { super.close() }
+}
+private final class TextReaderWindow: NSWindow {
+    lazy var motion = WindowMotion(self)
+    override func close() { motion.dismiss { [weak self] in self?.closeNow() } }
+    private func closeNow() { super.close() }
 }
 /// Menu-bar apps have no standard Edit menu to dispatch these key equivalents.
 /// Delegate to native text actions only after an explicit user shortcut.
@@ -146,8 +154,10 @@ private final class TextStatus: NSView {
         case .error: symbol = "exclamationmark.circle.fill"; color = .systemRed
         case .warning: symbol = "exclamationmark.triangle.fill"; color = .systemOrange
         }
+        if label.stringValue != message { MotionEffects.transition(label); MotionEffects.transition(icon) }
         label.stringValue = message; label.textColor = kind == .error || kind == .warning ? color : .secondaryLabelColor
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil); icon.contentTintColor = color
+        if kind == .success { MotionEffects.pulse(icon) } else { icon.layer?.removeAnimation(forKey: "PeerJetty.feedback") }
         label.toolTip = message; needsLayout = true
     }
 }
@@ -237,7 +247,8 @@ final class TextComposer: NSWindowController, NSWindowDelegate {
             window?.setContentSize(placement.contentSize); window?.setFrameOrigin(placement.frame.origin)
             onVisibility?(screen)
         }
-        showWindow(nil); NSApp.activate(ignoringOtherApps: true); window?.makeKeyAndOrderFront(nil); window?.makeFirstResponder(editor)
+        NSApp.activate(ignoringOtherApps: true)
+        if let panel = window as? TextPanel { panel.motion.reveal { panel.makeKeyAndOrderFront(nil) }; panel.makeFirstResponder(editor) }
     }
     @objc private func closePanel() { window?.close() }
     func windowWillClose(_ notification: Notification) { onVisibility?(nil) }
@@ -276,7 +287,7 @@ final class TextReader: NSWindowController {
     private let copied = NSTextField(labelWithString: "")
     init(entry: TextEntry, saved: Bool = true, pasteboard: NSPasteboard = .general) {
         self.pasteboard = pasteboard
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 400), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+        let window = TextReaderWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 400), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         window.contentMinSize = NSSize(width: 360, height: 200)
         window.title = L10n.text("text.reader_title", entry.peerName); window.isReleasedWhenClosed = false; window.isRestorable = false; window.center()
         super.init(window: window)
@@ -301,11 +312,15 @@ final class TextReader: NSWindowController {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
     @objc private func copyText() {
+        MotionEffects.transition(copied)
         pasteboard.clearContents()
         if pasteboard.setString(text.string, forType: .string) { copied.stringValue = L10n.text("text.copied") }
         else { copied.stringValue = L10n.text("text.copy_failed") }
     }
-    func present() { showWindow(nil); NSApp.activate(ignoringOtherApps: true); window?.makeKeyAndOrderFront(nil); window?.makeFirstResponder(text) }
+    func present() {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = window as? TextReaderWindow { window.motion.reveal { window.makeKeyAndOrderFront(nil) }; window.makeFirstResponder(text) }
+    }
 }
 private final class TextHistoryCell: NSTableCellView {
     private let direction = NSImageView()

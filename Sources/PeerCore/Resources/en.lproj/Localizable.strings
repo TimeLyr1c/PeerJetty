@@ -294,3 +294,6 @@
 "text.copied" = "Copied";
 "text.copy_failed" = "Could not copy text.";
 "text.history_heading" = "Text History";
+
+"settings.animations" = "Enable interface animations";
+"settings.animations_hint" = "Applies immediately. System Reduce Motion overrides this switch without changing your choice.";

@@ -13,6 +13,10 @@ final class DropZoneView: NSView {
     var onFiles: (([URL], (() -> Void)?) -> Void)?
     var onFailure: ((String) -> Void)?
     var onReceivingPromise: (() -> Void)?
+    private let content = NSView()
+    private var motionObserver: NSObjectProtocol?
+    private var successIDs: [UUID] = []
+    private(set) var usesNativeGlass = false
     private let icon = NSImageView()
     private let title = NSTextField(labelWithString: L10n.text("dropzone.drop_here"))
     private let subtitle = NSTextField(labelWithString: L10n.text("dropzone.choose_a_destination"))
@@ -24,25 +28,33 @@ final class DropZoneView: NSView {
         let queue = OperationQueue(); queue.name = "PeerJetty.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
     }()
     private var promiseTracker: PromiseTracker?
-    override init(frame: NSRect) {
+    convenience override init(frame: NSRect) { self.init(frame: frame, forceLegacyMaterial: false) }
+    // Exercise the macOS 15 fallback on a newer development host without changing production selection.
+    init(frame: NSRect, forceLegacyMaterial: Bool) {
         super.init(frame: frame)
-        wantsLayer = true; layer?.cornerRadius = 16; layer?.cornerCurve = .continuous
-        layer?.masksToBounds = true
-        appearance = NSAppearance(named: .darkAqua)
-        let background = NSVisualEffectView(frame: bounds)
-        background.material = .hudWindow; background.blendingMode = .behindWindow
-        background.state = .active; background.autoresizingMask = [.width, .height]
-        addSubview(background)
-        layer?.borderWidth = 0.5; layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-        icon.contentTintColor = .white
+        content.frame = bounds; content.autoresizingMask = [.width, .height]
+        if #available(macOS 26.0, *), !forceLegacyMaterial {
+            let glass = NSGlassEffectView(frame: bounds); glass.style = .regular; glass.cornerRadius = 16
+            glass.autoresizingMask = [.width, .height]; glass.contentView = content
+            addSubview(glass); usesNativeGlass = true
+        } else {
+            let background = NSVisualEffectView(frame: bounds)
+            background.material = .hudWindow; background.blendingMode = .behindWindow; background.state = .active
+            background.wantsLayer = true; background.layer?.cornerRadius = 16; background.layer?.masksToBounds = true
+            background.autoresizingMask = [.width, .height]; addSubview(background); background.addSubview(content)
+        }
+        icon.contentTintColor = .labelColor
+        motionObserver = NotificationCenter.default.addObserver(forName: MotionPolicy.changed, object: MotionPolicy.shared, queue: .main) { [weak self] _ in
+            if !MotionPolicy.shared.allowed, let self { MotionEffects.clear(self) }
+        }
         title.lineBreakMode = .byTruncatingTail
-        title.textColor = .white; title.font = .systemFont(ofSize: 15, weight: .semibold)
-        subtitle.textColor = NSColor.white.withAlphaComponent(0.85); subtitle.font = .systemFont(ofSize: 13, weight: .medium)
+        title.textColor = .labelColor; title.font = .systemFont(ofSize: 15, weight: .semibold)
+        subtitle.textColor = .secondaryLabelColor; subtitle.font = .systemFont(ofSize: 13, weight: .medium)
         subtitle.lineBreakMode = .byTruncatingMiddle
         progress.style = .bar; progress.isIndeterminate = false; progress.maxValue = 1; progress.isHidden = true
-        cancelButton.bezelStyle = .inline; cancelButton.font = .systemFont(ofSize: 12); cancelButton.contentTintColor = .white
+        cancelButton.bezelStyle = .inline; cancelButton.font = .systemFont(ofSize: 12); cancelButton.contentTintColor = .labelColor
         cancelButton.target = self; cancelButton.action = #selector(cancel); cancelButton.isHidden = true
-        [icon, title, subtitle, progress, cancelButton].forEach(addSubview)
+        [icon, title, subtitle, progress, cancelButton].forEach(content.addSubview)
         registerForDraggedTypes(DragPayload.types); idle()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
@@ -60,8 +72,10 @@ final class DropZoneView: NSView {
         progress.frame = NSRect(x: 16, y: 10, width: max(0, bounds.width - 32), height: 5)
         cancelButton.frame = NSRect(x: bounds.width - 80, y: titleY, width: 64, height: 22)
     }
-    func idle() { show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .white); progress.isHidden = true; cancelButton.isHidden = true }
+    func idle() { show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .labelColor); progress.isHidden = true; cancelButton.isHidden = true }
     func show(title: String, subtitle: String, symbol: String = "arrow.up.circle.fill", color: NSColor = .systemBlue) {
+        if self.title.stringValue != title { icon.layer?.removeAnimation(forKey: "PeerJetty.feedback"); MotionEffects.transition(self.title); MotionEffects.transition(icon) }
+        if self.subtitle.stringValue != subtitle { MotionEffects.transition(self.subtitle) }
         self.title.stringValue = title; self.subtitle.stringValue = subtitle
         self.title.toolTip = title; self.subtitle.toolTip = subtitle; needsLayout = true
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title); icon.contentTintColor = color
@@ -70,13 +84,17 @@ final class DropZoneView: NSView {
         show(title: update.status, subtitle: L10n.text(update.receiving ? "drop.receiving_peer" : "drop.sending_peer", update.peerName),
              symbol: update.finished ? (update.succeeded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill") : "arrow.up.arrow.down.circle.fill",
              color: update.finished ? (update.succeeded ? .systemGreen : .systemOrange) : .systemBlue)
+        if update.finished, update.succeeded, !successIDs.contains(update.id) {
+            successIDs.append(update.id); if successIDs.count > 256 { successIDs.removeFirst() }; MotionEffects.pulse(icon)
+        }
         progress.isHidden = update.finished; cancelButton.isHidden = update.finished
         progress.doubleValue = update.total > 0 ? min(1, Double(update.completed) / Double(update.total)) : 0
     }
+    deinit { if let motionObserver { NotificationCenter.default.removeObserver(motionObserver) } }
     @objc private func cancel() { promiseTracker?.cancel(); onCancel?() }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         guard DragPayload.accepts(sender.draggingPasteboard) else { return [] }
-        show(title: L10n.text("dropzone.release_to_send"), subtitle: targetName, symbol: "plus.circle.fill"); return .copy
+        show(title: L10n.text("dropzone.release_to_send"), subtitle: targetName, symbol: "plus.circle.fill"); MotionEffects.pulse(icon); return .copy
     }
     override func draggingExited(_ sender: NSDraggingInfo?) { idle() }
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { DragPayload.accepts(sender.draggingPasteboard) }
@@ -122,6 +140,7 @@ final class DropZoneView: NSView {
 final class DropPanelController {
     let view = DropZoneView(frame: NSRect(x: 0, y: 0, width: 320, height: 76))
     private let panel: NSPanel
+    private let motion: WindowMotion
     private var timer: Timer?
     private var screenObserver: NSObjectProtocol?
     private var visible = false
@@ -135,6 +154,7 @@ final class DropPanelController {
     var busy = false
     init() {
         panel = NSPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        motion = WindowMotion(panel)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .statusBar
         panel.hidesOnDeactivate = false; panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = view; panel.orderOut(nil)
@@ -155,7 +175,7 @@ final class DropPanelController {
         selectedScreen().map { DropPresentation(DropScreenMetrics($0)) }
     }
     private func position() {
-        guard let screen = selectedScreen() else { panel.orderOut(nil); visible = false; return }
+        guard let screen = selectedScreen() else { panel.orderOut(nil); motion.finishImmediately(); visible = false; return }
         selectedScreenID = screenID(screen)
         revision += 1; hidePending = false
         let geometry = DropPresentation(DropScreenMetrics(screen))
@@ -166,7 +186,7 @@ final class DropPanelController {
     private func show(on screen: NSScreen?, immediately: Bool = false) {
         let destination = screen ?? (visible ? selectedScreen() : mouseScreen())
         if let destination, editingScreenID != nil, screenID(destination) == editingScreenID {
-            revision += 1; hidePending = false; visible = false; panel.orderOut(nil); return
+            revision += 1; hidePending = false; visible = false; panel.orderOut(nil); motion.finishImmediately(); return
         }
         if visible {
             if hidePending { revision += 1; hidePending = false }
@@ -177,15 +197,8 @@ final class DropPanelController {
         revision += 1; hidePending = false; visible = true
         cardFrame = geometry.card
         panel.setFrame(geometry.card, display: true)
-        let animate = !immediately && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        panel.alphaValue = animate ? 0 : 1
-        panel.orderFrontRegardless()
-        // File drags get an immediate, stationary target; only status/preview
-        // presentation fades in. Never move a drop target from the top edge.
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = animate ? 0.12 : 0
-            panel.animator().alphaValue = 1
-        }
+        motion.reveal(immediately: immediately) { panel.orderFrontRegardless() }
+
     }
     func hide(after seconds: Double = 0) {
         guard visible, !hidePending else { return }
@@ -197,11 +210,7 @@ final class DropPanelController {
             // A drag elsewhere on the screen must not hold this card open.
             if self.dragActive, geometry.retention.contains(NSEvent.mouseLocation) { return }
             self.visible = false
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.16
-                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                self.panel.animator().alphaValue = 0
-            } completionHandler: { [weak self] in
+            self.motion.dismiss { [weak self] in
                 guard let self, self.revision == token, !self.visible else { return }
                 self.panel.orderOut(nil)
             }
@@ -215,7 +224,7 @@ final class DropPanelController {
     func setEditingScreen(_ screen:NSScreen?) {
         editingScreenID = screen.flatMap { screenID($0) }
         if let screen, let selected = selectedScreen(), screenID(selected) == screenID(screen) {
-            revision += 1; hidePending = false; visible = false; panel.orderOut(nil)
+            revision += 1; hidePending = false; visible = false; panel.orderOut(nil); motion.finishImmediately()
         } else if busy { show(on:selectedScreen()) }
     }
     var isVisible: Bool { visible }
@@ -235,12 +244,13 @@ final class DropPanelController {
         if !pressed {
             if visible, !busy, Date() >= keepUntil { hide(after: 0.25) }
         } else if dragActive {
+            motion.snapAppearance()
             if let geometry = geometry(), visible, geometry.retention.contains(location) {
                 // Cancel an exit dismissal when the user returns to the card.
                 if hidePending { revision += 1; hidePending = false }
             } else if let screen = mouseScreen(), DropPresentation(DropScreenMetrics(screen)).trigger.contains(location) {
                 if visible, !busy, screenID(screen) != selectedScreenID {
-                    revision += 1; hidePending = false; visible = false; panel.orderOut(nil)
+                    revision += 1; hidePending = false; visible = false; panel.orderOut(nil); motion.finishImmediately()
                 }
                 if !busy { view.idle() }; show(on: screen, immediately: true)
             } else if visible, !busy { hide(after: 0.25) }

@@ -32,12 +32,13 @@ public struct Configuration: Codable {
     public var onboardingComplete: Bool
     public var showTextHistory: Bool = true
     public var textRetention: TextRetention = .latest500
+    public var animationsEnabled: Bool = true
     public var autoOpenReceivedFiles: Bool
     public init(name: String, receivePath: String) {
         self.name = name; self.receivePath = receivePath; peers = []; onboardingComplete = false; autoOpenReceivedFiles = false
     }
     private enum CodingKeys: String, CodingKey {
-        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention
+        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled
     }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -47,6 +48,7 @@ public struct Configuration: Codable {
         peers = try values.decode([TrustedPeer].self, forKey: .peers)
         preferredPeer = try values.decodeIfPresent(String.self, forKey: .preferredPeer)
         onboardingComplete = try values.decode(Bool.self, forKey: .onboardingComplete)
+        animationsEnabled = try values.decodeIfPresent(Bool.self, forKey: .animationsEnabled) ?? true
         showTextHistory = try values.decodeIfPresent(Bool.self, forKey: .showTextHistory) ?? true
         textRetention = try values.decodeIfPresent(TextRetention.self, forKey: .textRetention) ?? .latest500
         autoOpenReceivedFiles = try values.decodeIfPresent(Bool.self, forKey: .autoOpenReceivedFiles) ?? false
