@@ -34,14 +34,14 @@ extension AnimationSpeed {
 
 struct MotionProfile {
     let cardAppear: Double
-    var ringFlip: Double { success / 3 }
+    let ringFlip: Double, checkPause: Double
     let progressRate: Double
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init(_ speed: AnimationSpeed) {
         switch speed {
-        case .fast: cardAppear = 0.52; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
-        case .natural: cardAppear = 0.86; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
-        case .relaxed: cardAppear = 1.22; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
+        case .fast: ringFlip = 0.28; checkPause = 0.10; cardAppear = 0.52; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
+        case .natural: ringFlip = 0.50; checkPause = 0.15; cardAppear = 0.86; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
+        case .relaxed: ringFlip = 0.70; checkPause = 0.20; cardAppear = 1.22; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
         }
     }
 }
@@ -88,23 +88,66 @@ struct SpringMotion {
     }
 }
 
+/// Two native spring stages, joined at the first zero-velocity overshoot peak.
+/// Reopening reuses this trajectory rather than multiplying the return gain again.
 struct CardSpringState {
-    let x: SpringMotion, y: SpringMotion, duration: Double
+    let x: SpringMotion, y: SpringMotion, returnX: SpringMotion, returnY: SpringMotion
+    let switched: Double, duration: Double
+    var ends: Double { x.started + duration }
+    init(duration: Double, started: Double) {
+        let parameters=SpringParameters(duration:duration,dampingRatio:SpringParameters.cardRatio)
+        x=SpringMotion(from:0.92,target:1,velocity:0.08*parameters.dampingRatio*parameters.frequency,parameters:parameters,started:started)
+        y=SpringMotion(from:0.82,target:1,velocity:0.18*parameters.dampingRatio*parameters.frequency,parameters:parameters,started:started)
+        let ratio=parameters.dampingRatio, oscillation=parameters.frequency*sqrt(1-ratio*ratio)
+        switched=started+(.pi-atan(ratio/sqrt(1-ratio*ratio)))/oscillation
+        let stronger=SpringParameters(frequency:parameters.frequency*1.35,dampingRatio:ratio)
+        returnX=SpringMotion(from:x.sample(at:switched).value,target:1,velocity:0,parameters:stronger,started:switched)
+        returnY=SpringMotion(from:y.sample(at:switched).value,target:1,velocity:0,parameters:stronger,started:switched)
+        let tail=stronger.animation(keyPath:"transform.scale.y",from:returnY.from,velocity:0).duration
+        self.duration=switched-started+tail
+    }
     func sample(at time: Double) -> (x: Double, y: Double, vx: Double, vy: Double) {
-        let a=x.sample(at:time), b=y.sample(at:time)
+        if time >= ends { return (1,1,0,0) }
+        let a=(time < switched ? x : returnX).sample(at:time)
+        let b=(time < switched ? y : returnY).sample(at:time)
         return (a.value,b.value,a.velocity,b.velocity)
+    }
+    func animations(at epoch: Double, center: CGPoint) -> [CAAnimation] {
+        func axes(_ x: SpringMotion, _ y: SpringMotion, start: Double, end: Double) -> [CAAnimation] {
+            let a=x.sample(at:start), b=y.sample(at:start), parameters=x.parameters
+            let animations=[parameters.animation(keyPath:"transform.scale.x",from:a.value,velocity:a.velocity),
+                            parameters.animation(keyPath:"transform.scale.y",from:b.value,velocity:b.velocity),
+                            parameters.animation(keyPath:"transform.translation.x",from:center.x*(1-a.value),to:0,velocity:-center.x*a.velocity),
+                            parameters.animation(keyPath:"transform.translation.y",from:center.y*(1-b.value),to:0,velocity:-center.y*b.velocity)]
+            for animation in animations {
+                // The outward stage ends at zero velocity, not during visible movement.
+                animation.beginTime=max(0,start-epoch); animation.duration=max(0,end-start)
+                animation.fillMode = .backwards
+            }
+            return animations
+        }
+        guard epoch < ends else { return [] }
+        if epoch < switched {
+            // Return animations must not fill backwards over the outward stage.
+            let outward=axes(x,y,start:epoch,end:switched)
+            let returning=axes(returnX,returnY,start:switched,end:ends)
+            returning.forEach {$0.fillMode = .removed}
+            return outward+returning
+        }
+        return axes(returnX,returnY,start:epoch,end:ends)
     }
 }
 
 /// A captured, finite completion timeline shared by production and native previews.
 struct FileSuccessSequence {
-    let fill: Double, flip: Double, draw: Double, settle: Double
-    var checkStart: Double { fill + flip }
+    let fill: Double, flip: Double, pause: Double, draw: Double, settle: Double
+    var checkStart: Double { fill + flip + pause }
     var settleStart: Double { checkStart + draw }
     var duration: Double { settleStart + settle }
     init(profile: MotionProfile, progressDuration: Double) {
         fill = max(progressDuration, profile.success * 0.25)
         flip = profile.ringFlip
+        pause = profile.checkPause
         draw = profile.success * 0.50
         settle = MotionEffects.spring(duration:profile.success * 0.15,from:0.985).duration
     }
@@ -164,30 +207,21 @@ enum MotionEffects {
     @discardableResult
     static func cardAppear(_ view: NSView, duration: Double, previous: CardSpringState? = nil) -> CardSpringState {
         view.wantsLayer = true
-        let epoch = CACurrentMediaTime(), parameters = SpringParameters(duration:duration,dampingRatio:SpringParameters.cardRatio)
-        let current = previous?.sample(at:epoch)
+        let epoch = CACurrentMediaTime()
+        let state=previous ?? CardSpringState(duration:duration,started:epoch)
         let presentation = view.layer?.presentation()
-        let startX = previous == nil ? 0.92 : (presentation.map { Double($0.transform.m11) } ?? current!.x)
-        let startY = previous == nil ? 0.82 : (presentation.map { Double($0.transform.m22) } ?? current!.y)
-        let vx = current?.vx ?? ((1-startX)*parameters.dampingRatio*parameters.frequency)
-        let vy = current?.vy ?? ((1-startY)*parameters.dampingRatio*parameters.frequency)
         let anchor = view.layer?.anchorPoint ?? CGPoint(x:0.5,y:0.5)
         let center = CGPoint(x:view.bounds.width*(0.5-anchor.x),y:view.bounds.height*(0.5-anchor.y))
         let shape = CAAnimationGroup(); shape.timingFunction = .init(name:.linear)
-        let x=parameters.animation(keyPath:"transform.scale.x",from:startX,velocity:vx)
-        let y=parameters.animation(keyPath:"transform.scale.y",from:startY,velocity:vy)
-        // Compensate AppKit's layer anchor without changing physical bounds/position.
-        let tx=parameters.animation(keyPath:"transform.translation.x",from:center.x*(1-startX),to:0,velocity:-center.x*vx)
-        let ty=parameters.animation(keyPath:"transform.translation.y",from:center.y*(1-startY),to:0,velocity:-center.y*vy)
-        shape.animations=[x,y,tx,ty]; shape.duration=max(x.duration,y.duration,tx.duration,ty.duration)
+        shape.animations=state.animations(at:epoch,center:center)
+        shape.duration=max(0,state.ends-epoch)
         add(shape,to:view.layer,key:"PeerJetty.cardShape",startTime:epoch)
         let opacity = CABasicAnimation(keyPath:"opacity")
         opacity.fromValue = previous == nil ? 0.35 : (presentation?.opacity ?? 1)
         opacity.toValue = 1; opacity.duration = duration*0.18
         opacity.timingFunction = .init(name:.easeInEaseOut)
         add(opacity,to:view.layer,key:"PeerJetty.cardReveal",startTime:epoch)
-        return CardSpringState(x:SpringMotion(from:startX,target:1,velocity:vx,parameters:parameters,started:epoch),
-                               y:SpringMotion(from:startY,target:1,velocity:vy,parameters:parameters,started:epoch),duration:shape.duration)
+        return state
     }
     static func pulse(_ view: NSView, policy: MotionPolicy = .shared) {
         guard policy.allowed, view.window?.isVisible == true else { return }

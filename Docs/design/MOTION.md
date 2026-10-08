@@ -1,5 +1,9 @@
 # Native motion contract / 原生动画规范
 
+Current refinement: rotation uses symmetric quintic progress; FileSuccessSequence includes a captured pre-check pause. CardSpringState owns two finite native stages with a single stronger-return transition at the first zero-velocity overshoot peak. Reopening preserves the existing trajectory and does not compound the return gain.
+
+当前精修：旋转采用中点最快的对称五次曲线，完成时间线包含画勾前暂停。卡片在首次过冲峰值速度归零时，只增强一次返回弹簧；中途重开沿用当前阶段，不重复加力。
+
 ## Meaning and ownership / 意义与归属
 
 Motion is a JavaScript reference library here, **not** a dependency. Sources/PeerJetty/Motion.swift is PeerJetty's own AppKit/Core Animation infrastructure. Reuse it; don't introduce another animator or translate React APIs literally. Motion should express completion, direction, continuity or feedback, never replace state information.
@@ -58,7 +62,7 @@ Official references: [Motion transitions](https://motion.dev/docs/react-transiti
 
 ## Physical spring refinement / 物理弹簧精修
 
-SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping across speeds (card 0.58; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 04cfade physical-spring refinement against this candidate, both using native views and no production identity.
+SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping across speeds (card 0.58; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 95ac75a pacing refinement against this candidate, both using native views and no production identity.
 
 原生物理弹簧负责形变，短淡化负责显现，真实限速曲线负责进度，共享完成时间线负责翻转／画勾／停留。预览比较上一轮精修与当前候选；不安装 Web 库、不改传输与配置，仍待用户视觉确认。
 

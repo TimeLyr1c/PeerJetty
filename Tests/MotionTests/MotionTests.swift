@@ -132,6 +132,14 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             let y=SpringMotion(from:0.82,target:1,velocity:0.18*parameters.dampingRatio*parameters.frequency,parameters:parameters,started:start)
             let samples=(0...1000).map { y.sample(at:start+Double($0)*profile.cardAppear/1000) }
             check(abs(samples[0].value-0.82)<1e-9 && samples[0].velocity>0,"spring starts compressed with initial velocity")
+            let stages=CardSpringState(duration:profile.cardAppear,started:start)
+            let peak=stages.switched, before=stages.y.sample(at:peak), after=stages.returnY.sample(at:peak)
+            check(abs(before.value-after.value)<1e-8 && abs(before.velocity-after.velocity)<1e-8,"peak joins with continuous position and zero velocity")
+            let offset=0.10/parameters.frequency
+            check(abs(stages.returnY.sample(at:peak+offset).velocity)>abs(y.sample(at:peak+offset).velocity),"stronger return accelerates faster without changing outbound")
+            for i in 0...1000 { let t=start+Double(i)*stages.duration/1000; check(stages.sample(at:t).y<=1.035,"two-stage rebound stays bounded") }
+            let resumed=stages.animations(at:peak+0.01,center:.zero) as! [CASpringAnimation]
+            check(resumed.count==4 && abs(resumed[1].stiffness-stages.returnY.parameters.frequency*stages.returnY.parameters.frequency)<1e-8,"reopening during return does not multiply gain again")
             check(samples.map(\.value).max()! <= 1.035 && samples.map(\.value).max()! > 1.023,"physical rebound remains bounded")
             check(abs(samples.last!.value-1)<0.001 && abs(samples.last!.velocity)<0.02,"native-duration tail is already settled")
             let animation=parameters.animation(keyPath:"transform.scale.y",from:0.82)
@@ -146,10 +154,11 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let state=MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
         let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAAnimationGroup
         let springs=animation!.animations as! [CASpringAnimation]
-        check(springs.count == 4 && springs.allSatisfy {$0.duration == $0.settlingDuration},"native axis/anchor springs run to settlement")
+        check(springs.count == 8 && abs(springs[4].stiffness/springs[0].stiffness-1.8225)<1e-8,"two finite spring stages strengthen return once")
+        check(abs(springs[4].duration-springs[4].settlingDuration)<0.001,"return runs to native settlement")
         let anchor=host.layer!.anchorPoint, center=CGPoint(x:host.bounds.width*(0.5-anchor.x),y:host.bounds.height*(0.5-anchor.y))
         check(abs(center.x*0.92+(springs[2].fromValue as! Double)-center.x)<0.001 && abs(center.y*0.82+(springs[3].fromValue as! Double)-center.y)<0.001,"visual center is preserved with AppKit anchor")
-        check(state.duration == animation!.duration && host.card.frame == frame && host.hitTest(NSPoint(x:4,y:4)) == nil,"physical card and transparent target boundary stay fixed")
+        check(abs(state.duration-animation!.duration)<1e-8 && host.card.frame == frame && host.hitTest(NSPoint(x:4,y:4)) == nil,"physical card and transparent target boundary stay fixed")
         check(host.layer?.opacity == 1 && CATransform3DIsIdentity(host.layer!.transform),"model stays ready for input and cancellation")
         let panel=NSPanel(contentRect:NSRect(x:100,y:150,width:384,height:140),styleMask:[.borderless],backing:.buffered,defer:false)
         panel.contentView=host
@@ -161,6 +170,12 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let begin=host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime
         motion.reveal(immediately:true) {panel.orderFrontRegardless()}
         check(host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime == begin,"repeated reveal does not restart spring")
+        let transition=CardSpringState(duration:policy.profile.cardAppear,started:begin).switched
+        wait(max(0,transition-CACurrentMediaTime()-0.015))
+        let beforePeak=host.layer!.presentation()!.transform.m22
+        wait(0.035)
+        let afterPeak=host.layer!.presentation()!.transform.m22
+        check(beforePeak>1.01 && afterPeak>1.01 && abs(beforePeak-afterPeak)<0.015,"native stage join retains overshoot without snapping to identity")
         var hidden=false;motion.dismiss {hidden=true;panel.orderOut(nil)};wait(0.04)
         let before=host.layer!.presentation()!.transform
         motion.reveal(immediately:true) {panel.orderFrontRegardless()};wait(0.005)
@@ -226,16 +241,22 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             check(abs(previous-4 * .pi)<1e-9,"ring and ghosts finish front-facing together")
         }
         let epsilon = 0.0001
+        func speed(_ t:Double) -> Double { (TransferGlyph.flipAngle(at:t+epsilon)-TransferGlyph.flipAngle(at:t-epsilon))/(2*epsilon) }
+        check(speed(0.5)>speed(0.25) && speed(0.25)>speed(0.1),"rotation accelerates toward middle")
+        check(abs(speed(0.25)-speed(0.75))<1e-5 && speed(0.75)>speed(0.9),"rotation slows symmetrically after middle")
         check(TransferGlyph.flipAngle(at:epsilon)/epsilon < 0.1, "flip starts continuously from rest")
         check((4 * .pi-TransferGlyph.flipAngle(at:1-epsilon))/epsilon < 0.1, "flip ends with no abrupt velocity cutoff")
         for speed in AnimationSpeed.allCases {
             let profile = MotionProfile(speed)
             let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
-            check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
+            check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip+sequence.pause && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
         }
         var reducedTransparency=false
         let policy=MotionPolicy(reduceMotion:{false},reduceTransparency:{reducedTransparency}); policy.speed = .fast
         let glyph=TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
+        let nativePanel=NSPanel(contentRect:NSRect(x:100,y:100,width:30,height:30),styleMask:[.borderless],backing:.buffered,defer:false)
+        nativePanel.contentView=glyph;nativePanel.orderFrontRegardless();wait(0.02)
+        defer {nativePanel.orderOut(nil)}
         var finished=0; glyph.succeed(id:UUID()) { finished += 1 }
         let layers=glyph.layer!.sublayers!
         check(layers.first!.opacity == 0,"stationary track disappears so only the completed ring flips")
@@ -248,10 +269,16 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check((strokes.fromValue as! Double) == 0 && (strokes.toValue as! Double) == 1 && strokes.timingFunction != nil,"one continuous easing crosses the elbow without segment restart")
 
         check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime-rotation.beginTime)<0.01,"blue-to-green transition runs during finite rotation")
-        check(tick.beginTime >= rotation.beginTime+rotation.duration-0.01,"check cannot start before the ring stops")
-        check(customAnimations(glyph) <= 14,"fixed small number of shape effects")
+        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause)<0.01,"check starts after explicit captured pause")
         reducedTransparency=true; policy.notify()
         check(ghosts.allSatisfy {($0.animationKeys() ?? []).isEmpty && $0.opacity == 0} && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"reduce transparency removes ghosts without disrupting success")
+        wait(max(0,rotation.beginTime+rotation.duration+policy.profile.checkPause*0.5-CACurrentMediaTime()))
+        check(abs(ring.presentation()!.transform.m11-1)<0.01 && abs((layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.presentation()! as! CAShapeLayer).strokeEnd)<0.01,"during pause green ring faces front and check stays hidden")
+        check(ghosts.allSatisfy {($0.presentation()?.opacity ?? 0)<0.01},"trails vanish before pause")
+        let green=NSColor(cgColor:(ring.presentation()! as! CAShapeLayer).strokeColor!)!.usingColorSpace(.deviceRGB)!
+        let expectedGreen=NSColor(cgColor:(ring as! CAShapeLayer).strokeColor!)!.usingColorSpace(.deviceRGB)!
+        check(abs(green.redComponent-expectedGreen.redComponent)<0.01 && abs(green.greenComponent-expectedGreen.greenComponent)<0.01 && abs(green.blueComponent-expectedGreen.blueComponent)<0.01,"pause shows final green rather than an unfinished color transition")
+        check(customAnimations(glyph) <= 14,"fixed small number of shape effects")
         policy.enabled=false
         check(finished == 1 && customAnimations(glyph) == 0,"reduce motion/disable settles exactly once and clears every trail")
         policy.enabled=true; reducedTransparency=false

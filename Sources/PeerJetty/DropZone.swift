@@ -23,7 +23,7 @@ final class TransferGlyph: NSView {
     static func flipAngle(at time: Double, lag: Double = 0) -> Double {
         let time = min(1,max(0,time)), tail = min(1,max(0,(time-0.78)/0.22))
         let phase = max(0,time-lag*(1-tail*tail*(3-2*tail)))
-        return 4 * .pi * (1-pow(1-phase,4)*(1+4*phase))
+        return 4 * .pi * (phase*phase*phase*(10+phase*(-15+6*phase)))
     }
     private func hideTrails() {
         CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -105,11 +105,16 @@ final class TransferGlyph: NSView {
         isSuccess = true; fraction = 1; setAccessibilityValue(NSNumber(value:1)); colors()
         CATransaction.begin(); CATransaction.setDisableActions(true); arc.strokeEnd = 1; tick.strokeEnd = 1; CATransaction.commit()
         guard policy.allowed else { settle(); return }
-        let color = CABasicAnimation(keyPath:"strokeColor"); color.fromValue = previousColor; color.toValue = arc.strokeColor; color.duration = profile.ringFlip; color.fillMode = .backwards; color.timingFunction = .init(name:.easeInEaseOut)
+        let color = CAKeyframeAnimation(keyPath:"strokeColor")
+        let sourceColor=NSColor(cgColor:previousColor ?? NSColor.controlAccentColor.cgColor) ?? .controlAccentColor
+        let targetColor=NSColor(cgColor:arc.strokeColor ?? NSColor.systemGreen.cgColor) ?? .systemGreen
+        color.values=(0...60).map { (sourceColor.blended(withFraction:Self.flipAngle(at:Double($0)/60)/(4 * .pi),of:targetColor) ?? targetColor).cgColor }
+        color.keyTimes=(0...60).map { NSNumber(value:Double($0)/60) }
+        color.duration=profile.ringFlip; color.fillMode = .backwards; color.timingFunction = .init(name:.linear)
         MotionEffects.add(color,to:arc,key:"PeerJetty.successColor",delay:fillDuration,startTime:now)
         let rotation = CAKeyframeAnimation(keyPath:"transform.rotation.y")
         rotation.values = (0...60).map { Self.flipAngle(at:Double($0)/60) }
-        rotation.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }; rotation.duration = profile.ringFlip
+        rotation.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }; rotation.duration = profile.ringFlip; rotation.timingFunction = .init(name:.linear)
         MotionEffects.add(rotation,to:arc,key:"PeerJetty.ringFlip",delay:fillDuration,startTime:now)
         if policy.trailsAllowed {
             for (index,trail) in trails.enumerated() {

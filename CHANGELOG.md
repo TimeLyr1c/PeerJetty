@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — completion pause and stronger return, planned build21
+
+Symmetric slow/fast/slow two-turn rotation at 280/500/700ms, with synchronized color/trails. A front-facing green-ring pause of 100/150/200ms precedes the existing continuous check drawing. Card outward motion stays unchanged; return frequency increases 35% once at the first zero-velocity peak. Piecewise native state preserves position/velocity through reopening without compounding strength. Comparison baseline: 95ac75a. Preview only; no installer or publication.
+
+两圈旋转采用慢／快／慢对称曲线（280／500／700ms），颜色与拖影同步；正面绿色圆环暂停 100／150／200ms 后开始原有连续画勾。弹出阶段保持，首次过冲峰值速度归零时返回频率提高 35%，只加力一次；分段原生状态保留重开时的位置和速度。预览比较 95ac75a／当前候选，不生成安装包或发布。
+
 ## Unreleased — native refinement preview (planned build21), 2026-10-08
 
 Keeps five native settings categories with grouped forms and aligned controls. Softens card compression to 92% width / 82% height with a bounded soft rebound; retains three speed durations. Centralizes the completion timeline/epoch, smooths two-turn flip start/end, and joins the check strokes without an extra pause. Turns, trails, blue-green transition and confirmation/hold rules remain. Isolated Before/After previews compile build20/current source. No protocol, identity, text-window or update-window changes. Installer generation awaits preview acceptance; build20 retained.

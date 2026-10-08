@@ -1,5 +1,17 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: completion pause and stronger return, build21 preview
+
+- PASS: production build and final full native motion suite. Rotation is monotonic, symmetric, fastest at midpoint with smooth endpoints. Flip/pause durations are 280/500/700ms and 100/150/200ms; continuous check drawing is unchanged.
+- PASS: native pause assertions show the ring front-facing and fully green, trails invisible and check strokeEnd zero. Real progress, acknowledgement, cancellation, accessibility, hold, parallel tasks and text focus/draft regressions passed.
+- PASS: original outbound trajectory and first peak retained. Two native spring stages join at zero velocity; return frequency x1.35, stiffness x1.8225, damping ratio 0.58. Return is faster, peak below 103.5%, reopening does not compound strength. Native peak presentation does not snap to identity; center and hit area remain fixed.
+- SDK 27 conservative two-stage cleanup estimates are 550/910/1291ms, including the native return tail. Return movement is faster without truncating settlement. Finite keyed animation groups replace the single stage; no frame loop or continuous task added.
+- PASS: isolated 95ac75a/current preview compilation, both strict signature checks, script syntax and diff whitespace. No engine/identity/dependency/configuration changes. CUA opened the rebuilt Natural preview; screenshot output was again a perspective thumbnail, not full-resolution curve/material acceptance. Air/mini live review remains pending.
+- Updated a floating-point duration assertion and moved the old active-rotation accessibility assertion before the newly introduced pause. Native pause/color/stage tests all pass. Existing CLT search-path warnings remain nonfatal.
+- Preview-only build21 candidate; product metadata, production installation and archived packages unchanged. No installer generation, push or release.
+
+原生回归通过：中点旋转最快，暂停时绿色圆环完整、对勾与拖影隐藏；峰值交接无跳变，返回加力一次，重开不叠加。预览截图仍为缩略合成，用户实机确认后才生成 build21 App／DMG。
+
 2026-10-04，开发机器 MacBook Air、Apple Silicon arm64、macOS 27.0.1，Apple Command Line Tools / Swift 6.4。最低系统要求 macOS 15；未实测旧系统或 Intel。
 
 自动测试使用独立随机身份及临时目录，不读生产 Keychain/配置。核心测试以可执行断言套件运行，不依赖 XCTest（本机仅有 Command Line Tools）。本机双实例经真实 Network.framework TLS 连接 127.0.0.1，不是模拟网络。
