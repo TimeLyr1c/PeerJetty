@@ -1,5 +1,15 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: steeper rotation and stronger rebound, build21 preview
+
+- PASS: production build and full native motion suite. Ninth-order smootherstep has symmetric monotonic rotation, flatter endpoints, and a sharper middle velocity peak; explicit derivative checks reject the previous flatter curve. Flip/color/trail synchronization retained.
+- PASS: pre-check pause is 180/250/320ms; actual native pause still shows final green front-facing ring, invisible trails and zero check stroke. Confirmation, real-progress cap, hold, cancellation, parallel tasks, reduced motion/transparency and text focus/draft regressions passed.
+- PASS: damping 0.53 yields roughly 3% card overshoot (test requires >2.9%, below 3.5%). Return frequency gain is 55%, stiffness x2.4025, applied once. Position/velocity continuity, native peak join, stationary center/targets, interrupted reopen and finite cleanup passed. SDK 27 conservative cleanup estimates are 481/795/1128ms.
+- PASS: 3396b22/current isolated previews rebuilt. CUA reopened the candidate and its Natural animation window; this is not claimed as full-resolution or Air/mini final visual acceptance. No production identity/connection, new dependency or continuous task added.
+- No product/build metadata, installed app or installer archive changed. Preview-only planned build21; no installation, push or release. Existing nonfatal CLT warnings remain.
+
+更陡旋转、约 3% 过冲、更快返回及延长暂停均通过原生回归；预览已更新并打开，待用户确认实际观感后再生成 build21 安装包。
+
 ## 2026-10-08: completion pause and stronger return, build21 preview
 
 - PASS: production build and final full native motion suite. Rotation is monotonic, symmetric, fastest at midpoint with smooth endpoints. Flip/pause durations are 280/500/700ms and 100/150/200ms; continuous check drawing is unchanged.

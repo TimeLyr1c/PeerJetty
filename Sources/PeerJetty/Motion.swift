@@ -39,9 +39,9 @@ struct MotionProfile {
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init(_ speed: AnimationSpeed) {
         switch speed {
-        case .fast: ringFlip = 0.28; checkPause = 0.10; cardAppear = 0.52; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
-        case .natural: ringFlip = 0.50; checkPause = 0.15; cardAppear = 0.86; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
-        case .relaxed: ringFlip = 0.70; checkPause = 0.20; cardAppear = 1.22; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
+        case .fast: ringFlip = 0.28; checkPause = 0.18; cardAppear = 0.52; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
+        case .natural: ringFlip = 0.50; checkPause = 0.25; cardAppear = 0.86; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
+        case .relaxed: ringFlip = 0.70; checkPause = 0.32; cardAppear = 1.22; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
         }
     }
 }
@@ -51,7 +51,7 @@ struct MotionProfile {
 struct SpringParameters {
     let frequency: Double
     static let ratio = 0.72
-    static let cardRatio = 0.58
+    static let cardRatio = 0.53
     let dampingRatio: Double
     init(frequency: Double, dampingRatio: Double = Self.ratio) { self.frequency = frequency; self.dampingRatio = dampingRatio }
     init(duration: Double, dampingRatio: Double = Self.ratio) {
@@ -100,7 +100,7 @@ struct CardSpringState {
         y=SpringMotion(from:0.82,target:1,velocity:0.18*parameters.dampingRatio*parameters.frequency,parameters:parameters,started:started)
         let ratio=parameters.dampingRatio, oscillation=parameters.frequency*sqrt(1-ratio*ratio)
         switched=started+(.pi-atan(ratio/sqrt(1-ratio*ratio)))/oscillation
-        let stronger=SpringParameters(frequency:parameters.frequency*1.35,dampingRatio:ratio)
+        let stronger=SpringParameters(frequency:parameters.frequency*1.55,dampingRatio:ratio)
         returnX=SpringMotion(from:x.sample(at:switched).value,target:1,velocity:0,parameters:stronger,started:switched)
         returnY=SpringMotion(from:y.sample(at:switched).value,target:1,velocity:0,parameters:stronger,started:switched)
         let tail=stronger.animation(keyPath:"transform.scale.y",from:returnY.from,velocity:0).duration

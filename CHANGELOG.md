@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — steeper motion tuning, planned build21
+
+Rotation uses ninth-order smootherstep with flatter endpoints and a sharper middle speed peak; duration, turns, color synchronization and continuous check drawing retained. Pause before the check increases to 180/250/320ms. Card damping changes to 0.53 for about 3% overshoot; return frequency gain rises to 55%, applied once. Original geometry and input behavior unchanged. Comparison baseline 3396b22, preview only.
+
+旋转改为开头／结尾更缓、中段更陡的九次曲线，时长、两圈、颜色同步和连续画勾保持；画勾前停顿增至 180／250／320ms。卡片阻尼调整为 0.53，过冲约 3%，返回频率加力提高到 55%，只应用一次。命中区域与操作行为不变，预览比较 3396b22／当前候选。
+
 ## Unreleased — completion pause and stronger return, planned build21
 
 Symmetric slow/fast/slow two-turn rotation at 280/500/700ms, with synchronized color/trails. A front-facing green-ring pause of 100/150/200ms precedes the existing continuous check drawing. Card outward motion stays unchanged; return frequency increases 35% once at the first zero-velocity peak. Piecewise native state preserves position/velocity through reopening without compounding strength. Comparison baseline: 95ac75a. Preview only; no installer or publication.

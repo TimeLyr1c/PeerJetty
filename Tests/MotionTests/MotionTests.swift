@@ -140,7 +140,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             for i in 0...1000 { let t=start+Double(i)*stages.duration/1000; check(stages.sample(at:t).y<=1.035,"two-stage rebound stays bounded") }
             let resumed=stages.animations(at:peak+0.01,center:.zero) as! [CASpringAnimation]
             check(resumed.count==4 && abs(resumed[1].stiffness-stages.returnY.parameters.frequency*stages.returnY.parameters.frequency)<1e-8,"reopening during return does not multiply gain again")
-            check(samples.map(\.value).max()! <= 1.035 && samples.map(\.value).max()! > 1.023,"physical rebound remains bounded")
+            check(samples.map(\.value).max()! <= 1.035 && samples.map(\.value).max()! > 1.029,"physical rebound remains bounded")
             check(abs(samples.last!.value-1)<0.001 && abs(samples.last!.velocity)<0.02,"native-duration tail is already settled")
             let animation=parameters.animation(keyPath:"transform.scale.y",from:0.82)
             check(abs(animation.duration-profile.cardAppear)<0.01 && animation.duration == animation.settlingDuration,"native settling duration follows each speed without truncation")
@@ -154,7 +154,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let state=MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
         let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAAnimationGroup
         let springs=animation!.animations as! [CASpringAnimation]
-        check(springs.count == 8 && abs(springs[4].stiffness/springs[0].stiffness-1.8225)<1e-8,"two finite spring stages strengthen return once")
+        check(springs.count == 8 && abs(springs[4].stiffness/springs[0].stiffness-2.4025)<1e-8,"two finite spring stages strengthen return once")
         check(abs(springs[4].duration-springs[4].settlingDuration)<0.001,"return runs to native settlement")
         let anchor=host.layer!.anchorPoint, center=CGPoint(x:host.bounds.width*(0.5-anchor.x),y:host.bounds.height*(0.5-anchor.y))
         check(abs(center.x*0.92+(springs[2].fromValue as! Double)-center.x)<0.001 && abs(center.y*0.82+(springs[3].fromValue as! Double)-center.y)<0.001,"visual center is preserved with AppKit anchor")
@@ -242,6 +242,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         }
         let epsilon = 0.0001
         func speed(_ t:Double) -> Double { (TransferGlyph.flipAngle(at:t+epsilon)-TransferGlyph.flipAngle(at:t-epsilon))/(2*epsilon) }
+        check(speed(0.5)>29 && speed(0.1)<0.6,"steeper middle speed peak with gentler ends")
         check(speed(0.5)>speed(0.25) && speed(0.25)>speed(0.1),"rotation accelerates toward middle")
         check(abs(speed(0.25)-speed(0.75))<1e-5 && speed(0.75)>speed(0.9),"rotation slows symmetrically after middle")
         check(TransferGlyph.flipAngle(at:epsilon)/epsilon < 0.1, "flip starts continuously from rest")

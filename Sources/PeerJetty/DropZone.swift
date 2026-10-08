@@ -23,7 +23,8 @@ final class TransferGlyph: NSView {
     static func flipAngle(at time: Double, lag: Double = 0) -> Double {
         let time = min(1,max(0,time)), tail = min(1,max(0,(time-0.78)/0.22))
         let phase = max(0,time-lag*(1-tail*tail*(3-2*tail)))
-        return 4 * .pi * (phase*phase*phase*(10+phase*(-15+6*phase)))
+        // Ninth-order smootherstep: flatter endpoints, a narrower middle velocity peak.
+        return 4 * .pi * (pow(phase,5)*(126+phase*(-420+phase*(540+phase*(-315+70*phase)))))
     }
     private func hideTrails() {
         CATransaction.begin(); CATransaction.setDisableActions(true)
