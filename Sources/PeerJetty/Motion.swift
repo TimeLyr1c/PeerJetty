@@ -46,6 +46,20 @@ struct MotionProfile {
     }
 }
 
+/// A captured, finite completion timeline shared by production and native previews.
+struct FileSuccessSequence {
+    let fill: Double, flip: Double, draw: Double, settle: Double
+    var checkStart: Double { fill + flip }
+    var settleStart: Double { checkStart + draw }
+    var duration: Double { settleStart + settle }
+    init(profile: MotionProfile, progressDuration: Double) {
+        fill = max(progressDuration, profile.success * 0.25)
+        flip = profile.ringFlip
+        draw = profile.success * 0.60
+        settle = profile.success * 0.15
+    }
+}
+
 /// A monotonic cubic segment with continuous retargeting velocity and a bounded
 /// derivative. Core Animation evaluates it; no timer or per-frame task is needed.
 struct ProgressMotion {
@@ -108,10 +122,11 @@ enum MotionEffects {
         // Softly settle the small tail with zero endpoint velocity; don't truncate a spring.
         let tail = max(0,min(1,(t-0.78)/0.22))
         residual *= 1-tail*tail*(3-2*tail)
-        return CATransform3DMakeScale(1-0.14*residual,1-0.38*residual,1)
+        return CATransform3DMakeScale(1-0.08*residual,1-0.18*residual,1)
     }
     static func cardAppear(_ view: NSView, duration: Double) {
         view.wantsLayer = true
+        let epoch = CACurrentMediaTime()
         let shape = CAKeyframeAnimation(keyPath:"transform")
         let anchor = view.layer?.anchorPoint ?? CGPoint(x:0.5,y:0.5)
         let center = CGPoint(x:view.bounds.width*(0.5-anchor.x),y:view.bounds.height*(0.5-anchor.y))
@@ -124,11 +139,11 @@ enum MotionEffects {
         }
         shape.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }
         shape.calculationMode = .linear; shape.duration = duration
-        add(shape,to:view.layer,key:"PeerJetty.cardShape")
+        add(shape,to:view.layer,key:"PeerJetty.cardShape",startTime:epoch)
         let opacity = CABasicAnimation(keyPath:"opacity")
         opacity.fromValue = 0.35; opacity.toValue = 1; opacity.duration = duration*0.18
         opacity.timingFunction = .init(name:.easeInEaseOut)
-        add(opacity,to:view.layer,key:"PeerJetty.cardReveal")
+        add(opacity,to:view.layer,key:"PeerJetty.cardReveal",startTime:epoch)
     }
     static func pulse(_ view: NSView, policy: MotionPolicy = .shared) {
         guard policy.allowed, view.window?.isVisible == true else { return }
@@ -137,11 +152,12 @@ enum MotionEffects {
         let start = interrupted ? (view.layer?.presentation()?.value(forKeyPath:"transform.scale") as? NSNumber)?.doubleValue ?? 1 : 0.97
         add(spring(duration:policy.profile.success,from:start),to:view.layer,key:"PeerJetty.feedback")
     }
-    static func add(_ animation: CAAnimation, to layer: CALayer?, key: String, delay: Double = 0) {
+    static func add(_ animation: CAAnimation, to layer: CALayer?, key: String, delay: Double = 0, startTime: Double? = nil) {
         guard let layer else { return }
-        let token = layer.convertTime(CACurrentMediaTime(),from:nil) + delay
+        let epoch = startTime ?? CACurrentMediaTime()
+        let token = layer.convertTime(epoch,from:nil) + delay
         animation.beginTime = token; layer.add(animation,forKey:key)
-        DispatchQueue.main.asyncAfter(deadline:.now()+delay+animation.duration) { [weak layer] in
+        DispatchQueue.main.asyncAfter(deadline:.now()+max(0,epoch+delay+animation.duration-CACurrentMediaTime())) { [weak layer] in
             guard let layer, layer.animation(forKey:key)?.beginTime == token else { return }
             layer.removeAnimation(forKey:key)
         }

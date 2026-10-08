@@ -324,3 +324,19 @@
 "motion.preview_hint" = "Simulated progress only. No files are sent and no devices are connected. Preview speed changes do not change your saved settings.";
 "motion.replay" = "Replay";
 "drop.waiting_confirmation" = "Waiting for confirmation";
+
+// Native settings groups
+"settings.group_identity" = "This Mac";
+"settings.group_presence" = "App visibility and startup";
+"settings.group_motion" = "Interface animations";
+"settings.group_trust" = "Device trust";
+"settings.group_manual" = "Manual connection";
+"settings.group_history_cleanup" = "Clear local history";
+
+// Isolated design comparison
+"design.before" = "Before";
+"design.after" = "After";
+"design.quit" = "Quit Preview";
+"design.isolated" = "Isolated preview: simulated devices only. No connections, transfers, identity access or saved preferences.";
+"design.title" = "PeerJetty · Native UI comparison";
+"design.launch_failed" = "Unable to open the comparison preview.";

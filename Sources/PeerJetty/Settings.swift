@@ -100,6 +100,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         name.stringValue = configuration.name; name.identifier = NSUserInterfaceItemIdentifier("deviceName")
         name.placeholderString = L10n.text("settings.device_name"); name.setAccessibilityLabel(L10n.text("settings.device_name"))
         folderLabel.stringValue = configuration.receivePath; folderLabel.lineBreakMode = .byTruncatingMiddle
+        folderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         folderLabel.maximumNumberOfLines = 2; folderLabel.toolTip = configuration.receivePath
         devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         devices.identifier = NSUserInterfaceItemIdentifier("devicePicker"); devices.setAccessibilityLabel(SettingsSection.devices.title)
@@ -147,12 +148,15 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         if !configuration.onboardingComplete {
             general += [heading(L10n.text("settings.welcome_to_peerjetty")), hint("settings.install_peerjetty_on_both_macs_and_pair_them")]
         }
-        general += [heading(L10n.text("settings.device_name")),
-            row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]),
-            separator(), setting("settings.language", language), hint("settings.language_restart"),
-            separator(), setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch), hint("settings.menu_bar_hint"), temporaryRow,
-            separator(), setting("settings.start_at_login", login),
-            separator(), setting("settings.animations", animations), hint("settings.animations_hint"), setting("settings.animation_speed", animationSpeed), hint("settings.animation_speed_hint"), actions([button(L10n.text("settings.motion_preview"), #selector(motionPreview))])]
+        name.widthAnchor.constraint(greaterThanOrEqualToConstant: 190).isActive = true
+        general += [group("settings.group_identity", rows: [
+            row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))])]),
+            group("settings.language", rows: [setting("settings.language", language), hint("settings.language_restart")]),
+            group("settings.group_presence", rows: [setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch),
+                hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login)]),
+            group("settings.group_motion", rows: [setting("settings.animations", animations), hint("settings.animations_hint"),
+                setting("settings.animation_speed", animationSpeed), hint("settings.animation_speed_hint"),
+                actions([button(L10n.text("settings.motion_preview"), #selector(motionPreview))])])]
         connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.isHidden = true
         connectionGroup.identifier = NSUserInterfaceItemIdentifier("connectionInfoGroup")
         connectionGroup.addArrangedSubview(connectionLabel)
@@ -161,21 +165,21 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         connectionDisclosure.identifier = NSUserInterfaceItemIdentifier("connectionInfoToggle")
         connectionDisclosure.isBordered = false; connectionDisclosure.setButtonType(.pushOnPushOff)
         connectionDisclosure.image = NSImage(systemSymbolName:"chevron.right",accessibilityDescription:nil); connectionDisclosure.imagePosition = .imageLeading
-        let deviceRows: [NSView] = [heading(SettingsSection.devices.title), hint("settings.devices_select_a_paired_device_as_your_default"),
+        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [hint("settings.devices_select_a_paired_device_as_your_default"),
             row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
-            actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))]),
-            actions([button(L10n.text("settings.remove_trust"), #selector(forget))]), separator(),
-            actions([connectionDisclosure]), connectionGroup]
-        let transferRows: [NSView] = [heading(L10n.text("settings.receive_folder")),
-            actions([button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]), folderLabel,
-            setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open"), separator(),
-            heading(L10n.text("settings.drop_heading")),
-            actions([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview))]),
-            separator(), heading(L10n.text("settings.activity_heading")), progressLabel,
-            actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])]
-        let textRows: [NSView] = [heading(L10n.text("text.send_title")), actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton]),
-            separator(), heading(L10n.text("text.history_title")), setting("text.show_history", showHistory), hint("text.history_setting_hint"),
-            actions([historyOpen]), setting("text.retention", retention), actions([button(L10n.text("text.clear"), #selector(clearTextHistory))])]
+            actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))])]),
+            group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
+            group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
+        let transferRows: [NSView] = [group("settings.receive_folder", rows: [
+            row([folderLabel, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
+            setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open")]),
+            group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview))])]),
+            group("settings.activity_heading", rows: [progressLabel,
+                actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
+        let textRows: [NSView] = [group("text.send_title", rows: [actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton])]),
+            group("text.history_title", rows: [setting("text.show_history", showHistory), hint("text.history_setting_hint"),
+                actions([historyOpen]), setting("text.retention", retention)]),
+            group("settings.group_history_cleanup", rows: [actions([button(L10n.text("text.clear"), #selector(clearTextHistory))])])]
 
         let version = NSTextField(labelWithString: AppVersion.summary)
         version.textColor = .secondaryLabelColor; version.identifier = NSUserInterfaceItemIdentifier("productVersion")
@@ -199,7 +203,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         disclosure.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil); disclosure.imagePosition = .imageLeading
         let aboutRows: [NSView] = [actions([row([appIcon, branding])]), hint("settings.about_hint"),
             actions([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.license"), #selector(showLicense)), button(L10n.text("settings.diagnostics"), #selector(showDiagnostics))]),
-            separator(), actions([disclosure]), maintenance, separator(), actions([button(L10n.text("settings.quit"), #selector(quit))])]
+            group("settings.maintenance", rows: [actions([disclosure]), maintenance]), actions([button(L10n.text("settings.quit"), #selector(quit))])]
 
         let content = window.contentView!
         content.addSubview(pageHost); pageHost.translatesAutoresizingMaskIntoConstraints = false
@@ -268,7 +272,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         scroll.identifier = NSUserInterfaceItemIdentifier("settingsPage." + section.rawValue)
         let document = SettingsDocumentView(); document.translatesAutoresizingMaskIntoConstraints = false
         let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading
-        stack.spacing = 14; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.spacing = 24; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
         stack.setHuggingPriority(.required, for: .vertical)
         scroll.documentView = document; document.addSubview(stack); pageHost.addSubview(scroll); pages[section] = scroll
         let height = document.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 48); height.priority = .fittingSizeCompression
@@ -280,12 +284,21 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
             stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 24), stack.bottomAnchor.constraint(lessThanOrEqualTo: document.bottomAnchor, constant: -24)])
         for view in rows { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
     }
+    /// Native groups, without another background/card layer. Hidden disclosures collapse.
+    private func group(_ key: String, rows: [NSView]) -> NSStackView {
+        let group = NSStackView(views: [heading(L10n.text(key))] + rows)
+        group.identifier = NSUserInterfaceItemIdentifier("settingsGroup." + key)
+        group.orientation = .vertical; group.alignment = .leading; group.spacing = 10
+        group.detachesHiddenViews = true; group.setHuggingPriority(.required, for: .vertical)
+        for view in group.arrangedSubviews { view.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true }
+        return group
+    }
     private func heading(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text); label.font = .systemFont(ofSize: 15, weight: .semibold); return label
     }
     private func hint(_ key: String) -> NSTextField {
         let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.textColor = .secondaryLabelColor
-        label.font = .systemFont(ofSize: 12); return label
+        label.font = .systemFont(ofSize: 12); label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal); return label
     }
     private func row(_ views: [NSView]) -> NSStackView {
         let row = NSStackView(views: views); row.orientation = .horizontal; row.spacing = 10; row.alignment = .centerY
@@ -300,8 +313,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private func setting(_ key: String, _ control: NSView) -> NSStackView {
         control.setAccessibilityLabel(L10n.text(key))
         let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.font = .systemFont(ofSize: 13)
-        label.widthAnchor.constraint(equalToConstant: 230).isActive = true
-        return row([label, spacer(), control])
+        label.widthAnchor.constraint(equalToConstant: 190).isActive = true
+        return row([label, control, spacer()])
     }
     private func button(_ title: String, _ action: Selector) -> NSButton {
         let button = NSButton(title: title, target: self, action: action); button.bezelStyle = .rounded

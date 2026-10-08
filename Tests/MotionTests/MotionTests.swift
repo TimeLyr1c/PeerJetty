@@ -127,9 +127,9 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
     }
     static func cardShapeTests() {
         let samples = (0...100).map { MotionEffects.cardTransform(at:Double($0)/100) }
-        check(samples[0].m11 == 0.86 && samples[0].m22 == 0.62,"card starts visibly compressed on unequal axes")
-        check(samples[1].m22-samples[0].m22 > 0.015,"spring starts with velocity instead of a linear-looking slow start")
-        check(samples.map(\.m22).max()! > 1.02 && samples.map(\.m22).max()! < 1.04,"bounded perceptible jelly overshoot")
+        check(abs(samples[0].m11-0.92)<1e-9 && abs(samples[0].m22-0.82)<1e-9,"card starts visibly compressed on unequal axes")
+        check(samples[1].m22-samples[0].m22 > 0.007,"spring starts with velocity instead of a linear-looking slow start")
+        check(samples.map(\.m22).max()! > 1.005 && samples.map(\.m22).max()! <= 1.02,"bounded perceptible jelly overshoot")
         let peak = samples.indices.max { samples[$0].m22 < samples[$1].m22 }!
         check(peak >= 42 && peak <= 46 && samples[10].m22-samples[0].m22 > 2*(samples[30].m22-samples[20].m22),"far-away motion is faster than the approach to equilibrium")
         check(CATransform3DIsIdentity(samples.last!) && abs(samples[99].m22-1) < 0.001,"shape settles before finite endpoint")
@@ -200,6 +200,14 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             }
             check(abs(previous-4 * .pi)<1e-9,"ring and ghosts finish front-facing together")
         }
+        let epsilon = 0.0001
+        check(TransferGlyph.flipAngle(at:epsilon)/epsilon < 0.1, "flip starts continuously from rest")
+        check((4 * .pi-TransferGlyph.flipAngle(at:1-epsilon))/epsilon < 0.1, "flip ends with no abrupt velocity cutoff")
+        for speed in AnimationSpeed.allCases {
+            let profile = MotionProfile(speed)
+            let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
+            check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
+        }
         var reducedTransparency=false
         let policy=MotionPolicy(reduceMotion:{false},reduceTransparency:{reducedTransparency}); policy.speed = .fast
         let glyph=TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
@@ -211,6 +219,9 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let ring=layers.first {$0.animation(forKey:"PeerJetty.progress") != nil}!
         let rotation=ring.animation(forKey:"PeerJetty.ringFlip")!, color=ring.animation(forKey:"PeerJetty.successColor")!
         let tick=layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.animation(forKey:"PeerJetty.check")!
+        let strokes = tick as! CAKeyframeAnimation
+        check(strokes.values!.count == 3 && strokes.keyTimes == [0,0.28,1], "two check strokes join without a repeated-value pause")
+
         check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime-rotation.beginTime)<0.01,"blue-to-green transition runs during finite rotation")
         check(tick.beginTime >= rotation.beginTime+rotation.duration-0.01,"check cannot start before the ring stops")
         check(customAnimations(glyph) <= 14,"fixed small number of shape effects")

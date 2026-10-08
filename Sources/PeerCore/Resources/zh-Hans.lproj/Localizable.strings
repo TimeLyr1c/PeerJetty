@@ -324,3 +324,19 @@
 "motion.preview_hint" = "仅演示模拟进度，不传输文件或连接设备。 此窗口的速度选择不更改保存的设置。";
 "motion.replay" = "重新播放";
 "drop.waiting_confirmation" = "等待确认";
+
+// Native settings groups
+"settings.group_identity" = "本机身份";
+"settings.group_presence" = "应用显示与启动";
+"settings.group_motion" = "界面动画";
+"settings.group_trust" = "设备信任";
+"settings.group_manual" = "手动连接";
+"settings.group_history_cleanup" = "清空本机历史";
+
+// Isolated design comparison
+"design.before" = "旧版";
+"design.after" = "新版";
+"design.quit" = "退出预览";
+"design.isolated" = "隔离预览：仅模拟设备，不连接、不传输、不访问身份、不保存设置。";
+"design.title" = "PeerJetty · 原生界面对比";
+"design.launch_failed" = "无法打开对比预览。";
