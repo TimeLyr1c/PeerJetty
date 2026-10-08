@@ -58,6 +58,8 @@ Official references: [Motion transitions](https://motion.dev/docs/react-transiti
 
 ## Physical spring refinement / 物理弹簧精修
 
-SpringParameters calibrates the native settling estimate and preserves mass 1 / damping ratio 0.72 across speeds. SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 911df2d refinement against this candidate, both using native views and no production identity.
+SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping across speeds (card 0.58; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 04cfade physical-spring refinement against this candidate, both using native views and no production identity.
 
 原生物理弹簧负责形变，短淡化负责显现，真实限速曲线负责进度，共享完成时间线负责翻转／画勾／停留。预览比较上一轮精修与当前候选；不安装 Web 库、不改传输与配置，仍待用户视觉确认。
+
+2026-10-08 pacing adjustment: slower, more elastic card opening; faster file flip/check, one continuous stroke timing curve across the elbow. Exact values in APPEARANCE.md. Text opening, progress limits and hold unchanged. / 根据试用反馈分开调整展开与完成节奏，保留真实进度、确认及停留，不把卡片弹性变化扩散到文本窗口。

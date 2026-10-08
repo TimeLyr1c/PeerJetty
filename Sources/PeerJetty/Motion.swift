@@ -34,14 +34,14 @@ extension AnimationSpeed {
 
 struct MotionProfile {
     let cardAppear: Double
-    var ringFlip: Double { success * 0.9 }
+    var ringFlip: Double { success / 3 }
     let progressRate: Double
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init(_ speed: AnimationSpeed) {
         switch speed {
-        case .fast: cardAppear = 0.38; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
-        case .natural: cardAppear = 0.62; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
-        case .relaxed: cardAppear = 0.88; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
+        case .fast: cardAppear = 0.52; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
+        case .natural: cardAppear = 0.86; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
+        case .relaxed: cardAppear = 1.22; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
         }
     }
 }
@@ -51,21 +51,24 @@ struct MotionProfile {
 struct SpringParameters {
     let frequency: Double
     static let ratio = 0.72
-    init(frequency: Double) { self.frequency = frequency }
-    init(duration: Double) {
+    static let cardRatio = 0.58
+    let dampingRatio: Double
+    init(frequency: Double, dampingRatio: Double = Self.ratio) { self.frequency = frequency; self.dampingRatio = dampingRatio }
+    init(duration: Double, dampingRatio: Double = Self.ratio) {
+        self.dampingRatio = dampingRatio
         let unit = CASpringAnimation(keyPath:"transform.scale")
-        unit.mass = 1; unit.stiffness = 1; unit.damping = 2 * Self.ratio
+        unit.mass = 1; unit.stiffness = 1; unit.damping = 2 * dampingRatio
         unit.fromValue = 0; unit.toValue = 1
-        unit.initialVelocity = Self.ratio
+        unit.initialVelocity = dampingRatio
         frequency = unit.settlingDuration / max(0.01,duration)
     }
     func animation(keyPath: String, from: Double, to: Double = 1, velocity: Double? = nil) -> CASpringAnimation {
         let animation = CASpringAnimation(keyPath:keyPath)
         animation.mass = 1; animation.stiffness = frequency * frequency
-        animation.damping = 2 * Self.ratio * frequency
+        animation.damping = 2 * dampingRatio * frequency
         animation.fromValue = from; animation.toValue = to
         let delta = to-from
-        animation.initialVelocity = abs(delta) > 1e-10 ? (velocity ?? (delta * Self.ratio * frequency))/delta : 0
+        animation.initialVelocity = abs(delta) > 1e-10 ? (velocity ?? (delta * dampingRatio * frequency))/delta : 0
         animation.duration = animation.settlingDuration
         animation.timingFunction = .init(name:.linear)
         return animation
@@ -78,7 +81,7 @@ struct SpringMotion {
     let from: Double, target: Double, velocity: Double, parameters: SpringParameters, started: Double
     func sample(at time: Double) -> (value: Double, velocity: Double) {
         let t = max(0,time-started), w = parameters.frequency
-        let decay = SpringParameters.ratio*w, oscillation = w*sqrt(1-SpringParameters.ratio*SpringParameters.ratio)
+        let decay = parameters.dampingRatio*w, oscillation = w*sqrt(1-parameters.dampingRatio*parameters.dampingRatio)
         let a = from-target, b = (velocity+decay*a)/oscillation
         let c = cos(oscillation*t), sn = sin(oscillation*t), envelope = exp(-decay*t)
         return (target+envelope*(a*c+b*sn), envelope*((-decay*a+oscillation*b)*c+(-decay*b-oscillation*a)*sn))
@@ -102,7 +105,7 @@ struct FileSuccessSequence {
     init(profile: MotionProfile, progressDuration: Double) {
         fill = max(progressDuration, profile.success * 0.25)
         flip = profile.ringFlip
-        draw = profile.success * 0.60
+        draw = profile.success * 0.50
         settle = MotionEffects.spring(duration:profile.success * 0.15,from:0.985).duration
     }
 }
@@ -161,13 +164,13 @@ enum MotionEffects {
     @discardableResult
     static func cardAppear(_ view: NSView, duration: Double, previous: CardSpringState? = nil) -> CardSpringState {
         view.wantsLayer = true
-        let epoch = CACurrentMediaTime(), parameters = SpringParameters(duration:duration)
+        let epoch = CACurrentMediaTime(), parameters = SpringParameters(duration:duration,dampingRatio:SpringParameters.cardRatio)
         let current = previous?.sample(at:epoch)
         let presentation = view.layer?.presentation()
         let startX = previous == nil ? 0.92 : (presentation.map { Double($0.transform.m11) } ?? current!.x)
         let startY = previous == nil ? 0.82 : (presentation.map { Double($0.transform.m22) } ?? current!.y)
-        let vx = current?.vx ?? ((1-startX)*SpringParameters.ratio*parameters.frequency)
-        let vy = current?.vy ?? ((1-startY)*SpringParameters.ratio*parameters.frequency)
+        let vx = current?.vx ?? ((1-startX)*parameters.dampingRatio*parameters.frequency)
+        let vy = current?.vy ?? ((1-startY)*parameters.dampingRatio*parameters.frequency)
         let anchor = view.layer?.anchorPoint ?? CGPoint(x:0.5,y:0.5)
         let center = CGPoint(x:view.bounds.width*(0.5-anchor.x),y:view.bounds.height*(0.5-anchor.y))
         let shape = CAAnimationGroup(); shape.timingFunction = .init(name:.linear)

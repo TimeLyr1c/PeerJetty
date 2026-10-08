@@ -2,13 +2,17 @@
 
 ## Unreleased — native refinement preview (planned build21), 2026-10-08
 
-Keeps five native settings categories with grouped forms and aligned controls. Softens card compression to 92% width / 82% height with one rebound below 102%; retains three speed durations. Centralizes the completion timeline/epoch, smooths two-turn flip start/end, and joins the check strokes without an extra pause. Turns, trails, blue-green transition and confirmation/hold rules remain. Isolated Before/After previews compile build20/current source. No protocol, identity, text-window or update-window changes. Installer generation awaits preview acceptance; build20 retained.
+Keeps five native settings categories with grouped forms and aligned controls. Softens card compression to 92% width / 82% height with a bounded soft rebound; retains three speed durations. Centralizes the completion timeline/epoch, smooths two-turn flip start/end, and joins the check strokes without an extra pause. Turns, trails, blue-green transition and confirmation/hold rules remain. Isolated Before/After previews compile build20/current source. No protocol, identity, text-window or update-window changes. Installer generation awaits preview acceptance; build20 retained.
 
-五类原生设置改为分组表单与对齐控件；卡片初始 92%／82%，单次回弹低于 102%，三档时长不变。统一完成时钟，翻转起止平滑、两笔对勾不再额外停顿；两圈、拖影、蓝绿转换、确认与停留保留。隔离旧新版预览使用固定上一轮精修／当前源码；不改协议、身份、文本或更新窗口。预览确认后再生成安装包，保留 build20。
+五类原生设置改为分组表单与对齐控件；卡片初始 92%／82%，单次回弹受限，三档时长不变。统一完成时钟，翻转起止平滑、两笔对勾不再额外停顿；两圈、拖影、蓝绿转换、确认与停留保留。隔离旧新版预览使用固定上一轮精修／当前源码；不改协议、身份、文本或更新窗口。预览确认后再生成安装包，保留 build20。
 
-Replaces sampled card deformation with native physical springs (mass 1, damping 0.72), native settling duration and interruption velocity. Shares physical tuning with text/success feedback; progress and completion stages unchanged. Comparison baseline is 911df2d. Still preview-first planned build21, no installer or publication.
+Replaces sampled card deformation with native physical springs (mass 1, damping 0.72), native settling duration and interruption velocity. Shares physical tuning with text/success feedback; progress and completion stages unchanged. Comparison baseline is 04cfade. Still preview-first planned build21, no installer or publication.
 
-卡片展开改用原生物理弹簧，质量 1、阻尼 0.72，按系统收稳并保留打断速度；文本与成功反馈共享参数，真实进度和完成阶段不变。对比基线更新为 911df2d，仍属于待确认 build21，不另打包或发布。
+卡片展开改用原生物理弹簧，质量 1、阻尼 0.72，按系统收稳并保留打断速度；文本与成功反馈共享参数，真实进度和完成阶段不变。对比基线更新为 04cfade，仍属于待确认 build21，不另打包或发布。
+
+Pacing follow-up: card opening 520/860/1220ms with softer damping (0.58), about 2.4% rebound. File success turns ~63% faster, check draws ~17% faster, with one continuous easing curve through the elbow. Other effects, progress, hold and identities unchanged. Compare 04cfade/current preview; still planned build21 without installer generation.
+
+节奏微调：三档展开 520／860／1220ms，卡片阻尼降至 0.58、回弹约 2.4%。文件成功翻转快约 63%，画勾快约 17%，拐角沿用一条连续缓动；其他动画、真实进度、停留与身份保持。预览比较 04cfade／当前候选，仍属于待确认 build21。
 
 ## 0.4.0 / build 20 — local visual experiment, 2026-10-08
 

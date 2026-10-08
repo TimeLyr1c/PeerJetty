@@ -278,3 +278,13 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - PASS: script syntax and diff whitespace. Existing CLT search-path warnings are nonfatal. Product metadata/production installation unchanged; build21 App/DMG still awaits preview approval. build20 DMG SHA256 is still 4f0edca6900d094fd0ff3e84602fce351cf8eeb79e0d45a1a17bbeb2a594bbf7. No push/release.
 
 原生弹簧与打断模型、三档收稳、固定视觉中心和命中区域、文本焦点及完成序列回归通过。完整原生窗口预览已可观察，录制未覆盖展开第一瞬间，不冒充 Air／mini 最终验收；用户确认预览后才生成同一组 build21 App／DMG。
+
+## 2026-10-08：展开更柔和、成功更利落，build21 节奏后续
+
+- PASS: production SwiftPM build and full isolated native `Scripts/test-motion.sh`. Three card settling times are 520/860/1220ms; mass 1 and card damping 0.58 give about 2.4% height rebound (tests require >2.3%, bounded below 3.5%). Text/success springs retain damping 0.72. Native early-frame bounds/center, interrupted reveal continuity, duplicate reveal, stale dismissal, accessibility, real progress limits, parallel/acknowledged completion, captured holds and text focus/draft regressions passed.
+- File rotation uses success/3 (about 217/400/583ms), while drawing uses success×0.5 (325/600/875ms). A single finite CABasicAnimation strokeEnd easing traverses both check segments; no second curve restarts at the elbow. Color/trail phase and confirmation/hold ownership stay unchanged.
+- PASS: isolated Before/After preview compilation (04cfade/current), strict After signature check, script syntax and whitespace checks. No external library, protocol/configuration/identity changes or continuous tasks.
+- CUA reopened the rebuilt preview and selected Natural. A 130-frame / 13.391s recording includes the sending/green/check states, but returned perspective window thumbnails this session even after the exposed Raise action. It is not full-resolution material or curve acceptance; early motion/rendering invariants are checked natively, and owner Air/mini live visual acceptance is pending. Preview screenshots remain ignored.
+- Existing nonfatal CLT search-path warnings remain. No test installer, product metadata, installed app or archive changed. Still the planned build21 preview candidate, no push or public release.
+
+三档展开放慢约四成，仅卡片增加回弹；成功翻转提速约 63%、对勾提速约 17%，折角采用同一条连续缓动。原生回归及预览编译通过，本轮录制只有系统缩略合成，不作为最终视觉验收；待用户实际确认后再打 build21。

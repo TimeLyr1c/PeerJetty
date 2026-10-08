@@ -127,12 +127,12 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
     }
     static func cardShapeTests() {
         for speed in AnimationSpeed.allCases {
-            let profile=MotionProfile(speed), parameters=SpringParameters(duration:profile.cardAppear)
+            let profile=MotionProfile(speed), parameters=SpringParameters(duration:profile.cardAppear,dampingRatio:SpringParameters.cardRatio)
             let start=CACurrentMediaTime()
-            let y=SpringMotion(from:0.82,target:1,velocity:0.18*SpringParameters.ratio*parameters.frequency,parameters:parameters,started:start)
+            let y=SpringMotion(from:0.82,target:1,velocity:0.18*parameters.dampingRatio*parameters.frequency,parameters:parameters,started:start)
             let samples=(0...1000).map { y.sample(at:start+Double($0)*profile.cardAppear/1000) }
             check(abs(samples[0].value-0.82)<1e-9 && samples[0].velocity>0,"spring starts compressed with initial velocity")
-            check(samples.map(\.value).max()! <= 1.02 && samples.map(\.value).max()! > 1.005,"physical rebound remains bounded")
+            check(samples.map(\.value).max()! <= 1.035 && samples.map(\.value).max()! > 1.023,"physical rebound remains bounded")
             check(abs(samples.last!.value-1)<0.001 && abs(samples.last!.velocity)<0.02,"native-duration tail is already settled")
             let animation=parameters.animation(keyPath:"transform.scale.y",from:0.82)
             check(abs(animation.duration-profile.cardAppear)<0.01 && animation.duration == animation.settlingDuration,"native settling duration follows each speed without truncation")
@@ -156,7 +156,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let policy=MotionPolicy(reduceMotion:{false}), motion=WindowMotion(panel,policy:policy,cardAppearance:true)
         MotionEffects.clear(host);motion.reveal(immediately:true) {panel.orderFrontRegardless()};wait(0.04)
         let native=host.layer!.presentation()!.transform
-        check(native.m22 > 0.82 && native.m22 < 1.02,"native early spring frame remains bounded")
+        check(native.m22 > 0.82 && native.m22 < 1.035,"native early spring frame remains bounded")
         check(abs(center.x*native.m11+native.m41-center.x)<0.01 && abs(center.y*native.m22+native.m42-center.y)<0.01,"native presentation center is stationary")
         let begin=host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime
         motion.reveal(immediately:true) {panel.orderFrontRegardless()}
@@ -166,7 +166,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         motion.reveal(immediately:true) {panel.orderFrontRegardless()};wait(0.005)
         let after=host.layer!.presentation()!.transform
         check(abs(before.m22-after.m22)<0.04,"dismiss/reopen has no shape reset")
-        wait(0.9);check(!hidden && panel.isVisible && customAnimations(host)==0,"old dismiss cannot hide reopened card; springs are finite")
+        wait(1.1);check(!hidden && panel.isVisible && customAnimations(host)==0,"old dismiss cannot hide reopened card; springs are finite")
         panel.orderOut(nil);motion.finishImmediately()
         MotionEffects.clear(host); check(customAnimations(host) == 0,"disabling/hiding removes shape and reveal together")
         let points=TransferGlyph.checkPoints, left=points[0], corner=points[1], right=points[2]
@@ -244,8 +244,8 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let ring=layers.first {$0.animation(forKey:"PeerJetty.progress") != nil}!
         let rotation=ring.animation(forKey:"PeerJetty.ringFlip")!, color=ring.animation(forKey:"PeerJetty.successColor")!
         let tick=layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.animation(forKey:"PeerJetty.check")!
-        let strokes = tick as! CAKeyframeAnimation
-        check(strokes.values!.count == 3 && strokes.keyTimes == [0,0.28,1], "two check strokes join without a repeated-value pause")
+        let strokes = tick as! CABasicAnimation
+        check((strokes.fromValue as! Double) == 0 && (strokes.toValue as! Double) == 1 && strokes.timingFunction != nil,"one continuous easing crosses the elbow without segment restart")
 
         check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime-rotation.beginTime)<0.01,"blue-to-green transition runs during finite rotation")
         check(tick.beginTime >= rotation.beginTime+rotation.duration-0.01,"check cannot start before the ring stops")
@@ -279,7 +279,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             let profile = MotionProfile(speed)
             let expected: [Double] = speed == .fast ? [0.22,0.10,0.65,1,0.16] : speed == .natural ? [0.34,0.18,1.20,1.8,0.24] : [0.48,0.24,1.75,2.8,0.32]
             check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
-            check(profile.cardAppear == (speed == .fast ? 0.38 : speed == .natural ? 0.62 : 0.88),"slower card-specific speed profile")
+            check(profile.cardAppear == (speed == .fast ? 0.52 : speed == .natural ? 0.86 : 1.22),"slower card-specific speed profile")
             let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
             check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"constant damping ratio across speeds")
             let policy = MotionPolicy(reduceMotion:{false}); policy.speed=speed

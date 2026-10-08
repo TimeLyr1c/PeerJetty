@@ -125,9 +125,11 @@ final class TransferGlyph: NSView {
         let checkStart = sequence.checkStart
         let fill = CABasicAnimation(keyPath:"strokeEnd"); fill.fromValue = current.value; fill.toValue = 1; fill.duration = fillDuration; fill.timingFunction = finishing.timing
         MotionEffects.add(fill,to:arc,key:"PeerJetty.progress",startTime:now)
-        let draw = CAKeyframeAnimation(keyPath:"strokeEnd")
-        draw.values = [0,Self.shortStrokeFraction,1]; draw.keyTimes = [0,0.28,1]
-        draw.timingFunctions = [.init(controlPoints:0.18,0.40,0.65,1),.init(controlPoints:0.20,0,0.25,1)]
+        let draw = CABasicAnimation(keyPath:"strokeEnd")
+        // A single continuous stroke trajectory crosses the elbow without restarting
+        // an easing curve; segment lengths naturally determine their drawing time.
+        draw.fromValue = 0; draw.toValue = 1
+        draw.timingFunction = .init(controlPoints:0.25,0.10,0.35,1)
         draw.duration = sequence.draw; draw.fillMode = .backwards
         MotionEffects.add(draw,to:tick,key:"PeerJetty.check",delay:checkStart,startTime:now)
         let spring = MotionEffects.spring(duration:sequence.settle,from:0.985)
