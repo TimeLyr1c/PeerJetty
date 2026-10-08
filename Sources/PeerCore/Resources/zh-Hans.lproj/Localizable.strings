@@ -303,9 +303,13 @@
 "application.menu_settings" = "设置…";
 "application.status_details_hint" = "打开设置查看详情";
 "settings.menu_bar" = "显示菜单栏图标";
-"settings.menu_bar_hint" = "隐藏后，PeerJetty 会显示在 Dock 中，点击即可打开设置。";
+"settings.menu_bar_hint" = "两个图标都可以隐藏。重新打开 PeerJetty 可临时显示菜单栏图标。";
 "settings.connection_not_ready" = "尚未就绪";
 "settings.connection_disclosure" = "手动连接信息";
 "settings.status_details" = "查看详情…";
 "settings.diagnostics" = "诊断详情…";
 "appversion.version" = "版本 %1$@";
+
+"settings.dock_icon" = "显示 Dock 图标";
+"settings.temporary_menu" = "本次运行临时显示菜单栏图标，保存的选择仍为关闭。";
+"settings.hide_temporary" = "隐藏临时图标";

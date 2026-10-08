@@ -125,7 +125,17 @@ struct LocalizationChecks {
         settings.onMenuBar = { visibilityChanged=$0 }
         menuSwitch.state = .off; NSApp.sendAction(menuSwitch.action!,to:menuSwitch.target,from:menuSwitch)
         check(visibilityChanged == false, "Visibility control callback")
-        settings.menuBarState(true); check(menuSwitch.state == .on, "System visibility sync")
+        settings.iconState(menu:false,dock:false,temporary:true)
+        let dockSwitch = control("dockVisibility",as:NSSwitch.self)
+        check(menuSwitch.state == .off && dockSwitch.state == .off && !control("temporaryIconNotice",as:NSStackView.self).isHidden,"temporary visibility does not change saved switches")
+        var dockChanged:Bool?; settings.onDock = {dockChanged=$0}
+        dockSwitch.state = .on; NSApp.sendAction(dockSwitch.action!,to:dockSwitch.target,from:dockSwitch)
+        check(dockChanged == true && menuSwitch.state == .off,"Dock callback is independent")
+        var hiddenTemporary=false; settings.onHideTemporary = {hiddenTemporary=true}
+        control("hideTemporaryIcon",as:NSButton.self).performClick(nil)
+        check(hiddenTemporary,"temporary hide action available")
+        settings.iconState(menu:true,dock:false,temporary:false)
+        check(menuSwitch.state == .on && control("temporaryIconNotice",as:NSStackView.self).isHidden,"preference UI rollback")
         let connectionGroup = control("connectionInfoGroup",as:NSStackView.self)
         let connectionToggle = control("connectionInfoToggle",as:NSButton.self)
         check(connectionGroup.isHidden && control("connectionInfo",as:NSTextField.self).stringValue == L10n.text("settings.connection_not_ready"), "Connection info starts collapsed and nonempty")

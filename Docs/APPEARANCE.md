@@ -10,6 +10,12 @@ General → Enable interface animations saves locally, defaults on for existing 
 
 通用 → 启用界面动画：本机保存、旧配置默认开启、立即生效。“减少动态效果”优先且不改变用户选择，系统辅助显示变化通过公开通知观察。“减少透明度”和“增强对比度”交给原生材质适配；不读取或猜测私有透明度参数。各项系统玻璃偏好是否影响浮动卡片，仍需手动观察。
 
+## Floating shadow / 悬浮投影
+
+The native card sits in a transparent host with 32-point padding on each side. A single static rounded shadow has radius 16, downward offset 6 and opacity 24% in light appearance / 38% in dark appearance. Native window shadow is disabled; no black border or extra material is added. Card geometry remains unchanged. Host hit testing rejects the padding; the existing 50 ms position sampler controls window mouse passthrough outside the physical card without a new timer. This sampled handoff and real WindowServer composition require physical acceptance, especially near card edges and across screens.
+
+卡片放入四周 32 点透明外壳，使用单层圆角静态投影：半径 16、向下偏移 6、浅色 24%／深色 38%。关闭窗口原有阴影，不增加黑描边或额外材质。卡片位置与尺寸不变，透明边距拒绝命中；沿用 50 毫秒位置采样控制窗口点透，不增加定时器。边缘采样切换、跨屏和真实系统合成效果仍需实机确认。
+
 ## Motion / 运动
 
 - Actual file drag: immediate, fixed card; the icon alone has a short feedback pulse.
@@ -22,7 +28,7 @@ General → Enable interface animations saves locally, defaults on for existing 
 
 ## Preview and checks / 预览与检查
 
-Run `Scripts/test-motion.sh --deliver-preview`, then open `outputs/GlassMotionPreview.app`. It contains replay, fixed drag-target, light/dark and isolated text-input controls, plus a quit button. Fake transfer progress never connects devices, sends files, uses production identities or opens history. Do not confuse this preview with the product app.
+Run `Scripts/test-motion.sh --deliver-preview` (or add `--static-checks` when animated rendering is unavailable), then open `outputs/GlassMotionPreview.app`. It contains replay, fixed drag-target, light/dark and isolated text-input controls, plus a quit button. Fake transfer progress never connects devices, sends files, uses production identities or opens history. Do not confuse this preview with the product app.
 
 运行以上脚本后打开隔离预览，可回放出现、拖入、进度、成功、失败和收起，反复点击检查中断；可切换浅／深色和动画，查看独立文本输入。预览不连接设备、不传文件、不使用日常身份或历史。退出预览请点“退出预览”。
 

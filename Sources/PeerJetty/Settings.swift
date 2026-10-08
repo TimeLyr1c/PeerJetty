@@ -45,6 +45,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onUpdates: (() -> Void)?
     var onLanguage: ((DisplayLanguage) -> Void)?
     var onMenuBar: ((Bool) -> Void)?
+    var onDock: ((Bool) -> Void)?
+    var onHideTemporary: (() -> Void)?
     var onLatestText: (() -> Void)?
     var onAnimations: ((Bool) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
@@ -59,6 +61,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private let progressLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.no_transfers_yet"))
     private let connectionLabel = NSTextField(wrappingLabelWithString: "")
     private let menuBarSwitch = NSSwitch()
+    private let dockSwitch = NSSwitch()
+    private let temporaryRow = NSStackView()
     private let connectionGroup = NSStackView()
     private let statusDetails = NSButton()
     private let latestTextButton = NSButton()
@@ -101,6 +105,15 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         connectionLabel.identifier = NSUserInterfaceItemIdentifier("connectionInfo")
         menuBarSwitch.state = .on; menuBarSwitch.identifier = NSUserInterfaceItemIdentifier("menuBarVisibility")
         menuBarSwitch.target = self; menuBarSwitch.action = #selector(toggleMenuBar)
+        dockSwitch.identifier = NSUserInterfaceItemIdentifier("dockVisibility")
+        dockSwitch.target = self; dockSwitch.action = #selector(toggleDock)
+        temporaryRow.identifier = NSUserInterfaceItemIdentifier("temporaryIconNotice")
+        temporaryRow.orientation = .vertical; temporaryRow.alignment = .leading
+        temporaryRow.addArrangedSubview(hint("settings.temporary_menu"))
+        let hideTemporaryButton = button(L10n.text("settings.hide_temporary"), #selector(hideTemporary))
+        hideTemporaryButton.identifier = NSUserInterfaceItemIdentifier("hideTemporaryIcon")
+        temporaryRow.addArrangedSubview(hideTemporaryButton)
+        temporaryRow.isHidden = true
         latestTextButton.title = L10n.text("text.latest"); latestTextButton.bezelStyle = .rounded
         latestTextButton.target = self; latestTextButton.action = #selector(openLatestText)
         latestTextButton.identifier = NSUserInterfaceItemIdentifier("latestTextEntry"); latestTextButton.isEnabled = false
@@ -130,7 +143,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         general += [heading(L10n.text("settings.device_name")),
             row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]),
             separator(), setting("settings.language", language), hint("settings.language_restart"),
-            separator(), setting("settings.menu_bar", menuBarSwitch), hint("settings.menu_bar_hint"),
+            separator(), setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch), hint("settings.menu_bar_hint"), temporaryRow,
             separator(), setting("settings.start_at_login", login),
             separator(), setting("settings.animations", animations), hint("settings.animations_hint")]
         connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.isHidden = true
@@ -307,8 +320,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         let lineHeight = NSLayoutManager().defaultLineHeight(for:font)
         statusDetails.isHidden = measured <= lineHeight * 3 + 1 && text.components(separatedBy:"\n").count <= 3
     }
-    func menuBarState(_ visible:Bool) { menuBarSwitch.state = visible ? .on : .off }
     func latestTextState(_ available:Bool) { latestTextButton.isEnabled = available }
+    func iconState(menu:Bool, dock:Bool, temporary:Bool) {
+        menuBarSwitch.state = menu ? .on : .off; dockSwitch.state = dock ? .on : .off
+        temporaryRow.isHidden = !temporary
+    }
+    @objc private func toggleDock() { onDock?(dockSwitch.state == .on) }
+    @objc private func hideTemporary() { onHideTemporary?() }
     @objc private func toggleMenuBar() { onMenuBar?(menuBarSwitch.state == .on) }
     @objc private func openLatestText() { onLatestText?() }
     @objc private func toggleConnectionInfo(_ sender:NSButton) {

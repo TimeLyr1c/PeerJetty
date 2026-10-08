@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0 / build 16 — local test candidate, 2026-10-08
+
+Adds a padded transparent glass-card host with one static rounded floating shadow, retaining the card/drop geometry. Uses an explicit 18-point medium menu-bar symbol. Menu and Dock visibility are now independent saved preferences; legacy configurations preserve their prior combination. Reopening with both hidden temporarily restores only the menu icon and opens Settings, without changing saved choices. Login/service launches retain hidden preferences. Includes bilingual recovery controls and isolated state/layout/transfer checks. Physical Air/mini composition, click-through and launch acceptance remain pending. Local App/DMG only; no automatic installation or public release.
+
+透明外壳承载原生玻璃及单层圆角悬浮投影，保持卡片与投放几何；菜单图标明确为 18 点中等字重。菜单栏与 Dock 独立保存，旧配置保留原组合后迁移。两者都隐藏时手动重新打开，仅本次临时恢复菜单栏并打开设置，不改保存选择；登录／服务启动继续隐藏。含双语临时恢复入口与隔离状态、布局及传输检查。Air／mini 真实合成、点透与启动验收待完成；仅本地 App／DMG，不自动安装或公开发布。
+
 ## 0.4.0 / build 15 — local test candidate, 2026-10-08
 
 Simplifies the menu to Pair, Send Files, Send Text, Check for Updates, Settings and Quit. General now controls menu-bar visibility using native persisted state; hiding shows a Dock icon for recovery without stopping transfers. History and latest text live in Text settings, previews and recent files in Transfers, and diagnostic build details in About. Keeps manual connection addresses/port in a collapsed section and caches the listener port for settings opened later. Long warnings use a short card cue with complete scrollable details in Settings. Fixes the final-frame dismissal flash by hiding before restoring opacity. Normal version labels omit build numbers; installer/provenance metadata retains them. No public Release or automatic installation.

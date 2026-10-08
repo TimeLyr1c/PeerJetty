@@ -303,9 +303,13 @@
 "application.menu_settings" = "Settings…";
 "application.status_details_hint" = "Open Settings for details";
 "settings.menu_bar" = "Show menu bar icon";
-"settings.menu_bar_hint" = "When hidden, PeerJetty appears in the Dock. Click it to open Settings.";
+"settings.menu_bar_hint" = "Both icons can be hidden. Open PeerJetty again to temporarily show its menu bar icon.";
 "settings.connection_not_ready" = "Not ready yet";
 "settings.connection_disclosure" = "Manual connection information";
 "settings.status_details" = "View details…";
 "settings.diagnostics" = "Diagnostic details…";
 "appversion.version" = "Version %1$@";
+
+"settings.dock_icon" = "Show Dock icon";
+"settings.temporary_menu" = "The menu bar icon is temporarily visible for this run. Your saved choice remains off.";
+"settings.hide_temporary" = "Hide temporary icon";

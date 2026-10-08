@@ -50,7 +50,7 @@ Successful text sends and receipts are **always saved on each Mac**. Settings ca
 
 The 0.4.0 local candidate also includes categorized native settings, redesigned text windows, and a native glass drop card on macOS 26+ (system frosted material on macOS 15). General → **Enable interface animations** applies immediately; system Reduce Motion takes priority. Actual drag targets appear immediately and stay fixed. See [appearance and motion](Docs/APPEARANCE.md).
 
-In the 0.4.0 candidate, the menu has six daily actions. **General → Show menu bar icon** saves visibility; hiding shows a Dock icon for reopening Settings. History is in Text settings, previews in Transfers, and build details in About. See [menu and diagnostics](Docs/MENU.md).
+In the 0.4.0 candidate, the menu has six daily actions. **General → Show menu bar icon / Show Dock icon** saves independent choices. When both are hidden, reopening the app temporarily restores the menu icon and opens Settings. History is in Text settings, previews in Transfers, and build details in About. See [menu and diagnostics](Docs/MENU.md).
 
 ## Settings (0.4.0 source/test build)
 

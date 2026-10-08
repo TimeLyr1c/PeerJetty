@@ -184,3 +184,17 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - 隔离原生预览已重新生成；界面自动化请求返回 timeoutReached，未能录制真实合成画面。末帧顺序有原生窗口自动断言证据，但不宣称已在两个物理显示器上目测消除所有闪烁。设置布局截图位于忽略的 outputs/previews/menu-ui。
 - 待 Air／mini：Dock 点击恢复与保留设置窗口、退出重开隐藏状态、系统菜单栏禁用／移除的实际路径、隐藏时双向文件和文本、通知打开、收起无闪回与快速重开。未修改系统偏好或安装生产 App。
 - 仅本地 build15 候选；保留 build13、build14，不推送或发布。后续外观与 1.0.0 另行安排。
+
+## Floating glass and independent icons / 悬浮玻璃与独立图标 — 2026-10-08, build16
+
+- `Scripts/test-menu.sh`: six actions, template image, native autosave across processes, internal KVO suppression, all four saved menu/Dock combinations, legacy migration, JSON roundtrip, temporary recovery/hide, crash-style restart, configuration save failure, external removal with failed persistence, public manual/login/service event classification pass. No production configuration or identities are accessed.
+- `Scripts/test-localization.sh -AppleLanguages '(en)'` and `'(zh-Hans)'`: 310 bilingual keys; 20 light/dark/short-window layouts per language, independent Dock callback, temporary notice with both saved switches off, temporary hide action and rollback pass.
+- `Scripts/test-motion.sh --deliver-preview --static-checks`: native glass and forced macOS15 frosted fallback, original 320×76 card with 32pt margins, noninteractive padding, static radius16/down6 shadow with .24/.38 opacity pass. `outputs/GlassMotionPreview.app` is an isolated interactive renderer, with no production network, identity or history. Interactive previews now start directly; checks run separately.
+- Drop/presentation checks pass: five screen geometry groups and 24 bilingual card layouts. Text checks pass: UTF-8/JSON/legacy compatibility, SQLite retention and permissions/failure, input/focus/drafts, two ephemeral TLS peers with bidirectional text, parallel file transfer, duplicate/unauthorized handling and real 30-second unconfirmed timeout. Core checks: nine groups and seven integration checks pass. Six release-tool tests pass.
+- **Full animated rendering is unverified in this session.** The unmodified build15 tests and original animation code also fail the feedback-settlement assertion; with bounded diagnostic cleanup, the window-fade completion likewise fails. The diagnostic animation edits were backed up and removed; production `Motion.swift` remains unchanged. The native UI tool reports this Mac is locked and cannot automatically unlock it. Static layer/state checks are not proof of real composition, motion, GPU cost or edge click-through.
+- Physical acceptance remains: unlock Air and inspect light/dark/complex backgrounds, Reduce Transparency/Increase Contrast, unclipped shadows and no dismissal flash. Mini/macOS15, ordinary/Retina icon clarity, exact border click-through and file drag across screens, login/manual cold launches, system removal and hidden bidirectional transfer require device checks. The existing 50ms sampler controls mouse passthrough; verify edge handoff latency physically.
+- Build16 is a local test candidate, not a public Release. Preserve build13/14/15 archives; no installation, push or identity change.
+
+菜单、配置迁移、四种组合、临时恢复、保存失败及公开启动事件分类通过隔离检查；中英文各 20 组布局、310 项文案、临时说明与隐藏按钮通过。静态投影参数和透明边距命中通过，原有拖放、文件和文本隔离回归通过。
+
+**真实动画与合成未验收**：当前 Mac 锁屏，原始 build15 动画实现／测试也不能正常结束；本轮用于诊断的动画改动已撤回，产品动画保持不变。需解锁后及在 mini 上检查真实投影、辅助显示、边缘点透、跨屏和无闪回，并验证登录／手动启动和隐藏时双向收发。仅交付本地 build16，不安装、推送或公开发布。

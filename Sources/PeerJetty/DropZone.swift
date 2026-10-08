@@ -137,6 +137,39 @@ final class DropZoneView: NSView {
     }
 }
 
+/// Transparent host: only the original card participates in hit testing and drag registration.
+final class DropCardHost: NSView {
+    static let padding: CGFloat = 32
+    let card: DropZoneView
+    let shadowLayer = CALayer()
+    init(card: DropZoneView) {
+        self.card = card
+        super.init(frame: NSRect(origin:.zero, size:NSSize(width:card.frame.width + 64, height:card.frame.height + 64)))
+        wantsLayer = true; layer?.masksToBounds = false
+        layer?.addSublayer(shadowLayer)
+        addSubview(card); updateShadow()
+    }
+    required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
+    static func windowFrame(_ card: NSRect) -> NSRect { card.insetBy(dx:-padding, dy:-padding) }
+    override func layout() { super.layout(); updateShadow() }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); updateShadow() }
+    private func updateShadow() {
+        let frame = bounds.insetBy(dx:Self.padding, dy:Self.padding)
+        if card.frame != frame { card.frame = frame }
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        defer { CATransaction.commit() }
+        shadowLayer.shadowColor = NSColor.black.cgColor
+        shadowLayer.shadowOpacity = effectiveAppearance.bestMatch(from:[.aqua, .darkAqua]) == .darkAqua ? 0.38 : 0.24
+        shadowLayer.shadowRadius = 16; shadowLayer.shadowOffset = NSSize(width:0, height:-6)
+        shadowLayer.frame = bounds
+        shadowLayer.shadowPath = CGPath(roundedRect:card.frame, cornerWidth:16, cornerHeight:16, transform:nil)
+    }
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard card.frame.contains(point) else { return nil }
+        return super.hitTest(point)
+    }
+}
+
 final class DropPanelController {
     let view = DropZoneView(frame: NSRect(x: 0, y: 0, width: 320, height: 76))
     private let panel: NSPanel
@@ -155,9 +188,9 @@ final class DropPanelController {
     init() {
         panel = NSPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         motion = WindowMotion(panel)
-        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .statusBar
+        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false; panel.level = .statusBar
         panel.hidesOnDeactivate = false; panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
-        panel.contentView = view; panel.orderOut(nil)
+        panel.contentView = DropCardHost(card:view); panel.orderOut(nil)
         let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.poll() }
         RunLoop.main.add(timer, forMode: .common); self.timer = timer
         screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in self?.position() }
@@ -180,7 +213,8 @@ final class DropPanelController {
         revision += 1; hidePending = false
         let geometry = DropPresentation(DropScreenMetrics(screen))
         cardFrame = geometry.card
-        panel.setFrame(geometry.card, display: true)
+        panel.setFrame(DropCardHost.windowFrame(geometry.card), display: true)
+        panel.contentView?.layoutSubtreeIfNeeded()
     }
     func show() { show(on: nil) }
     private func show(on screen: NSScreen?, immediately: Bool = false) {
@@ -196,7 +230,9 @@ final class DropPanelController {
         guard let geometry = geometry() else { return }
         revision += 1; hidePending = false; visible = true
         cardFrame = geometry.card
-        panel.setFrame(geometry.card, display: true)
+        panel.setFrame(DropCardHost.windowFrame(geometry.card), display: true)
+        panel.contentView?.layoutSubtreeIfNeeded()
+        panel.ignoresMouseEvents = !geometry.card.contains(NSEvent.mouseLocation)
         motion.reveal(immediately: immediately) { panel.orderFrontRegardless() }
 
     }
@@ -229,6 +265,7 @@ final class DropPanelController {
     }
     var isVisible: Bool { visible }
     private func poll() {
+        if panel.isVisible, let cardFrame { panel.ignoresMouseEvents = !cardFrame.contains(NSEvent.mouseLocation) }
         if let screen = mouseScreen(), screenID(screen) == editingScreenID, editingScreenID != nil { return }
         let pressed = NSEvent.pressedMouseButtons & 1 == 1
         let location = NSEvent.mouseLocation
@@ -236,7 +273,8 @@ final class DropPanelController {
         // Menu-bar visibility can change without a screen-parameters event.
         if visible, let geometry = geometry(), cardFrame != geometry.card {
             cardFrame = geometry.card
-            panel.setFrame(geometry.card, display: true)
+            panel.setFrame(DropCardHost.windowFrame(geometry.card), display: true)
+            panel.contentView?.layoutSubtreeIfNeeded()
         }
         let acceptsFiles = pressed && board.changeCount != dragTracker.handled && DragPayload.accepts(board)
         dragActive = dragTracker.update(pressed: pressed, location: location,

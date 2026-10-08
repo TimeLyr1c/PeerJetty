@@ -33,12 +33,15 @@ public struct Configuration: Codable {
     public var showTextHistory: Bool = true
     public var textRetention: TextRetention = .latest500
     public var animationsEnabled: Bool = true
+    // Missing values identify the legacy AppKit-coupled visibility preference.
+    public var showMenuBarIcon: Bool? = true
+    public var showDockIcon: Bool? = false
     public var autoOpenReceivedFiles: Bool
     public init(name: String, receivePath: String) {
         self.name = name; self.receivePath = receivePath; peers = []; onboardingComplete = false; autoOpenReceivedFiles = false
     }
     private enum CodingKeys: String, CodingKey {
-        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled
+        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled, showMenuBarIcon, showDockIcon
     }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -48,6 +51,8 @@ public struct Configuration: Codable {
         peers = try values.decode([TrustedPeer].self, forKey: .peers)
         preferredPeer = try values.decodeIfPresent(String.self, forKey: .preferredPeer)
         onboardingComplete = try values.decode(Bool.self, forKey: .onboardingComplete)
+        showMenuBarIcon = try values.decodeIfPresent(Bool.self, forKey: .showMenuBarIcon)
+        showDockIcon = try values.decodeIfPresent(Bool.self, forKey: .showDockIcon)
         animationsEnabled = try values.decodeIfPresent(Bool.self, forKey: .animationsEnabled) ?? true
         showTextHistory = try values.decodeIfPresent(Bool.self, forKey: .showTextHistory) ?? true
         textRetention = try values.decodeIfPresent(TextRetention.self, forKey: .textRetention) ?? .latest500

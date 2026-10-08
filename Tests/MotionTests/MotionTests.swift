@@ -15,8 +15,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         NSApp.setActivationPolicy(preview ? .regular : .prohibited)
         if CommandLine.arguments.contains("--benchmark") { benchmark(); return }
         #if !BASELINE
-        try tests()
-        if preview { showPreview(); NSApp.run() }
+        if preview { showPreview(); NSApp.run() } else { try tests() }
         #endif
     }
     static func benchmark() {
@@ -46,15 +45,28 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         var reduced = false; let policy = MotionPolicy(reduceMotion:{reduced})
         check(policy.allowed,"normal policy"); reduced=true; check(!policy.allowed && policy.enabled,"reduce motion overrides without changing choice"); reduced=false
         let panel = NSPanel(contentRect:NSRect(x:80,y:300,width:320,height:76),styleMask:[.borderless],backing:.buffered,defer:false)
-        let view = DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76)); panel.contentView=view; panel.isOpaque=false; panel.backgroundColor = .clear
+        let view = DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76)); panel.contentView=DropCardHost(card:view); panel.setFrame(DropCardHost.windowFrame(panel.frame), display:false); panel.contentView?.layoutSubtreeIfNeeded(); panel.isOpaque=false; panel.hasShadow=false; panel.backgroundColor = .clear
         if #available(macOS 26.0, *) { check(view.usesNativeGlass,"native glass available") }
         let fallback = DropZoneView(frame:view.frame, forceLegacyMaterial:true)
         check(!fallback.usesNativeGlass && descendants(fallback).contains {$0 is NSVisualEffectView}, "macOS 15 material fallback")
+        let host = panel.contentView as! DropCardHost
+        check(view.frame.size == NSSize(width:320,height:76) && view.frame.origin == NSPoint(x:32,y:32), "shadow padding preserves card dimensions")
+        check(host.hitTest(NSPoint(x:4,y:4)) == nil && host.hitTest(NSPoint(x:150,y:65)) != nil,"transparent border is not interactive")
+        check(host.shadowLayer.shadowRadius == 16 && host.shadowLayer.shadowOffset == NSSize(width:0,height:-6) && host.shadowLayer.shadowPath != nil,"single static rounded shadow")
+        host.appearance = NSAppearance(named:.aqua); host.viewDidChangeEffectiveAppearance()
+        check(abs((host.shadowLayer.shadowOpacity) - 0.24) < 0.001,"light shadow opacity")
+        host.appearance = NSAppearance(named:.darkAqua); host.viewDidChangeEffectiveAppearance()
+        check(abs((host.shadowLayer.shadowOpacity) - 0.38) < 0.001,"dark shadow opacity")
+        if CommandLine.arguments.contains("--static-checks") {
+            print("PASS: native/fallback material, unchanged card geometry, noninteractive padding, static shadow radius/offset and light/dark opacity")
+            return
+        }
         let motion = WindowMotion(panel,policy:policy); let frame=panel.frame
         motion.reveal(immediately:true) {panel.orderFrontRegardless()}
         check(panel.alphaValue == 1 && panel.frame == frame && customAnimations(view) == 0,"drag target is immediate and stationary")
-        MotionEffects.pulse(view,policy:policy); check(customAnimations(view)==1,"single bounded feedback animation")
-        MotionEffects.pulse(view,policy:policy); check(customAnimations(view)==1,"feedback replaces rather than stacks")
+        wait(0.4) // Let AppKit attach the newly ordered layer tree before sampling feedback.
+        MotionEffects.pulse(descendants(view).compactMap {$0 as? NSImageView}.first!,policy:policy); check(customAnimations(view)==1,"single bounded feedback animation")
+        MotionEffects.pulse(descendants(view).compactMap {$0 as? NSImageView}.first!,policy:policy); check(customAnimations(view)==1,"feedback replaces rather than stacks")
         wait(0.3); check(customAnimations(view)==0,"feedback settles and is removed")
         let icon=descendants(view).compactMap {$0 as? NSImageView}.first!
         let transferID=UUID()
@@ -108,7 +120,7 @@ private final class PreviewController: NSObject, NSWindowDelegate {
     private let enabled = NSButton(checkboxWithTitle:"Animations / 动画",target:nil,action:nil)
     override init() {
         super.init(); window.delegate=self; window.title="PeerJetty · Isolated Glass & Motion Preview"; window.isReleasedWhenClosed=false; window.center()
-        panel.isOpaque=false; panel.backgroundColor = .clear; panel.level = .floating; panel.hasShadow=true; panel.contentView=card
+        panel.isOpaque=false; panel.hasShadow=false; panel.backgroundColor = .clear; panel.level = .floating; panel.hasShadow=false; panel.contentView=DropCardHost(card:card)
         motion=WindowMotion(panel)
         let stack=NSStackView(); stack.orientation = .vertical; stack.spacing=14; stack.translatesAutoresizingMaskIntoConstraints=false
         let info=NSTextField(wrappingLabelWithString:"Native glass on this Mac. Drag targets stay fixed.\n原生玻璃预览；不连接设备、不读取日常数据。\nChange system glass/accessibility settings to compare live behavior.")
@@ -122,7 +134,7 @@ private final class PreviewController: NSObject, NSWindowDelegate {
         card.targetName="MacBook Air · 中文🙂";card.idle()
     }
     func present() { window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps:true);position();play() }
-    private func position() { panel.setFrameOrigin(NSPoint(x:window.frame.midX-160,y:window.frame.maxY+12)) }
+    private func position() { panel.setFrame(DropCardHost.windowFrame(NSRect(x:window.frame.midX-160,y:window.frame.maxY+12,width:320,height:76)), display:true); panel.contentView?.layoutSubtreeIfNeeded() }
     func windowWillClose(_ notification: Notification) { quit() }
     @objc private func quit() { replay+=1; motion.finishImmediately();panel.orderOut(nil);NSApp.terminate(nil) }
     @objc private func toggle() { MotionPolicy.shared.enabled=enabled.state == .on }

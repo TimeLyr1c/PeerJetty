@@ -12,13 +12,17 @@ Text history and latest received text are in Text settings; hiding history still
 
 ## Hide and restore / 隐藏与恢复
 
-General → Show menu bar icon defaults on for installations without a saved native visibility state. Turn it off to hide the icon and show PeerJetty in the Dock. Click the Dock icon to reopen Settings; turn the switch on to restore the menu icon and return to the usual menu-bar-only mode. Settings remains open when toggling. Reopening PeerJetty does not force the icon to reappear. Hiding never quits the app or stops paired transfers.
+General has independent Show menu bar icon and Show Dock icon switches. New installations default to menu on / Dock off; all four combinations are supported. Both choices persist locally. Upgrading a legacy configuration preserves the previous native menu visibility and its corresponding Dock visibility before unlinking the switches. Hiding icons never stops transfers or closes Settings.
 
-通用 → 显示菜单栏图标：无保存状态时默认开启。关闭后图标从菜单栏消失、Dock 出现 PeerJetty，点击即可打开设置；重新开启后恢复菜单栏图标，Dock 图标隐藏。切换时设置窗口保留；再次打开应用不强行恢复图标。隐藏不退出应用、不停止传输。
+通用页提供独立的“显示菜单栏图标”和“显示 Dock 图标”，支持四种组合。新安装默认菜单栏开启、Dock 关闭；升级保留旧版实际组合后解除联动。隐藏不退出、不停止传输，也不关闭设置。
 
-`NSStatusItem.autosaveName` is stable (`PeerJetty.MainStatusItem`); native `isVisible` persists and restores. Native removal is allowed without termination; visibility observation synchronizes the switch and Dock, with duplicate notifications suppressed. No private defaults are read and no startup force-show overrides native restoration. Insufficient menu-bar space is not user removal: AppKit can report visible even when physically obscured. OS menu-bar management and third-party hiding tools still need physical acceptance; the app cannot guarantee compatibility with every tool. Previously hidden icons had no persisted choice, so that old action cannot be migrated.
+If both are hidden, opening PeerJetty from Applications or Spotlight temporarily shows only the menu icon and opens Settings. The saved menu switch stays off; the notice and Hide temporary icon button explain this per-run state. Turn the switch on to save permanent visibility. Normal quit clears temporary recovery; a crash cannot persist it into the next run. Login/service launch events retain saved hidden choices; unknown launch events do not independently trigger recovery.
 
-使用稳定 autosaveName 与原生 isVisible 保存／恢复，允许系统移除图标且不退出；观察可见性同步开关与 Dock，去重重复通知，不读取私有设置，也不在启动时强行显示。菜单栏空间不足不等于主动隐藏，系统可能仍报告可见。系统菜单栏管理及第三方隐藏工具需实机确认，不保证所有工具兼容。旧版隐藏没有保存，无法迁移那次临时选择。
+两者都隐藏时，从 Applications／Spotlight 打开应用会临时恢复菜单栏并打开设置，Dock 仍隐藏。开关仍为关闭，旁边显示临时说明和“隐藏临时图标”；主动开启才长期保存。退出清理临时状态，异常退出后也按持久化配置恢复。登录／服务启动通过公开启动事件识别，保持隐藏；无法判定的启动事件本身不触发恢复。
+
+The stable native autosave name preserves menu positioning, but application configuration is authoritative for visibility. Internal updates suppress visibility callbacks; external system removal saves menu-off without changing Dock. Save failures are reported: settings changes roll back, while a system removal remains effective for the run. Insufficient menu space is not an explicit removal; third-party hiding tools still require physical checks. The template arrow symbol uses an explicit 18-point medium configuration.
+
+原生 autosaveName 保留位置，应用配置决定显示选择；内部更新不当作系统操作。系统移除只保存菜单栏关闭，不改 Dock。设置保存失败会回退并提示，系统移除保存失败仍保持本次隐藏并提示。空间不足不等于主动移除；第三方隐藏工具待实测。菜单图标使用 18 点中等字重模板双向箭头。
 
 ## Connections and complete messages / 连接与完整提示
 

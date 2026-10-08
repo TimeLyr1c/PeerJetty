@@ -20,6 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var volatileOrder: [UUID] = []
     private var updateWindow: UpdateWindow?
     private var menuBar: MenuBarController?
+    private var icons: IconVisibilityController?
+    private var userOpened = false
+    private var backgroundLaunch = false
     private var listeningPort: UInt16?
     private var lastStatus: String?
     private var peers: [DiscoveredPeer] = []
@@ -39,7 +42,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let app = NSApplication.shared; let delegate = AppDelegate()
         app.delegate = delegate; app.setActivationPolicy(.accessory); app.run()
     }
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        captureLaunchReason()
+    }
+    private func captureLaunchReason() {
+        let reason = IconLaunchReason.detect(NSAppleEventManager.shared().currentAppleEvent)
+        backgroundLaunch = backgroundLaunch || reason == .background
+        userOpened = !backgroundLaunch && (userOpened || reason == .user)
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
+        captureLaunchReason()
         setupMenu(); UNUserNotificationCenter.current().delegate = self
         // Certificate generation and Keychain access must not block the UI run loop.
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -54,7 +66,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     private func finishStartup(store: ConfigurationStore, identity: DeviceIdentity) {
         MotionPolicy.shared.enabled = store.snapshot.animationsEnabled
-        self.store = store; let engine = PeerEngine(identity: identity, store: store); self.engine = engine
+        self.store = store
+        let config = store.snapshot
+        let flags = IconVisibilityController.migrated(config, nativeMenu: menuBar?.isVisible ?? true)
+        let icons = IconVisibilityController(menu: flags.0, dock: flags.1) { menu, dock in
+            try store.update { $0.showMenuBarIcon = menu; $0.showDockIcon = dock }
+        }
+        self.icons = icons; icons.onChange = { [weak self] in self?.applyIconVisibility() }
+        if config.showMenuBarIcon == nil || config.showDockIcon == nil {
+            do { try store.update { $0.showMenuBarIcon = flags.0; $0.showDockIcon = flags.1 } }
+            catch { showError(error.localizedDescription) }
+        }
+        applyIconVisibility()
+        if userOpened { icons.recover(); pendingSettings = true }
+        let engine = PeerEngine(identity: identity, store: store); self.engine = engine
         historyQueue.async { [weak self] in
             do { _ = try self?.ensureHistory() } catch { DispatchQueue.main.async { self?.settings?.status(L10n.text("text.history_failed")) } }
         }
@@ -127,13 +152,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             .updates:{ [weak self] in self?.checkUpdates() }, .settings:{ [weak self] in self?.showSettings() },
             .quit:{ NSApp.terminate(nil) }])
         menuBar = bar
-        bar.onVisibility = { [weak self] value in self?.applyMenuVisibility(value) }
-        applyMenuVisibility(bar.isVisible)
+        bar.onVisibility = { [weak self] value in
+            do { try self?.icons?.systemChanged(value) }
+            catch { self?.showError(error.localizedDescription) }
+        }
     }
-    private func applyMenuVisibility(_ visible: Bool) {
+    private func applyIconVisibility() {
+        guard let icons else { return }
+        menuBar?.setVisible(icons.effectiveMenu)
         let wasVisible = settings?.window?.isVisible == true
-        NSApp.setActivationPolicy(MenuBarController.activationPolicy(visible:visible))
-        settings?.menuBarState(visible)
+        NSApp.setActivationPolicy(MenuBarController.activationPolicy(dockVisible:icons.dock))
+        settings?.iconState(menu:icons.menu, dock:icons.dock, temporary:icons.temporary)
         if wasVisible { settings?.window?.makeKeyAndOrderFront(nil) }
     }
     private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy }
@@ -178,7 +207,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onPermissions = {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!)
             }
-            controller.onMenuBar = { [weak self] visible in self?.menuBar?.setVisible(visible) }
+            controller.onMenuBar = { [weak self] visible in
+                do { try self?.icons?.setMenu(visible) }
+                catch { self?.applyIconVisibility(); self?.showError(error.localizedDescription) }
+            }
+            controller.onDock = { [weak self] visible in
+                do { try self?.icons?.setDock(visible) }
+                catch { self?.applyIconVisibility(); self?.showError(error.localizedDescription) }
+            }
+            controller.onHideTemporary = { [weak self] in self?.icons?.hideTemporary() }
             controller.onLatestText = { [weak self] in self?.openLatestText() }
             controller.onSendText = { [weak self] in self?.sendText() }
             controller.onTextHistory = { [weak self] in self?.showTextHistory() }
@@ -210,7 +247,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onReset = { [weak self] in self?.resetIdentity() }
             controller.onQuit = { NSApp.terminate(nil) }
         }
-        settings?.menuBarState(menuBar?.isVisible ?? true)
+        if let icons { settings?.iconState(menu:icons.menu, dock:icons.dock, temporary:icons.temporary) }
         settings?.latestTextState(latestText != nil)
         updateConnectionInfo()
         if let lastStatus { settings?.status(lastStatus) }
@@ -425,8 +462,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let alert = NSAlert(); alert.messageText = "PeerJetty"; alert.informativeText = text; alert.addButton(withTitle: L10n.text("application.ok"))
         NSApp.activate(ignoringOtherApps: true); alert.runModal()
     }
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
-    func applicationWillTerminate(_ notification: Notification) { engine?.stop() }
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        captureLaunchReason()
+        if !backgroundLaunch {
+            userOpened = true; icons?.recover(); showSettings()
+        }
+        return false
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        userOpened = true; icons?.recover(); showSettings(); return true
+    }
+    func applicationWillTerminate(_ notification: Notification) { icons?.hideTemporary(); engine?.stop() }
     private static func localAddresses() -> [String] {
         var addresses: [String] = []; var list: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&list) == 0 else { return [L10n.text("application.see_system_network_settings")] }; defer { freeifaddrs(list) }
