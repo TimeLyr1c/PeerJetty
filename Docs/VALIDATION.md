@@ -221,3 +221,14 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - Final native preview captured 60 real frames (~6.3 s) in ignored `outputs/previews/motion-build18/natural.gif`, with timestamps/contact sheets. Real glass, progress, inset check and disappearance are visible. UI capture is low-resolution and ~10 fps; action/capture latency can miss the beginning of the reveal, so this does not establish exact subjective spring feel or single-frame absence of flash. Native ordering/curve checks cover objective invariants; full-resolution Air/mini acceptance remains pending.
 
 已解锁会话完整动画测试通过，包含新的形变缓冲、固定中心与命中、对勾留白检查，以及确认／停留／中断／减少动态效果回归。中英文和布局通过；原生低分辨率截帧可见玻璃与新对勾，但采样可能错过展开起始，不能替代用户在 Air／mini 的实际观感确认。保留 build17，生成独立本地 build18；不自动安装、推送或公开发布。
+
+
+## Spring momentum and capped ring / 弹簧初速度与限速圆环 — 2026-10-08, build19
+
+- `test-motion.sh --deliver-preview` passed: nonlinear near/far speed contrast, finite centered shape, real progress targets, confirmation/hold, duplicate/parallel/new-transfer protection, native dismissal/reopen ordering, animation-off/Reduce Motion and text focus/draft regression.
+- Added 14,472 sampled trajectory checks (3 rates × 6 delta sizes × 4 initial velocities × 201 points) for monotonicity, never leading actual targets and derivative bounded by cap. 100 successive updates per rate preserve position/velocity; finite final catch-up settles with zero velocity. Immediate success can extend the fill; native tests verify nominal deadlines cannot hide it and hold starts after actual completion.
+- An initial duplicate-success assertion still waited the old nominal duration; it failed while the new valid extended fill was running. The test now waits actual glyph success duration; the subsequent complete run passed.
+- `test-drop-presentation.sh` passed five geometry groups and 24 bilingual card layouts; English and Chinese `test-localization.sh` passed 320 keys and 20 native appearance/small-window layouts each. No engine, protocol, pairing, database or acknowledgement changes.
+- Native Natural preview captured 75 real frames (~7.9 s), saved with timestamps in ignored `outputs/previews/motion-build19/`. Contact sheets show real material, ring fill, delayed check and eventual disappearance. Capture remains low-resolution/~10 fps and can miss the first spring frames; it is not proof of exact subjective feel or single-frame flash absence. Air/mini full-resolution acceptance remains pending.
+
+完整动画及双语／几何回归通过；新增 14,472 个轨迹采样检查，覆盖限速、单调、不超真实进度和频繁更新连续性，实测瞬间成功的延长补齐及停留保护。原生低分辨率回放可见更慢的圆环／对勾；Air／mini 实际手感仍待用户确认。仅本地 build19，保留 build18，不安装、推送或发布。

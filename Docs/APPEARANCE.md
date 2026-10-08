@@ -27,25 +27,30 @@ General → Animation speed offers **Fast / Natural / Relaxed**, defaulting to N
 | Card appear / 卡片展开 | 380 ms | 620 ms | 880 ms |
 | Text appear / 文本展开 | 220 ms | 340 ms | 480 ms |
 | Status / 文字过渡 | 100 ms | 180 ms | 240 ms |
-| Ring and check / 圆环与对勾 | 320 ms | 650 ms | 950 ms |
+| Ring and check minimum / 圆环与对勾最短时长 | 650 ms | 1200 ms | 1750 ms |
+| Maximum ring speed / 圆环最大视觉速度 | 300%/s | 150%/s | 100%/s |
 | Hold after check / 完成后停留 | 1 s | 1.8 s | 2.8 s |
 | Dismiss / 收起 | 160 ms | 240 ms | 320 ms |
 
-The card now reveals softly from 12% opacity while expanding from 86% width / 62% height. A sampled damped step response (damping ratio 0.56, normalized frequency 7.5) gives one visible squash/stretch rebound: maximum height about 105%, with the peak near halfway through the sequence rather than concentrated in its first frames. A smooth envelope settles the tiny remaining tail to identity with zero endpoint velocity. Only a finite, precomputed set of 61 layer transforms is used; there is no custom frame loop. Presentation translation compensates AppKit layer anchors to keep the visual center fixed. Text windows retain their smaller 97% uniform spring.
+The card uses an initial-velocity damped spring instead of accelerating from rest: the far-away compressed shape returns quickly, then slows near equilibrium and makes one small rebound. Damping is 0.68 and normalized frequency 7.5; initial size remains 86% width / 62% height and maximum height is about 103%. Reveal starts at 35% opacity and finishes within 18% of the appearance duration, so it does not hide the fast opening phase. The 61 finite samples describe a nonlinear physical response, not constant-speed interpolation across the whole effect; a smooth envelope settles the tail with zero endpoint velocity. AppKit anchor compensation keeps the visual center fixed. No custom frame loop is introduced; text windows retain their smaller 97% uniform spring.
 
-卡片从 12% 不透明度柔和显现，初始宽度 86%／高度 62%，使用阻尼比 0.56、归一化频率 7.5 的阶跃响应形成一次明显压缩／拉伸回弹；最大高度约 105%，峰值在时间轴中段，避免动作挤在开头。尾部平滑收束到单位变换，端点速度为零。只预先生成 61 个图层变换，无自定义逐帧循环；按 AppKit 锚点补偿视觉中心，文字窗口保留原有 97% 轻微均匀缩放。
+卡片改用带初速度的阻尼弹簧：离目标较远时迅速回到正常形状，靠近时明显减速，再轻微回弹一次。阻尼 0.68、归一化频率 7.5，初始尺寸仍为宽 86%／高 62%，最大高度约 103%；显现从 35% 不透明度开始，在展开时长的前 18% 内结束，避免掩盖开头的快速运动。61 个有限采样点描述非线性物理响应，并非全程匀速；尾部平滑收束，锚点补偿保持视觉中心不动。无自定义逐帧循环，文本仍使用原有轻微均匀缩放。
 
 The physical drag target is immediately available and fixed, independently of rendered deformation/opacity. Native window position, layout, transparent margins and registration never animate; keyboard focus remains immediate. Repeated drag sampling does not truncate the effect. Disabling animations/Reduce Motion presents the final state and retains confirmed-success hold time.
 
 实际投放区域立即可用，独立于视觉形变和显现；窗口位置、排版、透明边距及拖放注册均不变，键盘焦点立即可用。重复拖拽采样不截断效果；关闭动画／减少动态效果立即展示最终状态并保留成功停留。
 
-A small vector ring replaces the horizontal file progress bar. Known byte progress is monotonic; preparation/unknown totals show no invented percentage. Full bytes without the real success event show Waiting for confirmation. Only confirmed success completes the green ring, draws the short and long check strokes, then gently settles. Small files receive the full success sequence without delaying the actual transfer or replaying fictional progress. Failure, cancellation and unconfirmed transfers do not draw a check. Text retains its existing confirmed-success feedback rather than adopting this ring.
+The ring follows real byte targets through a rate-limited visual trajectory. It may lag the latest reported percentage, never leads it and never retreats; accessible values/settings retain the true byte progress. Preparation/unknown totals show no invented percentage. Each new update retargets from the current mathematical position and velocity using a monotonic cubic segment. Duration is bounded below by 1.5 × remaining fraction / speed limit, with the endpoint-control constraint preserving monotonicity for tiny updates. This guarantees the derivative never exceeds the selected cap. Core Animation evaluates one replaceable finite effect, without background polling or a custom frame loop. Animations off/Reduce Motion display the true target immediately.
 
-少量矢量图层组成圆环，替代文件横向进度条；真实字节进度不倒退，准备或未知总量不造百分比，传完但未确认显示“等待确认”。仅真实成功事件补齐绿色圆环、依次画出两笔对勾并收稳；小文件也完整展示，不延迟传输、不补演假进度。失败／取消／未确认不画对勾；文本保留原有确认反馈。
+圆环依据真实字节目标，以限速曲线平滑追赶；视觉上可以略落后，但不会超前或倒退，设置／辅助功能仍保留真实进度。准备或总量未知不造百分比。新进度沿用当前数学位置和速度，以单调三次曲线衔接；时长下限和端点约束保证瞬间大跳、微小更新与频繁更新都不超过所选速率。仅替换一个有限 Core Animation 效果，不增加轮询或逐帧任务。关闭动画／减少动态效果立即显示真实目标。
 
-The compact check uses a sharper ~76° elbow, an inset right endpoint, and round caps. At the normal 30-point glyph size, conservative stroke-to-ring clearance is over 2.5 points. Short-stroke completion is computed from actual segment lengths; it accelerates into a brief corner pause, followed by a longer decelerating upward stroke. Circle completion and overall speed/hold settings are unchanged. This is our own geometry/timing inspired by Apple's completion feedback, not Apple's private animation or an exact reproduction.
+Full bytes without receiver confirmation still show Waiting for confirmation. Only real success starts the green-ring completion followed by the two-stroke check and settlement. The visual finish also respects the cap: when far behind, it extends the sequence before the check, never delays actual transfer or acknowledgement, and never invents progress. Default minimum completion sequence is 1.2 s; a ring starting near zero can take about 1.9 s. Hold starts only after this actual sequence finishes, not at a fixed nominal deadline. Failure/cancellation/unconfirmed events do not draw a check. Text keeps its confirmed-success icon feedback at the slower selected success duration.
 
-对勾使用约 76° 更尖的折角、向圆心收进的右端和圆头；30 点图标中保守计算的描边留白超过 2.5 点。按真实线段长度定位短笔结束点，短笔加速、转角略停、长笔减速向上画出。圆环完成条件、整体成功时长和停留不变；路径与节奏自行设计，借鉴 Apple 完成反馈，并非精确复刻其私有动画。
+字节传完但未获接收确认仍显示“等待确认”；真实成功才补齐绿色圆环，再画两笔对勾并收稳。视觉补齐同样限速，落后较多时先延长圆环过程，不延迟传输或确认、不补演假进度。自然档成功变换最短 1.2 秒；从近零追赶时约 1.9 秒，实际整段完成后才开始停留计时。失败、取消、未确认不画对勾；文本成功图标也使用较慢的所选成功时长。
+
+The compact check uses a sharper ~76° elbow, an inset right endpoint, and round caps. At the normal 30-point glyph size, conservative stroke-to-ring clearance is over 2.5 points. Short-stroke completion is computed from actual segment lengths; it accelerates into a brief corner pause, followed by a longer decelerating upward stroke. Confirmation and hold settings are unchanged; success drawing now uses the slower timings above. This is our own geometry/timing inspired by Apple's completion feedback, not Apple's private animation or an exact reproduction.
+
+对勾使用约 76° 更尖的折角、向圆心收进的右端和圆头；30 点图标中保守计算的描边留白超过 2.5 点。按真实线段长度定位短笔结束点，短笔加速、转角略停、长笔减速向上画出。确认条件与停留规则不变，成功绘制使用上方的新时长；路径与节奏自行设计，借鉴 Apple 完成反馈，并非精确复刻其私有动画。
 
 The card controller owns the hold deadline, starting after the check sequence finishes. Transfer IDs deduplicate success and invalidate stale hide callbacks; new transfers/drops take over immediately. Concurrent active transfers remain visible instead of being replaced by another transfer's completion. Dismissal orders the window out before restoring opacity. Keyed finite effects are cancelled on hiding; no spinner, particles, per-frame loop or added background polling.
 

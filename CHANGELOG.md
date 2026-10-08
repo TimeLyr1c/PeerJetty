@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0 / build 19 — local test candidate, 2026-10-08
+
+Gives the drop-card spring initial momentum for a faster far-away return and slower approach. The file ring now smoothly retargets from current position/velocity with a visual rate cap (Fast 300%, Natural 150%, Relaxed 100% per second), never exceeding real progress. Slows confirmed ring-to-check feedback to at least 650/1200/1750 ms; rate-limited final fill may extend it. Hold starts after the actual sequence, with new transfers/cancellation still preempting safely. No transfer delay, fake progress or new continuous task. Includes native motion, burst/tiny-update rate checks and bilingual layouts; physical Air/mini acceptance pending. Local App/DMG only; build18 retained.
+
+弹簧增加初速度，远处回归更快、近处减速更明显。文件圆环从当前位置与速度连续追赶，视觉限速为快速每秒 300%、自然 150%、舒缓 100%，不超前于真实进度。确认后的圆环／对勾变换放慢至至少 650／1200／1750ms，限速补齐可能进一步延长；实际整段结束才计停留，新任务与取消仍可立即接管。不延迟传输、不造进度、不增加持续任务。原生运动、频繁／微小更新限速与双语布局检查通过；Air／mini 实机待确认，仅本地测试包，保留 build18。
+
 ## 0.4.0 / build 18 — local test candidate, 2026-10-08
 
 Softens the drop-card reveal with a buffered fade and centered squash/stretch rebound (Fast 380 ms, Natural 620 ms, Relaxed 880 ms). The physical drag target remains immediately usable. Insets the success check, sharpens its elbow and gives the two strokes different pacing with a brief corner pause. Text opening, transfer confirmation and success hold rules stay unchanged. Native interruption/reduction, geometry and bilingual layout checks passed; full-resolution Air/mini visual acceptance remains pending. Local App/DMG only; build17 is retained.
