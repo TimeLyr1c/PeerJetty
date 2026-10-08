@@ -11,6 +11,13 @@ enum DragPayload {
 
 /// Small vector renderer. No spinner, display link or per-frame drawing loop.
 final class TransferGlyph: NSView {
+    static let checkPoints = [CGPoint(x:0.32,y:0.49),CGPoint(x:0.45,y:0.65),CGPoint(x:0.68,y:0.34)]
+    static var shortStrokeFraction: Double {
+        let points = checkPoints
+        let short = hypot(points[1].x-points[0].x,points[1].y-points[0].y)
+        let long = hypot(points[2].x-points[1].x,points[2].y-points[1].y)
+        return short/(short+long)
+    }
     private let track = CAShapeLayer(), arc = CAShapeLayer(), tick = CAShapeLayer()
     private var id: UUID?
     private var revision = 0
@@ -36,7 +43,8 @@ final class TransferGlyph: NSView {
         for shape in [track,arc,tick] { shape.frame = bounds }
         let path = CGMutablePath(); path.addArc(center:NSPoint(x:bounds.midX,y:bounds.midY), radius:max(0,min(bounds.width,bounds.height)/2-3),startAngle:-.pi/2,endAngle:3 * .pi/2,clockwise:false)
         track.path = path; arc.path = path
-        let check = CGMutablePath(); check.move(to:NSPoint(x:bounds.width*0.28,y:bounds.height*0.51)); check.addLine(to:NSPoint(x:bounds.width*0.44,y:bounds.height*0.66)); check.addLine(to:NSPoint(x:bounds.width*0.73,y:bounds.height*0.35)); tick.path = check
+        let points = Self.checkPoints.map { CGPoint(x:bounds.width*$0.x,y:bounds.height*$0.y) }
+        let check = CGMutablePath(); check.move(to:points[0]); check.addLine(to:points[1]); check.addLine(to:points[2]); tick.path = check
     }
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); colors() }
     private func colors() {
@@ -76,10 +84,13 @@ final class TransferGlyph: NSView {
         MotionEffects.add(color,to:arc,key:"PeerJetty.successColor")
         let fill = CABasicAnimation(keyPath:"strokeEnd"); fill.fromValue = start; fill.toValue = 1; fill.duration = profile.success * 0.22; fill.timingFunction = MotionEffects.smooth
         MotionEffects.add(fill,to:arc,key:"PeerJetty.progress")
-        let draw = CAKeyframeAnimation(keyPath:"strokeEnd"); draw.values = [0,0.34,1]; draw.keyTimes = [0,0.35,1]; draw.timingFunctions = [.init(name:.easeInEaseOut),MotionEffects.smooth]; draw.duration = profile.success * 0.60; draw.fillMode = .backwards
+        let draw = CAKeyframeAnimation(keyPath:"strokeEnd")
+        draw.values = [0,Self.shortStrokeFraction,Self.shortStrokeFraction,1]; draw.keyTimes = [0,0.25,0.34,1]
+        draw.timingFunctions = [.init(name:.easeIn),.init(name:.easeInEaseOut),.init(controlPoints:0.18,0.65,0.3,1)]
+        draw.duration = profile.success * 0.61; draw.fillMode = .backwards
         MotionEffects.add(draw,to:tick,key:"PeerJetty.check",delay:profile.success * 0.22)
-        let spring = MotionEffects.spring(duration:profile.success * 0.22,from:0.985)
-        MotionEffects.add(spring,to:layer,key:"PeerJetty.feedback",delay:profile.success * 0.78)
+        let spring = MotionEffects.spring(duration:profile.success * 0.17,from:0.985)
+        MotionEffects.add(spring,to:layer,key:"PeerJetty.feedback",delay:profile.success * 0.83)
         DispatchQueue.main.asyncAfter(deadline:.now()+profile.success) { [weak self] in guard let self, self.revision == token else { return }; self.settle() }
     }
     private func settle() {
@@ -284,7 +295,7 @@ final class DropPanelController {
     var busy = false
     init() {
         panel = NSPanel(contentRect: view.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        motion = WindowMotion(panel)
+        motion = WindowMotion(panel,cardAppearance:true)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false; panel.level = .statusBar
         panel.hidesOnDeactivate = false; panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = DropCardHost(card:view); panel.orderOut(nil)
@@ -465,7 +476,7 @@ final class MotionPreviewWindow: NSWindowController, NSWindowDelegate {
     @objc private func play() {
         generation += 1; hiding = false; let token = generation, id = UUID()
         MotionEffects.clear(host); host.alphaValue = 1; card.idle(); host.layoutSubtreeIfNeeded()
-        if policy.allowed { MotionEffects.appear(host,duration:policy.profile.appear) }
+        if policy.allowed { MotionEffects.cardAppear(host,duration:policy.profile.cardAppear) }
         card.onSuccessFinished = { [weak self] _,hold in
             guard let self, self.generation == token else { return }
             DispatchQueue.main.asyncAfter(deadline:.now()+hold) { [weak self] in

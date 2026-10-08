@@ -56,6 +56,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
     #if !BASELINE
     static func tests() throws {
         try ringTests()
+        cardShapeTests()
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true}"#.utf8)
         var configuration = try JSONDecoder().decode(Configuration.self,from:legacy)
         check(configuration.animationsEnabled,"legacy defaults to animations enabled")
@@ -83,7 +84,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             print("PASS: native/fallback material, unchanged card geometry, noninteractive padding, static shadow radius/offset and light/dark opacity")
             return
         }
-        let motion = WindowMotion(panel,policy:policy); let frame=panel.frame
+        let motion = WindowMotion(panel,policy:policy,cardAppearance:true); let frame=panel.frame
         motion.reveal(immediately:true) {panel.orderFrontRegardless()}
         check(panel.alphaValue == 1 && panel.frame == frame && customAnimations(view) == 0,"drag target is immediate and stationary")
         wait(0.4) // Let AppKit attach the newly ordered layer tree before sampling feedback.
@@ -122,6 +123,33 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check(composer.window?.isVisible == true && composer.window?.firstResponder === composer.editor && composer.editor.string == "中文🙂 draft", "animated close/reopen preserves focus and draft")
         MotionPolicy.shared.enabled=false; composer.close(); MotionPolicy.shared.enabled=true
     }
+    static func cardShapeTests() {
+        let samples = (0...100).map { MotionEffects.cardTransform(at:Double($0)/100) }
+        check(samples[0].m11 == 0.86 && samples[0].m22 == 0.62,"card starts visibly compressed on unequal axes")
+        check(samples[1].m22-samples[0].m22 < 0.01,"zero-velocity start provides initial buffering")
+        check(samples.map(\.m22).max()! > 1.04 && samples.map(\.m22).max()! < 1.05,"bounded perceptible jelly overshoot")
+        let peak = samples.indices.max { samples[$0].m22 < samples[$1].m22 }!
+        check(peak >= 49 && peak <= 52 && samples[20].m22 < 0.9,"expansion uses the timeline instead of settling in its first few frames")
+        check(CATransform3DIsIdentity(samples.last!) && abs(samples[99].m22-1) < 0.001,"shape settles before finite endpoint")
+        let host=DropCardHost(card:DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76)))
+        let frame=host.card.frame
+        MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
+        let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAKeyframeAnimation
+        check(animation?.values?.count == 61 && animation?.duration == 0.62,"finite spring sampling and natural card duration")
+        let transform=(animation!.values!.first as! NSValue).caTransform3DValue
+        let anchor=host.layer!.anchorPoint, center=CGPoint(x:host.bounds.width*(0.5-anchor.x),y:host.bounds.height*(0.5-anchor.y))
+        check(abs(center.x*transform.m11+transform.m41-center.x)<0.001 && abs(center.y*transform.m22+transform.m42-center.y)<0.001,"visual card center stays fixed with AppKit layer anchor")
+        check(host.card.frame == frame && host.hitTest(NSPoint(x:4,y:4)) == nil,"visual deformation preserves physical card and transparent target boundary")
+        check(host.layer?.opacity == 1 && CATransform3DIsIdentity(host.layer!.transform),"model appearance remains ready for input and motion cancellation")
+        MotionEffects.clear(host); check(customAnimations(host) == 0,"disabling/hiding removes shape and reveal together")
+        let points=TransferGlyph.checkPoints, left=points[0], corner=points[1], right=points[2]
+        let a=CGPoint(x:left.x-corner.x,y:left.y-corner.y), b=CGPoint(x:right.x-corner.x,y:right.y-corner.y)
+        let angle=acos((a.x*b.x+a.y*b.y)/(hypot(a.x,a.y)*hypot(b.x,b.y))) * 180 / .pi
+        check(angle > 74 && angle < 78,"compact check has sharper comfortable elbow")
+        for point in points { check(12-hypot((point.x-0.5)*30,(point.y-0.5)*30)-2.2 > 2.5,"stroked check keeps breathing room inside the ring") }
+        check(TransferGlyph.shortStrokeFraction > 0.34 && TransferGlyph.shortStrokeFraction < 0.35,"two stroke timing uses actual segment-length boundary")
+        print("PASS: buffered finite jelly curve, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
+    }
     static func ringTests() throws {
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)
         check(try JSONDecoder().decode(Configuration.self,from:legacy).animationSpeed == .natural,"unknown speed falls back")
@@ -140,6 +168,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             let profile = MotionProfile(speed)
             let expected: [Double] = speed == .fast ? [0.22,0.10,0.32,1,0.16] : speed == .natural ? [0.34,0.18,0.65,1.8,0.24] : [0.48,0.24,0.95,2.8,0.32]
             check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
+            check(profile.cardAppear == (speed == .fast ? 0.38 : speed == .natural ? 0.62 : 0.88),"slower card-specific speed profile")
             let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
             check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"constant damping ratio across speeds")
             let policy = MotionPolicy(reduceMotion:{false}); policy.speed=speed

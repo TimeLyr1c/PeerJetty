@@ -31,12 +31,13 @@ extension AnimationSpeed {
 }
 
 struct MotionProfile {
+    let cardAppear: Double
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init(_ speed: AnimationSpeed) {
         switch speed {
-        case .fast: (appear,status,success,hold,dismiss) = (0.22,0.10,0.32,1,0.16)
-        case .natural: (appear,status,success,hold,dismiss) = (0.34,0.18,0.65,1.8,0.24)
-        case .relaxed: (appear,status,success,hold,dismiss) = (0.48,0.24,0.95,2.8,0.32)
+        case .fast: cardAppear = 0.38; (appear,status,success,hold,dismiss) = (0.22,0.10,0.32,1,0.16)
+        case .natural: cardAppear = 0.62; (appear,status,success,hold,dismiss) = (0.34,0.18,0.65,1.8,0.24)
+        case .relaxed: cardAppear = 0.88; (appear,status,success,hold,dismiss) = (0.48,0.24,0.95,2.8,0.32)
         }
     }
 }
@@ -65,6 +66,38 @@ enum MotionEffects {
     static func appear(_ view: NSView, duration: Double = appearDuration) {
         view.wantsLayer = true
         add(spring(duration:duration, from:0.97),to:view.layer,key:"PeerJetty.appear")
+    }
+    // Sample a damped step response once, not in a display-link or rendering loop.
+    // Unequal axes give the glass a compressed-to-stretched silhouette without moving its target.
+    static func cardTransform(at time: Double) -> CATransform3D {
+        guard time < 1 else { return CATransform3DIdentity }
+        let t = max(0,time), damping = 0.56, frequency = 7.5
+        let decay = damping * frequency, oscillation = frequency * sqrt(1-damping*damping)
+        var residual = exp(-decay*t) * (cos(oscillation*t) + decay/oscillation*sin(oscillation*t))
+        // Softly settle the small tail with zero endpoint velocity; don't truncate a spring.
+        let tail = max(0,min(1,(t-0.78)/0.22))
+        residual *= 1-tail*tail*(3-2*tail)
+        return CATransform3DMakeScale(1-0.14*residual,1-0.38*residual,1)
+    }
+    static func cardAppear(_ view: NSView, duration: Double) {
+        view.wantsLayer = true
+        let shape = CAKeyframeAnimation(keyPath:"transform")
+        let anchor = view.layer?.anchorPoint ?? CGPoint(x:0.5,y:0.5)
+        let center = CGPoint(x:view.bounds.width*(0.5-anchor.x),y:view.bounds.height*(0.5-anchor.y))
+        shape.values = (0...60).map {
+            var transform = cardTransform(at:Double($0)/60)
+            // AppKit-backed layers need not use a centered anchor. Compensate in the
+            // presentation transform without changing anchorPoint, position or layout.
+            transform.m41 = center.x*(1-transform.m11); transform.m42 = center.y*(1-transform.m22)
+            return NSValue(caTransform3D:transform)
+        }
+        shape.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }
+        shape.calculationMode = .linear; shape.duration = duration
+        add(shape,to:view.layer,key:"PeerJetty.cardShape")
+        let opacity = CABasicAnimation(keyPath:"opacity")
+        opacity.fromValue = 0.12; opacity.toValue = 1; opacity.duration = duration*0.38
+        opacity.timingFunction = .init(name:.easeInEaseOut)
+        add(opacity,to:view.layer,key:"PeerJetty.cardReveal")
     }
     static func pulse(_ view: NSView, policy: MotionPolicy = .shared) {
         guard policy.allowed, view.window?.isVisible == true else { return }
@@ -95,13 +128,14 @@ enum MotionEffects {
 /// Retarget native window fades, invalidate stale completions, and never animate window geometry.
 final class WindowMotion {
     private weak var window: NSWindow?
+    private let cardAppearance: Bool
     private let policy: MotionPolicy
     private var revision = 0
     private var completion: (() -> Void)?
     private var observer: NSObjectProtocol?
     private(set) var appearing = false
-    init(_ window: NSWindow, policy: MotionPolicy = .shared) {
-        self.window = window; self.policy = policy
+    init(_ window: NSWindow, policy: MotionPolicy = .shared, cardAppearance: Bool = false) {
+        self.window = window; self.policy = policy; self.cardAppearance = cardAppearance
         observer = NotificationCenter.default.addObserver(forName: MotionPolicy.changed, object: policy, queue: .main) { [weak self] _ in
             guard let self, !self.policy.allowed else { return }; self.finishImmediately()
         }
@@ -115,7 +149,10 @@ final class WindowMotion {
         if fresh { window.alphaValue = appearing ? 0 : 1 }
         order()
         let duration = policy.profile.appear
-        if policy.allowed, fresh, (!immediately || animateImmediateContent), let content = window.contentView { MotionEffects.appear(content, duration:duration) }
+        if policy.allowed, fresh, let content = window.contentView {
+            if cardAppearance { MotionEffects.cardAppear(content,duration:policy.profile.cardAppear) }
+            else if !immediately || animateImmediateContent { MotionEffects.appear(content,duration:duration) }
+        }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = self.appearing ? duration : 0; context.timingFunction = MotionEffects.smooth
             window.animator().alphaValue = 1
