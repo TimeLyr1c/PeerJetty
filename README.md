@@ -81,7 +81,7 @@ The app is generated at `outputs/PeerJetty.app`. Builds follow the host architec
 
 Bug reports and feature suggestions are welcome. Include the app version, macOS version, and reproduction steps, with private information removed.
 
-[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Roadmap](Docs/ROADMAP.md) · [Changelog](CHANGELOG.md)
+[Design system](Docs/design/DESIGN_SYSTEM.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Roadmap](Docs/ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 README and release notes are available in English and Simplified Chinese. The app supports both languages. Other engineering documents may currently be Chinese-only. See the [localization guide](Docs/LOCALIZATION.md) for language selection and translation contributions.
 

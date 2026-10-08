@@ -242,3 +242,14 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - Captured 90 native preview frames (~9.3 s) with timestamps in ignored `outputs/previews/motion-build20/natural.gif`. Contact sheets visibly show the circle becoming edge-on/front-facing, blue-to-green progression, then the check. Capture remains low-resolution/~10 fps: faint trails and precise curvature still require full-resolution Air/mini acceptance. No long-run GPU benchmark is claimed; no continuous task, particle emitter or custom display loop was added.
 
 两圈翻转、三层渐淡拖影、颜色区间与对勾开始顺序检查通过，并回归了限速、停留、取消、新任务、系统辅助显示和原生窗口行为。真实低分辨率截帧可见圆环侧转、蓝绿变化与随后对勾；细微拖影及主观观感仍需 Air／mini 全分辨率试用。仅交付 build20 本地视觉试验包，保留 build19，不安装、推送或发布。
+
+
+## 2026-10-08：UI 与动画长期规范 / UI and motion development rules
+
+- Inspected the current SwiftPM manifest, native UI controllers, shared text helpers, motion policy/profile/effects, screen geometry and existing rules. No external package dependencies; no React/SwiftUI runtime or web UI was found in the current application targets.
+- Integrated concise rules into root AGENTS.md; added Docs/design/{DESIGN_SYSTEM,COMPONENTS,MOTION}.md and linked them from both READMEs, CONTRIBUTING and APPEARANCE. Existing behavior, compatibility and release rules retained.
+- Checked current official HeroUI documentation/MCP scope and Motion references. Both remain design references. Official HeroUI links are the documentation access path; no MCP process, UI package, Node runtime, global Codex configuration or third-party source was added.
+- PASS: `Scripts/swift.sh build --product PeerJetty`; `swift package --disable-sandbox describe --type json` confirms zero external dependencies. Build emitted existing Command Line Tools search-path warnings and completed successfully.
+- PASS: local Markdown links resolve; `git diff --check` clean. No production UI/configuration, protocol, identity, version metadata or archived package changed. No new GUI/device acceptance is claimed for this documentation/rule task; component findings are source-based.
+
+已完成原生技术栈与组件清单核查、项目规则整合及官方参考入口接入。没有安装不适用的 Web 依赖或 MCP；构建与文档链接检查通过。本轮不改运行中的界面、版本和安装包，不声称新增双机视觉验收。build20 翻转拖影继续标为待验收实验，普通新动画采用克制的 150–300 毫秒基准，现有明确选择的慢速弹簧／成功反馈保留例外。

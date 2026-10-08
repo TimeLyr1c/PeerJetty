@@ -5,6 +5,7 @@
 ## 开发与提交
 
 1. 阅读 README、AGENTS.md 和 Docs/PROTOCOL.md；功能和限制见 Docs/ROADMAP.md。
+   界面与动画开发先阅读 [设计系统](Docs/design/DESIGN_SYSTEM.md)、[组件清单](Docs/design/COMPONENTS.md) 和 [动画规范](Docs/design/MOTION.md)；优先复用原生实现。
 2. 在工作分支进行修改，一个 PR 围绕一个明确的问题。未经验证的新功能不作为已经支持的能力宣传。
 3. 运行 `./Scripts/test.sh`；顶部投放区改动另运行 `./Scripts/test-drop-presentation.sh` 并完成实机显示检查；涉及版本和打包工具时运行 `python3 -m unittest discover -s Tests/ReleaseTools -v`。界面与系统集成功能记录实际测试环境和人工检查结果。
 4. 修改检查更新时运行 `./Scripts/test-updates.sh`；更新源、版本约定和验证方法见 [UPDATES.md](Docs/UPDATES.md)。

@@ -81,7 +81,7 @@ cd PeerJetty
 
 欢迎反馈问题和功能建议。请提供应用版本、macOS 版本及复现步骤，并移除私人信息。
 
-[贡献指南](CONTRIBUTING.md) · [安全反馈](SECURITY.md) · [更新计划](Docs/ROADMAP.md) · [变更记录](CHANGELOG.md)
+[设计规范](Docs/design/DESIGN_SYSTEM.md) · [贡献指南](CONTRIBUTING.md) · [安全反馈](SECURITY.md) · [更新计划](Docs/ROADMAP.md) · [变更记录](CHANGELOG.md)
 
 README 与发布说明提供中英文版本。应用已支持中英文，其他工程文档目前可能仅有中文。语言选择与翻译贡献方法见 [国际化说明](Docs/LOCALIZATION.md)。
 

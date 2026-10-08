@@ -1,5 +1,9 @@
 # Glass and motion / 玻璃与动画
 
+Long-term rules and reuse: [design system](design/DESIGN_SYSTEM.md), [components](design/COMPONENTS.md), [motion contract](design/MOTION.md). This document retains current appearance values and experimental implementation details.
+
+长期规则见上方设计文档；本文保留当前参数与试验实现，不将某次动画试验视为全应用默认。
+
 ## Scope / 范围
 
 The drop card uses `NSGlassEffectView.regular` on macOS 26+, with one content container. macOS 15 uses `NSVisualEffectView.hudWindow` instead; the minimum requirement remains macOS 15. Card geometry, drag targets and menu-bar/Mission Control clearance are unchanged. Settings and text bodies retain native, opaque layouts. Labels use semantic system colors rather than a forced dark appearance.
