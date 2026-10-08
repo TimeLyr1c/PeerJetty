@@ -14,15 +14,15 @@ Type or manually paste multiline plain text. Enter inserts a newline; ⌘Enter s
 
 支持多行手动输入、粘贴和普通复制；Enter 换行、⌘Enter 发送、Esc 关闭（输入法正在组词时先正常取消组词）。单条最大 256 KiB UTF-8，emoji 可能占多个字节；空字符串不能发送，空格与换行不裁剪。不主动读取剪贴板。关闭面板在本次运行内保留草稿，退出应用不保存未发送草稿。等待确认时临时锁定已提交输入，确认后清空；失败或 30 秒无确认保留草稿。“未确认收到”不代表对方一定没收到，不自动重发。
 
-The receiver gets a notification with only the device name. Click to view and choose **Copy Text / 复制文本**. URLs remain plain text. No clipboard replacement, link opening or execution occurs automatically. The menu also offers **View Latest Received Text… / 查看最近收到的文本…** for the current run if system notifications are unavailable. It works even with history hidden. A deleted/expired record opens an explanatory message instead. Text uses its own protocol messages, not `.txt` files, and ignores file receive-folder/auto-open preferences. Files can continue transferring while editing; automatic file-card expansion pauses on the editor’s screen.
+The receiver gets a notification with only the device name. Click to view and choose **Copy Text / 复制文本**. URLs remain plain text. No clipboard replacement, link opening or execution occurs automatically. Settings → Text also offers **View Latest Received Text… / 查看最近收到的文本…** for the current run if system notifications are unavailable. It works even with history hidden. A deleted/expired record opens an explanatory message instead. Text uses its own protocol messages, not `.txt` files, and ignores file receive-folder/auto-open preferences. Files can continue transferring while editing; automatic file-card expansion pauses on the editor’s screen.
 
-接收通知只显示设备名称，点击查看后可以“复制文本”；网址保持纯文本，不自动覆盖剪贴板、打开链接或执行内容。若系统通知不可用，可用菜单“查看最近收到的文本…”查看本次运行最近一条收件，隐藏历史时也可使用。已删除／过期记录会显示说明。文本使用独立消息，不生成 `.txt`，不使用文件接收目录或自动打开开关。编辑时同屏文件卡片暂停自动展开，文件传输继续。
+接收通知只显示设备名称，点击查看后可以“复制文本”；网址保持纯文本，不自动覆盖剪贴板、打开链接或执行内容。若系统通知不可用，可用设置 → 文本中的“查看最近收到的文本…”查看本次运行最近一条收件，隐藏历史时也可使用。已删除／过期记录会显示说明。文本使用独立消息，不生成 `.txt`，不使用文件接收目录或自动打开开关。编辑时同屏文件卡片暂停自动展开，文件传输继续。
 
 ## History and privacy / 历史与隐私
 
-**Successful sends and receipts are always recorded locally.** “Show Text History / 显示文本历史” changes entry visibility only. Turning it off asks **Keep and Hide / 保留并隐藏**, **Clear and Hide / 清空并隐藏**, or Cancel. Turning it back on restores access to retained records. The history window lists direction, device, local time and a short preview, newest first; View opens full text and Copy, Delete removes a selected entry, and Clear requires confirmation. Settings always offers Clear, even when history is hidden.
+Open history from Settings → Text. **Successful sends and receipts are always recorded locally.** “Show Text History / 显示文本历史” changes entry visibility only. Turning it off asks **Keep and Hide / 保留并隐藏**, **Clear and Hide / 清空并隐藏**, or Cancel. Turning it back on restores access to retained records. The history window lists direction, device, local time and a short preview, newest first; View opens full text and Copy, Delete removes a selected entry, and Clear requires confirmation. Settings always offers Clear, even when history is hidden.
 
-**成功发送和接收的文本始终在本机记录。**“显示文本历史”只控制入口显示；关闭时选择“保留并隐藏 / 清空并隐藏 / 取消”，再打开可看到仍保留的记录。历史按时间倒序显示方向、设备、本机时间和预览，查看后可复制；支持单条删除及确认清空。设置中的清空在隐藏时也可用。
+从设置 → 文本打开历史。**成功发送和接收的文本始终在本机记录。**“显示文本历史”只控制入口显示；关闭时选择“保留并隐藏 / 清空并隐藏 / 取消”，再打开可看到仍保留的记录。历史按时间倒序显示方向、设备、本机时间和预览，查看后可复制；支持单条删除及确认清空。设置中的清空在隐藏时也可用。
 
 Retention is **Latest 500 entries / 最近 500 条** (default, send and receive combined), **Last 30 days / 最近 30 天**, or **Forever / 一直保留**. Cleaning runs at startup, insertion and viewing. Moving to a finite limit asks for confirmation before removing records outside the limit. Clearing removes existing records; new successful transfers are still recorded. Deletion affects only this Mac, does not remove the other device’s copy, and does not promise secure forensic erasure. Old notification entries expire with the underlying history.
 

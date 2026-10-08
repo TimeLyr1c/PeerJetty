@@ -14,13 +14,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var composer: TextComposer?
     private var textHistoryWindow: TextHistoryWindow?
     private var textReader: TextReader?
-    private var historyMenu: NSMenuItem?
     private let historyQueue = DispatchQueue(label:"PeerJetty.TextHistory")
     private var history: TextHistory?
     private var volatileTexts: [UUID:TextEntry] = [:]
     private var volatileOrder: [UUID] = []
     private var updateWindow: UpdateWindow?
-    private var menuItem: NSStatusItem?
+    private var menuBar: MenuBarController?
+    private var listeningPort: UInt16?
+    private var lastStatus: String?
     private var peers: [DiscoveredPeer] = []
     private var active: Set<UUID> = []
     private var lastTransfer: UUID?
@@ -57,7 +58,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         historyQueue.async { [weak self] in
             do { _ = try self?.ensureHistory() } catch { DispatchQueue.main.async { self?.settings?.status(L10n.text("text.history_failed")) } }
         }
-        historyMenu?.isHidden = !store.snapshot.showTextHistory
         let drop = DropPanelController(); self.drop = drop
         drop.view.onFiles = { [weak self] urls, cleanup in
             self?.promiseBusy = false
@@ -110,34 +110,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         engine.onTextReceived = { [weak self] payload, acknowledge in
             guard let self else { return }
             self.saveText(TextEntry(payload:payload,direction:.received)) { id,saved in
-                self.latestText = id; self.notifyText(id:id,peerName:payload.peerName,saved:saved); acknowledge()
+                self.latestText = id; self.settings?.latestTextState(true); self.notifyText(id:id,peerName:payload.peerName,saved:saved); acknowledge()
             }
         }
         engine.onTextResult = { [weak self] payload, error in
             guard let self else { return }; self.composer?.result(payload.id,error:error)
             if error == nil { self.saveText(TextEntry(payload:payload,direction:.sent)) { _,_ in } }
         }
-        engine.onListening = { [weak self] port in self?.settings?.connectionInfo(L10n.text("connection.local_address", Self.localAddresses().joined(separator: " / "), String(port))) }
+        engine.onListening = { [weak self] port in self?.listeningPort = port; self?.updateConnectionInfo() }
         initialized = true; engine.start()
         if !store.snapshot.onboardingComplete || pendingSettings { showSettings() }
     }
     private func setupMenu() {
-        menuItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        menuItem?.button?.image = NSImage(systemSymbolName: "arrow.up.arrow.down.square", accessibilityDescription: L10n.text("application.file_handoff"))
-        let menu = NSMenu()
-        for (title, action) in [(L10n.text("application.devices_settings"), #selector(showSettings)), (L10n.text("application.add_device_min"), #selector(addDevice)),
-                                (L10n.text("text.send_title"), #selector(sendText)), (L10n.text("text.latest"), #selector(openLatestText)), (L10n.text("text.history_title"), #selector(showTextHistory)),
-                                (L10n.text("application.show_drop_card"), #selector(preview)), (L10n.text("application.show_recently_received_files"), #selector(revealReceived)),
-                                (L10n.text("updates.title"), #selector(checkUpdates)),
-                                (L10n.text("application.hide_menu_bar_icon"), #selector(hideMenu)), (L10n.text("application.about_peerjetty"), #selector(showAbout)), (L10n.text("settings.quit"), #selector(quit))] {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; if action == #selector(showTextHistory) { historyMenu = item }; menu.addItem(item)
-        }
-        menuItem?.menu = menu
+        let bar = MenuBarController(actions: [.pair:{ [weak self] in self?.addDevice() },
+            .sendFiles:{ [weak self] in self?.chooseFiles() }, .sendText:{ [weak self] in self?.sendText() },
+            .updates:{ [weak self] in self?.checkUpdates() }, .settings:{ [weak self] in self?.showSettings() },
+            .quit:{ NSApp.terminate(nil) }])
+        menuBar = bar
+        bar.onVisibility = { [weak self] value in self?.applyMenuVisibility(value) }
+        applyMenuVisibility(bar.isVisible)
+    }
+    private func applyMenuVisibility(_ visible: Bool) {
+        let wasVisible = settings?.window?.isVisible == true
+        NSApp.setActivationPolicy(MenuBarController.activationPolicy(visible:visible))
+        settings?.menuBarState(visible)
+        if wasVisible { settings?.window?.makeKeyAndOrderFront(nil) }
     }
     private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy }
-    @objc private func hideMenu() {
-        if let menuItem { NSStatusBar.system.removeStatusItem(menuItem) }; menuItem = nil
-        showStatus(L10n.text("application.reopen_peerjetty_from_applications_to_show_settings"))
+    private func updateConnectionInfo() {
+        let text = listeningPort.map { L10n.text("connection.local_address", Self.localAddresses().joined(separator:" / "), String($0)) } ?? L10n.text("settings.connection_not_ready")
+        settings?.connectionInfo(text)
     }
     @objc private func addDevice() { showSettings(); settings?.selectSection(.devices); engine?.openPairing() }
     @objc private func preview() { drop?.preview() }
@@ -146,10 +148,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             updateWindow = UpdateWindow(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
         }
         updateWindow?.present()
-    }
-    @objc private func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(options: [.version: AppVersion.details])
-        NSApp.activate(ignoringOtherApps: true)
     }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func revealReceived() { if !lastReceived.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(lastReceived) } }
@@ -180,6 +178,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onPermissions = {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!)
             }
+            controller.onMenuBar = { [weak self] visible in self?.menuBar?.setVisible(visible) }
+            controller.onLatestText = { [weak self] in self?.openLatestText() }
             controller.onSendText = { [weak self] in self?.sendText() }
             controller.onTextHistory = { [weak self] in self?.showTextHistory() }
             controller.onClearTextHistory = { [weak self] in self?.deleteTextHistory(nil) }
@@ -210,6 +210,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onReset = { [weak self] in self?.resetIdentity() }
             controller.onQuit = { NSApp.terminate(nil) }
         }
+        settings?.menuBarState(menuBar?.isVisible ?? true)
+        settings?.latestTextState(latestText != nil)
+        updateConnectionInfo()
+        if let lastStatus { settings?.status(lastStatus) }
         settings?.updatePeers(peers, preferred: store.snapshot.preferredPeer)
         settings?.animationState(store.snapshot.animationsEnabled)
         settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
@@ -229,7 +233,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         } catch { showError(error.localizedDescription) }
     }
     private func chooseFiles() {
-        guard let peer = store?.snapshot.preferredPeer else { settings?.status(L10n.text("application.select_a_paired_device_as_your_default_destination")); return }
+        guard initialized else { showSettings(); return }
+        guard let peer = store?.snapshot.preferredPeer else { showSettings(); settings?.selectSection(.devices); settings?.status(L10n.text("application.select_a_paired_device_as_your_default_destination")); return }
         let panel = NSOpenPanel(); panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true; panel.prompt = L10n.text("application.send")
         if panel.runModal() == .OK { engine?.send(urls: panel.urls, peerID: peer) }
     }
@@ -367,7 +372,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func syncTextSettings() {
         if let config = store?.snapshot {
             settings?.textHistoryState(config.showTextHistory,retention:config.textRetention)
-            historyMenu?.isHidden = !config.showTextHistory
             if !config.showTextHistory { textHistoryWindow?.close() }
         }
     }
@@ -415,7 +419,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completion: @escaping (UNNotificationPresentationOptions) -> Void) { completion([.banner, .sound]) }
     private func showStatus(_ text: String) {
-        settings?.status(text); drop?.show(); drop?.view.show(title: L10n.text("application.see_settings"), subtitle: text, symbol: "exclamationmark.triangle.fill", color: .systemOrange); drop?.hide(after: 5)
+        lastStatus = text; settings?.status(text); drop?.show(); drop?.view.show(title: L10n.text("application.see_settings"), subtitle: L10n.text("application.status_details_hint"), symbol: "exclamationmark.triangle.fill", color: .systemOrange); drop?.hide(after: 5)
     }
     private func showError(_ text: String) {
         let alert = NSAlert(); alert.messageText = "PeerJetty"; alert.informativeText = text; alert.addButton(withTitle: L10n.text("application.ok"))

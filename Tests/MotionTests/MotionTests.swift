@@ -66,6 +66,11 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check((icon.layer?.animation(forKey:"PeerJetty.feedback")?.beginTime ?? feedbackStarted) == feedbackStarted,"duplicate success never restarts feedback")
         view.transfer(TransferUpdate(id:UUID(),peerName:"Test",receiving:false,completed:0,total:10,status:"Failed",finished:true,succeeded:false))
         check(icon.layer?.animation(forKey:"PeerJetty.feedback") == nil,"failure has no success feedback")
+        var opacityAtRemoval:CGFloat = 1
+        motion.dismiss { opacityAtRemoval=panel.alphaValue;panel.orderOut(nil) }
+        wait(0.3)
+        check(opacityAtRemoval < 0.01 && !panel.isVisible && panel.alphaValue == 1, "dismiss hides before restoring opacity, without final-frame flash")
+        motion.reveal(immediately:true) {panel.orderFrontRegardless()}
         var closed=false
         motion.dismiss {closed=true;panel.orderOut(nil)}
         wait(0.04); motion.reveal {panel.orderFrontRegardless()}; wait(0.35)

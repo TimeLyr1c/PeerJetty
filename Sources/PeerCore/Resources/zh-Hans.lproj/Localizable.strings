@@ -297,3 +297,15 @@
 
 "settings.animations" = "启用界面动画";
 "settings.animations_hint" = "立即生效。系统“减少动态效果”优先，不改变这里保存的选择。";
+
+// Menu and settings maintenance
+"application.menu_pair" = "配对…";
+"application.menu_settings" = "设置…";
+"application.status_details_hint" = "打开设置查看详情";
+"settings.menu_bar" = "显示菜单栏图标";
+"settings.menu_bar_hint" = "隐藏后，PeerJetty 会显示在 Dock 中，点击即可打开设置。";
+"settings.connection_not_ready" = "尚未就绪";
+"settings.connection_disclosure" = "手动连接信息";
+"settings.status_details" = "查看详情…";
+"settings.diagnostics" = "诊断详情…";
+"appversion.version" = "版本 %1$@";

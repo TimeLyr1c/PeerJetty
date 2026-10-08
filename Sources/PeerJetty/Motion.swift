@@ -81,7 +81,7 @@ final class WindowMotion {
     }
     func dismiss(_ action: @escaping () -> Void) {
         guard completion == nil else { return }
-        guard let window, window.isVisible, policy.allowed else { finishImmediately(); action(); return }
+        guard let window, window.isVisible, policy.allowed else { completion = action; finishImmediately(); return }
         revision += 1; let token = revision; completion = action; appearing = false
         NSAnimationContext.runAnimationGroup { context in
             context.duration = MotionEffects.disappearDuration; context.timingFunction = MotionEffects.exit
@@ -92,12 +92,15 @@ final class WindowMotion {
     }
     func snapAppearance() { if appearing { reveal(immediately: true) {} } }
     func finishImmediately() {
-        revision += 1; appearing = false
+        revision += 1; let token = revision; appearing = false
+        let action = completion; completion = nil
+        if let content = window?.contentView { MotionEffects.clear(content) }
+        // Hide/close while still faded. Resetting alpha before this callback flashes the card.
+        action?()
+        guard revision == token else { return }
         if let window {
             NSAnimationContext.runAnimationGroup { context in context.duration = 0; window.animator().alphaValue = 1 }
-            if let content = window.contentView { MotionEffects.clear(content) }
         }
-        let action = completion; completion = nil; action?()
     }
     deinit { if let observer { NotificationCenter.default.removeObserver(observer) } }
 }

@@ -187,6 +187,11 @@ struct RunDropPresentationTests {
                 }
             }
         }
+        for language in ["en","zh-Hans"] {
+            let catalog = TranslationCatalog(bundle:L10n.resources,preferences:[language])
+            let cue = catalog.text("application.status_details_hint")
+            XCTAssertTrue((cue as NSString).size(withAttributes:[.font:NSFont.systemFont(ofSize:13,weight:.medium)]).width <= 255)
+        }
         print("PASS: bilingual card centering, text fit, long-name tooltips and controls across 24 layouts")
     }
 }

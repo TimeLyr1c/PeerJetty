@@ -297,3 +297,15 @@
 
 "settings.animations" = "Enable interface animations";
 "settings.animations_hint" = "Applies immediately. System Reduce Motion overrides this switch without changing your choice.";
+
+// Menu and settings maintenance
+"application.menu_pair" = "Pair devices…";
+"application.menu_settings" = "Settings…";
+"application.status_details_hint" = "Open Settings for details";
+"settings.menu_bar" = "Show menu bar icon";
+"settings.menu_bar_hint" = "When hidden, PeerJetty appears in the Dock. Click it to open Settings.";
+"settings.connection_not_ready" = "Not ready yet";
+"settings.connection_disclosure" = "Manual connection information";
+"settings.status_details" = "View details…";
+"settings.diagnostics" = "Diagnostic details…";
+"appversion.version" = "Version %1$@";

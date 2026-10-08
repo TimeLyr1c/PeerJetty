@@ -119,6 +119,29 @@ struct LocalizationChecks {
         animationSwitch.state = .off; NSApp.sendAction(animationSwitch.action!,to:animationSwitch.target,from:animationSwitch)
         check(changedAnimation == false, "Animation switch callback")
         settings.animationState(true); check(animationSwitch.state == .on, "Failed save can restore animation choice")
+        let menuSwitch = control("menuBarVisibility", as:NSSwitch.self)
+        check(menuSwitch.state == .on, "Menu icon defaults visible")
+        var visibilityChanged:Bool?
+        settings.onMenuBar = { visibilityChanged=$0 }
+        menuSwitch.state = .off; NSApp.sendAction(menuSwitch.action!,to:menuSwitch.target,from:menuSwitch)
+        check(visibilityChanged == false, "Visibility control callback")
+        settings.menuBarState(true); check(menuSwitch.state == .on, "System visibility sync")
+        let connectionGroup = control("connectionInfoGroup",as:NSStackView.self)
+        let connectionToggle = control("connectionInfoToggle",as:NSButton.self)
+        check(connectionGroup.isHidden && control("connectionInfo",as:NSTextField.self).stringValue == L10n.text("settings.connection_not_ready"), "Connection info starts collapsed and nonempty")
+        connectionToggle.performClick(nil); check(!connectionGroup.isHidden, "Connection details disclosure")
+        connectionToggle.performClick(nil)
+        let latest = control("latestTextEntry",as:NSButton.self)
+        check(!latest.isEnabled,"No recent text before receipt")
+        settings.latestTextState(true); check(latest.isEnabled,"Received text entry available")
+        settings.status(String(repeating:"Long warning 中文🙂 ",count:100))
+        check(!control("settingsStatusDetails",as:NSButton.self).isHidden,"Full long-warning details are accessible")
+        let fullWarning = String(repeating:"Long warning 中文🙂\n",count:100)
+        let details = SettingsController.detailContent(fullWarning)
+        let detailsText = details.documentView as! NSTextView
+        check(detailsText.string == fullWarning && !detailsText.isEditable && !detailsText.isRichText && details.hasVerticalScroller && !detailsText.isAutomaticLinkDetectionEnabled,"Full warning retains plain Unicode text in a scrollable read-only view")
+        settings.status("Ready");check(control("settingsStatusDetails",as:NSButton.self).isHidden,"Short status stays compact")
+        check(control("productVersion",as:NSTextField.self).stringValue == AppVersion.summary && AppVersion.summary(info:["CFBundleShortVersionString":"0.4.0","CFBundleVersion":"15"]) == L10n.text("appversion.version","0.4.0"),"Normal version is compact")
         let maintenance = control("settingsMaintenance", as: NSStackView.self)
         let disclosure = control("settingsMaintenanceToggle", as: NSButton.self)
         check(maintenance.isHidden, "Maintenance starts collapsed")
@@ -141,11 +164,11 @@ struct LocalizationChecks {
         settings.onPreview = { fired.insert("preview") }; settings.onCancel = { fired.insert("cancel") }
         settings.onReveal = { fired.insert("reveal") }; settings.onPermissions = { fired.insert("permissions") }
         settings.onTextHistory = { fired.insert("history") }; settings.onClearTextHistory = { fired.insert("clearHistory") }
-        settings.onSendText = { fired.insert("sendText") }; settings.onUpdates = { fired.insert("updates") }
+        settings.onLatestText = { fired.insert("latestText") }; settings.onSendText = { fired.insert("sendText") }; settings.onUpdates = { fired.insert("updates") }
         settings.onReset = { fired.insert("reset") }; settings.onQuit = { fired.insert("quit") }
         let expected: [String: String] = ["save":"save", "pair":"pair", "manual":"manual", "connect":"connect", "forget":"forget",
             "chooseFolder":"folder", "send":"send", "preview":"preview", "cancel":"cancel", "reveal":"reveal", "permissions":"permissions",
-            "openTextHistory":"history", "clearTextHistory":"clearHistory", "sendText":"sendText", "checkUpdates":"updates", "reset":"reset", "quit":"quit"]
+            "openLatestText":"latestText", "openTextHistory":"history", "clearTextHistory":"clearHistory", "sendText":"sendText", "checkUpdates":"updates", "reset":"reset", "quit":"quit"]
         for button in descendants(content).compactMap({ $0 as? NSButton }) {
             if let action = button.action, expected[NSStringFromSelector(action)] != nil { NSApp.sendAction(action, to: button.target, from: button) }
         }

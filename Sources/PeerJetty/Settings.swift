@@ -44,6 +44,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onSendText: (() -> Void)?
     var onUpdates: (() -> Void)?
     var onLanguage: ((DisplayLanguage) -> Void)?
+    var onMenuBar: ((Bool) -> Void)?
+    var onLatestText: (() -> Void)?
     var onAnimations: ((Bool) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
@@ -56,6 +58,10 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private let statusLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.preparing_to_connect"))
     private let progressLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.no_transfers_yet"))
     private let connectionLabel = NSTextField(wrappingLabelWithString: "")
+    private let menuBarSwitch = NSSwitch()
+    private let connectionGroup = NSStackView()
+    private let statusDetails = NSButton()
+    private let latestTextButton = NSButton()
     private let animations = NSSwitch()
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
@@ -91,6 +97,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         devices.identifier = NSUserInterfaceItemIdentifier("devicePicker"); devices.setAccessibilityLabel(SettingsSection.devices.title)
         devices.target = self; devices.action = #selector(selectPeer)
+        connectionLabel.stringValue = L10n.text("settings.connection_not_ready")
+        connectionLabel.identifier = NSUserInterfaceItemIdentifier("connectionInfo")
+        menuBarSwitch.state = .on; menuBarSwitch.identifier = NSUserInterfaceItemIdentifier("menuBarVisibility")
+        menuBarSwitch.target = self; menuBarSwitch.action = #selector(toggleMenuBar)
+        latestTextButton.title = L10n.text("text.latest"); latestTextButton.bezelStyle = .rounded
+        latestTextButton.target = self; latestTextButton.action = #selector(openLatestText)
+        latestTextButton.identifier = NSUserInterfaceItemIdentifier("latestTextEntry"); latestTextButton.isEnabled = false
         connectionLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         connectionLabel.textColor = .secondaryLabelColor
         animations.state = configuration.animationsEnabled ? .on : .off
@@ -117,26 +130,35 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         general += [heading(L10n.text("settings.device_name")),
             row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]),
             separator(), setting("settings.language", language), hint("settings.language_restart"),
+            separator(), setting("settings.menu_bar", menuBarSwitch), hint("settings.menu_bar_hint"),
             separator(), setting("settings.start_at_login", login),
             separator(), setting("settings.animations", animations), hint("settings.animations_hint")]
+        connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.isHidden = true
+        connectionGroup.identifier = NSUserInterfaceItemIdentifier("connectionInfoGroup")
+        connectionGroup.addArrangedSubview(connectionLabel)
+        connectionLabel.widthAnchor.constraint(equalTo:connectionGroup.widthAnchor).isActive = true
+        let connectionDisclosure = button(L10n.text("settings.connection_disclosure"), #selector(toggleConnectionInfo))
+        connectionDisclosure.identifier = NSUserInterfaceItemIdentifier("connectionInfoToggle")
+        connectionDisclosure.isBordered = false; connectionDisclosure.setButtonType(.pushOnPushOff)
+        connectionDisclosure.image = NSImage(systemSymbolName:"chevron.right",accessibilityDescription:nil); connectionDisclosure.imagePosition = .imageLeading
         let deviceRows: [NSView] = [heading(SettingsSection.devices.title), hint("settings.devices_select_a_paired_device_as_your_default"),
             row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))]),
             actions([button(L10n.text("settings.remove_trust"), #selector(forget))]), separator(),
-            heading(L10n.text("settings.connection_heading")), connectionLabel]
+            actions([connectionDisclosure]), connectionGroup]
         let transferRows: [NSView] = [heading(L10n.text("settings.receive_folder")),
             actions([button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]), folderLabel,
             setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open"), separator(),
-            heading(L10n.text("settings.drop_heading")), hint("settings.drag_toward_the_upper_center_below_the_menu"),
+            heading(L10n.text("settings.drop_heading")),
             actions([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview))]),
             separator(), heading(L10n.text("settings.activity_heading")), progressLabel,
             actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])]
-        let textRows: [NSView] = [heading(L10n.text("text.send_title")), actions([button(L10n.text("text.send_title"), #selector(sendText))]),
+        let textRows: [NSView] = [heading(L10n.text("text.send_title")), actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton]),
             separator(), heading(L10n.text("text.history_title")), setting("text.show_history", showHistory), hint("text.history_setting_hint"),
             actions([historyOpen]), setting("text.retention", retention), actions([button(L10n.text("text.clear"), #selector(clearTextHistory))])]
 
         let version = NSTextField(labelWithString: AppVersion.summary)
-        version.textColor = .secondaryLabelColor; version.toolTip = AppVersion.details
+        version.textColor = .secondaryLabelColor; version.identifier = NSUserInterfaceItemIdentifier("productVersion")
         let appIcon = NSImageView()
         appIcon.image = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap { NSImage(contentsOf: $0) } ?? NSImage(named: NSImage.applicationIconName)
         appIcon.widthAnchor.constraint(equalToConstant: 56).isActive = true
@@ -156,21 +178,27 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         disclosure.isBordered = false; disclosure.setButtonType(.pushOnPushOff)
         disclosure.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil); disclosure.imagePosition = .imageLeading
         let aboutRows: [NSView] = [actions([row([appIcon, branding])]), hint("settings.about_hint"),
-            actions([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.license"), #selector(showLicense))]),
+            actions([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.license"), #selector(showLicense)), button(L10n.text("settings.diagnostics"), #selector(showDiagnostics))]),
             separator(), actions([disclosure]), maintenance, separator(), actions([button(L10n.text("settings.quit"), #selector(quit))])]
 
         let content = window.contentView!
         content.addSubview(pageHost); pageHost.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.textColor = .secondaryLabelColor; statusLabel.font = .systemFont(ofSize: 12)
-        statusLabel.maximumNumberOfLines = 3; statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        statusLabel.maximumNumberOfLines = 3; statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.identifier = NSUserInterfaceItemIdentifier("settingsStatus")
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for:.horizontal)
+        statusDetails.title = L10n.text("settings.status_details"); statusDetails.bezelStyle = .rounded
+        statusDetails.target = self; statusDetails.action = #selector(showStatusDetails); statusDetails.isHidden = true
+        statusDetails.identifier = NSUserInterfaceItemIdentifier("settingsStatusDetails")
+        let footer = row([statusLabel,statusDetails]); footer.detachesHiddenViews = true; footer.translatesAutoresizingMaskIntoConstraints = false
         let footerLine = separator(); footerLine.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(footerLine); content.addSubview(statusLabel)
+        content.addSubview(footerLine); content.addSubview(footer)
         NSLayoutConstraint.activate([
             pageHost.leadingAnchor.constraint(equalTo: content.leadingAnchor), pageHost.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             pageHost.topAnchor.constraint(equalTo: content.topAnchor), pageHost.bottomAnchor.constraint(equalTo: footerLine.topAnchor),
             footerLine.leadingAnchor.constraint(equalTo: content.leadingAnchor), footerLine.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            statusLabel.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24), statusLabel.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
-            statusLabel.topAnchor.constraint(equalTo: footerLine.bottomAnchor, constant: 10), statusLabel.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12),
+            footer.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24), footer.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
+            footer.topAnchor.constraint(equalTo: footerLine.bottomAnchor, constant: 10), footer.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12),
             statusLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)])
         for (section, rows) in [(SettingsSection.general, general), (.devices, deviceRows), (.transfers, transferRows), (.text, textRows), (.about, aboutRows)] {
             addPage(section, rows: rows)
@@ -271,7 +299,40 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         if let id = selected ?? preferred, let index = peers.firstIndex(where: { $0.id == id }) { devices.selectItem(at: index) }
     }
     private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
-    func status(_ text: String) { statusLabel.stringValue = text }
+    func status(_ text: String) {
+        statusLabel.stringValue = text; statusLabel.toolTip = text
+        let available = max(100, (window?.contentView?.bounds.width ?? 650) - 48 - statusDetails.intrinsicContentSize.width - 10)
+        let font = statusLabel.font ?? .systemFont(ofSize:12)
+        let measured = (text as NSString).boundingRect(with:NSSize(width:available,height:100000), options:[.usesLineFragmentOrigin,.usesFontLeading], attributes:[.font:font]).height
+        let lineHeight = NSLayoutManager().defaultLineHeight(for:font)
+        statusDetails.isHidden = measured <= lineHeight * 3 + 1 && text.components(separatedBy:"\n").count <= 3
+    }
+    func menuBarState(_ visible:Bool) { menuBarSwitch.state = visible ? .on : .off }
+    func latestTextState(_ available:Bool) { latestTextButton.isEnabled = available }
+    @objc private func toggleMenuBar() { onMenuBar?(menuBarSwitch.state == .on) }
+    @objc private func openLatestText() { onLatestText?() }
+    @objc private func toggleConnectionInfo(_ sender:NSButton) {
+        connectionGroup.isHidden = sender.state != .on
+        sender.image = NSImage(systemSymbolName:sender.state == .on ? "chevron.down" : "chevron.right",accessibilityDescription:nil)
+    }
+    @objc private func showStatusDetails() { showDetails(title:L10n.text("settings.status_details"),text:statusLabel.stringValue) }
+    @objc private func showDiagnostics() { showDetails(title:L10n.text("settings.diagnostics"),text:AppVersion.details) }
+    private func showDetails(title:String,text:String) {
+        guard let window else { return }
+        let alert = NSAlert(); alert.messageText = title; alert.addButton(withTitle:L10n.text("application.ok"))
+        alert.accessoryView = Self.detailContent(text)
+        alert.beginSheetModal(for:window)
+    }
+    static func detailContent(_ text:String) -> NSScrollView {
+        let scroll = NSScrollView(frame:NSRect(x:0,y:0,width:480,height:220)); scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true; scroll.borderType = .bezelBorder
+        let body = NSTextView(frame:scroll.bounds); body.isEditable = false; body.isSelectable = true; body.isRichText = false
+        body.font = .systemFont(ofSize:13); body.textContainerInset = NSSize(width:10,height:10)
+        body.minSize = NSSize(width:0,height:220); body.maxSize = NSSize(width:CGFloat.greatestFiniteMagnitude,height:CGFloat.greatestFiniteMagnitude)
+        body.isVerticallyResizable = true; body.isHorizontallyResizable = false; body.autoresizingMask = [.width]
+        body.textContainer?.widthTracksTextView = true; body.textContainer?.containerSize = NSSize(width:480,height:CGFloat.greatestFiniteMagnitude)
+        body.isAutomaticLinkDetectionEnabled = false; body.isAutomaticDataDetectionEnabled = false
+        body.string = text; scroll.documentView = body; return scroll
+    }
     func folder(_ path: String) { folderLabel.stringValue = path; folderLabel.toolTip = path }
     func connectionInfo(_ text: String) { connectionLabel.stringValue = text }
     func loginState(_ enabled: Bool) { login.state = enabled ? .on : .off }

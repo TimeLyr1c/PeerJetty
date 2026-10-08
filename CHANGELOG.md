@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0 / build 15 — local test candidate, 2026-10-08
+
+Simplifies the menu to Pair, Send Files, Send Text, Check for Updates, Settings and Quit. General now controls menu-bar visibility using native persisted state; hiding shows a Dock icon for recovery without stopping transfers. History and latest text live in Text settings, previews and recent files in Transfers, and diagnostic build details in About. Keeps manual connection addresses/port in a collapsed section and caches the listener port for settings opened later. Long warnings use a short card cue with complete scrollable details in Settings. Fixes the final-frame dismissal flash by hiding before restoring opacity. Normal version labels omit build numbers; installer/provenance metadata retains them. No public Release or automatic installation.
+
+菜单收敛为配对、发送文件、发送文本、检查更新、设置、退出。通用页用系统原生保存状态控制菜单栏图标；隐藏后显示 Dock 入口，传输继续。历史和最近文本移入文本设置，预览和最近文件保留在传输设置，构建诊断位于关于页。手动连接地址与端口折叠显示，缓存监听端口避免晚打开设置时为空。长警告改为简短卡片提示，设置提供完整可滚动详情。收起先隐藏再恢复透明度，修复末帧闪回；正常版本显示去掉构建号，安装包和诊断元数据保留。不自动安装、不公开发布。
+
 ## 0.4.0 / build 14 — local test candidate, 2026-10-08
 
 Combines categorized native settings, unified text composer/reader/history layouts, larger centered drop-card text, and native drop-card glass (macOS 26+, system frosted fallback on macOS 15). Adds a local, live Enable interface animations switch, overridden by system Reduce Motion. Actual drag targets stay immediate and stationary; previews and text windows use short, restrained elastic feedback with cancellation-safe transitions. Protocol, identities and text-history rules remain unchanged. Automated checks pass; physical Air/mini, accessibility material and macOS 15 acceptance remain pending. Local App/DMG only; not a public Release.
