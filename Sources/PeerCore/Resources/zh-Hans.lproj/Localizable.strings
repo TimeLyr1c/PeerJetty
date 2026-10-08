@@ -340,3 +340,6 @@
 "design.isolated" = "隔离预览：仅模拟设备，不连接、不传输、不访问身份、不保存设置。";
 "design.title" = "PeerJetty · 原生界面对比";
 "design.launch_failed" = "无法打开对比预览。";
+
+"settings.group_text_send" = "文本投递";
+"settings.group_text_history" = "本机历史";

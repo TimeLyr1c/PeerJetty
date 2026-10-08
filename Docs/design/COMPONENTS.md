@@ -8,7 +8,7 @@ Source inventory checked 2026-10-08; this is a code inventory, not a new screens
 
 | Owner / 文件 | Existing parts / 已有部分 | Reuse boundary / 复用边界 |
 |---|---|---|
-| Sources/PeerJetty/Settings.swift | SettingsController, categorized NSToolbar pages, native controls; heading/hint/row/setting/button/separator helpers; scrollable detailContent | Settings page patterns and diagnostics; preserve callbacks, draft settings and independent icon switches. / 分类设置与详情。 |
+| Sources/PeerJetty/Settings.swift | SettingsController, categorized NSToolbar pages, native controls; group/heading/hint/row/setting/button/separator helpers; scrollable detailContent | Settings page patterns and diagnostics; preserve callbacks, draft settings and independent icon switches. / 分类设置与详情。 |
 | Sources/PeerJetty/TextWindows.swift | PlainTextView/ComposerTextView, plainTextScroll, TextSurfaceScroll/Border, TextStatus, TextLayout, TextComposer/Reader/HistoryWindow, history row | Plain-text keyboard/IME behavior and editor surface already shared by sender/reader. Private helpers are local, not a public cross-window API. / 复用纯文本规则与正文样式。 |
 | Sources/PeerJetty/DropZone.swift | DropZoneView, TransferGlyph, DropCardHost, DropPanelController; MotionPreviewWindow | Product-specific target, native material/shadow and progress glyph. Preview exercises the real view with simulated events. / 投放与预览，不扩散玻璃。 |
 | Sources/PeerJetty/DropPresentation.swift | DropScreenMetrics, DropPresentation | Screen/notch/menu-bar geometry and activation regions; keep independent of decorative transforms. / 投放几何。 |
@@ -56,3 +56,5 @@ No production component was found clearly safe to delete as dead temporary code 
 - Scripts/test-motion.sh: finite effects, interruption, progress and preview.
 
 Use checks affected by the actual change; don't run network/identity tests for a documentation-only rule update. Native composition, hardware input and two-device experience still need honest Air/mini acceptance.
+
+Native refinement reuses a local settings group helper and FileSuccessSequence. Scripts/preview-design.sh compares fixed build20/current production views without an engine. / 本轮增加本地分组与共享完成时间线，对比启动器只用于隔离测试。

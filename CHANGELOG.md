@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — native refinement preview (planned build21), 2026-10-08
+
+Keeps five native settings categories with grouped forms and aligned controls. Softens card compression to 92% width / 82% height with one rebound below 102%; retains three speed durations. Centralizes the completion timeline/epoch, smooths two-turn flip start/end, and joins the check strokes without an extra pause. Turns, trails, blue-green transition and confirmation/hold rules remain. Isolated Before/After previews compile build20/current source. No protocol, identity, text-window or update-window changes. Installer generation awaits preview acceptance; build20 retained.
+
+五类原生设置改为分组表单与对齐控件；卡片初始 92%／82%，单次回弹低于 102%，三档时长不变。统一完成时钟，翻转起止平滑、两笔对勾不再额外停顿；两圈、拖影、蓝绿转换、确认与停留保留。隔离旧新版预览使用固定 build20／当前源码；不改协议、身份、文本或更新窗口。预览确认后再生成安装包，保留 build20。
+
 ## 0.4.0 / build 20 — local visual experiment, 2026-10-08
 
 After confirmed file progress completes, the ring makes two vertical-axis turns with three faint fading trails, changing blue to green during rotation; only then draws the check. Suppresses trails for Reduce Transparency/Increase Contrast, respects Reduce Motion, and clears all effects on new progress or cancellation. Success hold includes the extra flip stage. Original payment-style visual experiment, not an exact Apple animation copy. Text and transfer protocol unchanged; local App/DMG only, build19 retained.

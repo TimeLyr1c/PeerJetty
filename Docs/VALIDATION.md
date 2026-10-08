@@ -253,3 +253,16 @@ mini 无刘海显示器的顶边间隙和自动展开反馈已记录；源码原
 - PASS: local Markdown links resolve; `git diff --check` clean. No production UI/configuration, protocol, identity, version metadata or archived package changed. No new GUI/device acceptance is claimed for this documentation/rule task; component findings are source-based.
 
 已完成原生技术栈与组件清单核查、项目规则整合及官方参考入口接入。没有安装不适用的 Web 依赖或 MCP；构建与文档链接检查通过。本轮不改运行中的界面、版本和安装包，不声称新增双机视觉验收。build20 翻转拖影继续标为待验收实验，普通新动画采用克制的 150–300 毫秒基准，现有明确选择的慢速弹簧／成功反馈保留例外。
+
+## 2026-10-08：分组设置与平滑完成序列，build21 前置预览
+
+- PASS: SwiftPM build and full native motion suite: 92%/82% card start, rebound below 102%, fixed geometry, finite effects, rate-limited progress, extended hold, confirmation/deduplication/parallel transfers, cancel/reopen, mid-effect disable, Reduce Motion and optional-trail suppression. New timeline, flip endpoint and check-continuity assertions passed. Effects share a captured epoch.
+- PASS: English/Chinese localization checks, 334 keys, original callbacks/drafts/history/icon switches/disclosures/details, intended group counts and 20 light/dark/short-screen layouts per language. English native snapshots generated in ignored outputs.
+- PASS: drop checks: five geometry/path groups, isolated pasteboard discrimination and 24 bilingual card layouts. No physical target change.
+- PASS: preview-design.sh separately compiles Before (19e5343/build20) and After (current source). Native UI observed all five new settings pages and successful switch into old settings. Harness constructs view controllers and sample values only: no engine/store/production identity/real transfers. No dependencies added.
+- CUA replay: Fast 55 frames/6.07s, Natural 75/8.12s, Relaxed 100/10.76s. Some captures show a perspective window thumbnail rather than full-size foreground composition. They supplement state/timing checks, NOT full-resolution material/curve acceptance or proof of no single-frame artifact. Use native Before/After for owner acceptance.
+- A restricted-session motion attempt failed the visible-card assertion without the required native window environment; the complete graph-session rerun passed. No product behavior was changed to accommodate the environment. Existing Command Line Tools search-path warnings remain nonfatal.
+- No continuous animation tasks/layers/particles added; no new GPU/WindowServer benchmark claim. Air/mini full-resolution appearance and actual bidirectional transfers remain pending.
+- Version metadata, production installation and release archives unchanged. build21 App/DMG awaits owner preview confirmation. build20 DMG remains present: SHA256 4f0edca6900d094fd0ff3e84602fce351cf8eeb79e0d45a1a17bbeb2a594bbf7.
+
+已完成分组设置、减轻压缩、统一序列时钟与两笔衔接，通过隔离原生回归。旧新版模拟预览已可用；录制受窗口缩略合成影响，不能替代双机全分辨率验收。用户确认预览后再打 build21，不自动安装、推送或发布。

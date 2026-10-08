@@ -340,3 +340,6 @@
 "design.isolated" = "Isolated preview: simulated devices only. No connections, transfers, identity access or saved preferences.";
 "design.title" = "PeerJetty · Native UI comparison";
 "design.launch_failed" = "Unable to open the comparison preview.";
+
+"settings.group_text_send" = "Text delivery";
+"settings.group_text_history" = "Local history";

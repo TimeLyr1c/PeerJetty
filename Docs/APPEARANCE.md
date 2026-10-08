@@ -37,9 +37,9 @@ General → Animation speed offers **Fast / Natural / Relaxed**, defaulting to N
 | Hold after check / 完成后停留 | 1 s | 1.8 s | 2.8 s |
 | Dismiss / 收起 | 160 ms | 240 ms | 320 ms |
 
-The card uses an initial-velocity damped spring instead of accelerating from rest: the far-away compressed shape returns quickly, then slows near equilibrium and makes one small rebound. Damping is 0.68 and normalized frequency 7.5; initial size remains 86% width / 62% height and maximum height is about 103%. Reveal starts at 35% opacity and finishes within 18% of the appearance duration, so it does not hide the fast opening phase. The 61 finite samples describe a nonlinear physical response, not constant-speed interpolation across the whole effect; a smooth envelope settles the tail with zero endpoint velocity. AppKit anchor compensation keeps the visual center fixed. No custom frame loop is introduced; text windows retain their smaller 97% uniform spring.
+The card uses an initial-velocity damped spring instead of accelerating from rest: the far-away compressed shape returns quickly, then slows near equilibrium and makes one small rebound. Damping is 0.68 and normalized frequency 7.5; initial size is 92% width / 82% height and maximum height is about 101.4% (below the 102% limit). Reveal starts at 35% opacity and finishes within 18% of the appearance duration, so it does not hide the fast opening phase. The 61 finite samples describe a nonlinear physical response, not constant-speed interpolation across the whole effect; a smooth envelope settles the tail with zero endpoint velocity. AppKit anchor compensation keeps the visual center fixed. No custom frame loop is introduced; text windows retain their smaller 97% uniform spring.
 
-卡片改用带初速度的阻尼弹簧：离目标较远时迅速回到正常形状，靠近时明显减速，再轻微回弹一次。阻尼 0.68、归一化频率 7.5，初始尺寸仍为宽 86%／高 62%，最大高度约 103%；显现从 35% 不透明度开始，在展开时长的前 18% 内结束，避免掩盖开头的快速运动。61 个有限采样点描述非线性物理响应，并非全程匀速；尾部平滑收束，锚点补偿保持视觉中心不动。无自定义逐帧循环，文本仍使用原有轻微均匀缩放。
+卡片改用带初速度的阻尼弹簧：离目标较远时迅速回到正常形状，靠近时明显减速，再轻微回弹一次。阻尼 0.68、归一化频率 7.5，初始尺寸为宽 92%／高 82%，最大高度约 101.4%（低于 102% 上限）；显现从 35% 不透明度开始，在展开时长的前 18% 内结束，避免掩盖开头的快速运动。61 个有限采样点描述非线性物理响应，并非全程匀速；尾部平滑收束，锚点补偿保持视觉中心不动。无自定义逐帧循环，文本仍使用原有轻微均匀缩放。
 
 The physical drag target is immediately available and fixed, independently of rendered deformation/opacity. Native window position, layout, transparent margins and registration never animate; keyboard focus remains immediate. Repeated drag sampling does not truncate the effect. Disabling animations/Reduce Motion presents the final state and retains confirmed-success hold time.
 
@@ -55,17 +55,17 @@ Full bytes without receiver confirmation still show Waiting for confirmation. On
 
 ### Experimental ring flip / 试验性圆环翻转
 
-After confirmed progress finishes filling, the full ring rotates **twice around the vertical (Y) axis**, with mild perspective and a decelerating finite curve. It changes from blue to green during the flip, then stops facing forward before the check starts. The stationary gray progress track is hidden during success so it does not mask the flip. Three extra vector ring layers trail at phase offsets 0.045/0.09/0.135, peak opacity 18%/10%/6%, and fade to zero before the flip ends. They are finite layers, not a particle emitter or continuous motion blur renderer.
+After confirmed progress finishes filling, the full ring rotates **twice around the vertical (Y) axis**, with mild perspective and a finite curve that accelerates continuously from rest and decelerates to rest. It changes from blue to green during the flip, then stops facing forward before the check starts. The stationary gray progress track is hidden during success so it does not mask the flip. Three extra vector ring layers trail at phase offsets 0.045/0.09/0.135, peak opacity 18%/10%/6%, and fade to zero before the flip ends. They are finite layers, not a particle emitter or continuous motion blur renderer.
 
-真实成功确认并补齐后，完整圆环绕**竖直 Y 轴翻转两圈**，带轻微透视、减速曲线；翻转过程中由蓝变绿，正面停稳后立即开始对勾。成功阶段隐藏静止灰色底圈，避免遮蔽翻转。三个矢量圆环以 0.045／0.09／0.135 相位滞后，峰值不透明度 18%／10%／6%，翻转结束前淡出；不是粒子或持续运动模糊。
+真实成功确认并补齐后，完整圆环绕**竖直 Y 轴翻转两圈**，带轻微透视、起止速度归零的平滑曲线；翻转过程中由蓝变绿，正面停稳后立即开始对勾。成功阶段隐藏静止灰色底圈，避免遮蔽翻转。三个矢量圆环以 0.045／0.09／0.135 相位滞后，峰值不透明度 18%／10%／6%，翻转结束前淡出；不是粒子或持续运动模糊。
 
 Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the existing selected hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
 
 减少透明度／增强对比度禁用拖影，途中修改也会即时移除；减少动态效果／关闭动画直接展示最终圆环与对勾。重置、取消和新任务清除所有相关效果，旧完成回调不干扰新传输。总时长包含补齐、翻转、绘制和收稳，之后才开始原有停留。本次仅文件圆环试验，借鉴支付式完成反馈，不声称精确复刻 Apple 动画；文本成功效果不变。
 
-The compact check uses a sharper ~76° elbow, an inset right endpoint, and round caps. At the normal 30-point glyph size, conservative stroke-to-ring clearance is over 2.5 points. Short-stroke completion is computed from actual segment lengths; it accelerates into a brief corner pause, followed by a longer decelerating upward stroke. Confirmation and hold settings are unchanged; success drawing now uses the slower timings above. This is our own geometry/timing inspired by Apple's completion feedback, not Apple's private animation or an exact reproduction.
+The compact check uses a sharper ~76° elbow, an inset right endpoint, and round caps. At the normal 30-point glyph size, conservative stroke-to-ring clearance is over 2.5 points. Short-stroke completion is computed from actual segment lengths; the short stroke uses the first 28% of drawing time, joining a longer upward stroke without an extra constant-value corner pause. Confirmation and hold settings are unchanged; success drawing now uses the slower timings above. This is our own geometry/timing inspired by Apple's completion feedback, not Apple's private animation or an exact reproduction.
 
-对勾使用约 76° 更尖的折角、向圆心收进的右端和圆头；30 点图标中保守计算的描边留白超过 2.5 点。按真实线段长度定位短笔结束点，短笔加速、转角略停、长笔减速向上画出。确认条件与停留规则不变，成功绘制使用上方的新时长；路径与节奏自行设计，借鉴 Apple 完成反馈，并非精确复刻其私有动画。
+对勾使用约 76° 更尖的折角、向圆心收进的右端和圆头；30 点图标中保守计算的描边留白超过 2.5 点。按真实线段长度定位短笔结束点，短笔使用绘制时长的前 28%，直接衔接较慢的长笔，不再增加固定转角停顿。确认条件与停留规则不变，成功绘制使用上方的新时长；路径与节奏自行设计，借鉴 Apple 完成反馈，并非精确复刻其私有动画。
 
 The card controller owns the hold deadline, starting after the check sequence finishes. Transfer IDs deduplicate success and invalidate stale hide callbacks; new transfers/drops take over immediately. Concurrent active transfers remain visible instead of being replaced by another transfer's completion. Dismissal orders the window out before restoring opacity. Keyed finite effects are cancelled on hiding; no spinner, particles, per-frame loop or added background polling.
 
@@ -92,3 +92,21 @@ General → Preview animation opens an isolated native glass preview. Its local 
 [Apple Pay on the Web](https://developer.apple.com/videos/play/tech-talks/111381/) describes confirmed completion followed by a check and dismissal. [Apple's related Tap to Pay cashier guide](https://developer.apple.com/tap-to-pay/files/Tap-to-Pay-on-iPhone-Cashier-Guide-July2023.pdf) documents the completion check. These public sources do not specify exact path coordinates or per-stroke durations; our proportions and timing are independently implemented. No Apple artwork or third-party animation code is bundled.
 
 Apple 公开资料说明确认完成、展示对勾与收起，但未给出精确路径和逐笔时长；本项目自行实现比例与节奏，不打包 Apple 图像或第三方动画代码。
+
+## Native refinement comparison / 原生精修对比
+
+The build21 source candidate retains five native toolbar categories. Settings.swift's local group helper provides consistent headings/spacing and 190-point label columns, left-aligned native controls, separate trust/history-clearing actions and collapsing disclosures. No glass form cards or page-transition animation is added. Existing callbacks and drafts remain intact.
+
+build21 源码候选保留顶部五类导航，通用分成本机身份、语言、显示与启动、动画四组。其他页分离主操作、危险操作与详情，采用 190 点标签列和对齐的原生控件，不新增玻璃表单或分类动画；草稿与操作回调保持。
+
+FileSuccessSequence captures fill/flip/draw/settlement from the selected profile and actual progress catch-up. Completion layers share one epoch; card reveal/shape share one epoch as well. The ring starts and ends at zero rotation velocity; short/long check strokes have no extra plateau. Confirmation/hold/three speed settings are unchanged.
+
+完成序列集中计算补齐、翻转、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留两圈、三拖影、蓝绿转换、确认条件与停留规则。
+
+Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable build20 source at `19e5343`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+
+打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用固定 build20 源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。三档动画在动画窗口中选择；对比启动器不进入正式 App。
+
+This is a preview-first candidate: build21 App/DMG generation waits for owner confirmation. Existing version metadata and build20 packages are retained; no automatic installation, push or release.
+
+本轮先交付隔离预览，用户确认后再生成 build21 App／DMG。当前版本元数据与 build20 安装包保留，不自动安装、推送或发布。

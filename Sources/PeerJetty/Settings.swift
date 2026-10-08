@@ -176,8 +176,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
             group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview))])]),
             group("settings.activity_heading", rows: [progressLabel,
                 actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
-        let textRows: [NSView] = [group("text.send_title", rows: [actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton])]),
-            group("text.history_title", rows: [setting("text.show_history", showHistory), hint("text.history_setting_hint"),
+        let textRows: [NSView] = [group("settings.group_text_send", rows: [actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton])]),
+            group("settings.group_text_history", rows: [setting("text.show_history", showHistory), hint("text.history_setting_hint"),
                 actions([historyOpen]), setting("text.retention", retention)]),
             group("settings.group_history_cleanup", rows: [actions([button(L10n.text("text.clear"), #selector(clearTextHistory))])])]
 
