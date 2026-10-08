@@ -6,6 +6,12 @@ Replaces the long settings form with a native five-category preferences toolbar,
 
 将长列表设置改为原生顶部五分类，各页独立滚动、控件对齐、底部共享状态；保留原有配置、操作回调、未保存名称、历史确认及传输行为。关于页新增 MIT 条款和折叠维护区域；不增加产品版本、不公开发布安装包。
 
+## Unreleased — text interfaces / 文本界面
+
+Unifies the composer, reader and history with native AppKit controls and Auto Layout. Adds a 14-point plain text surface with rounded borders, a display-only placeholder, compact target controls, icon-labelled status, reader metadata and copy feedback. History uses resizable 64-point native rows and separate clear controls. Keeps transport, drafts, clipboard and history rules unchanged; animations remain a later task. No version bump or installer release.
+
+发送、收件查看与历史统一为原生 AppKit 控件和自动布局：14 点正文、圆角细边框、仅显示的占位提示、紧凑目标操作、图标状态、收件信息与复制反馈；历史使用可缩放的 64 点原生列表，独立清空操作。保留传输、草稿、剪贴板和记录规则；动画另做，不增加版本或发布安装包。
+
 ## 0.4.0 / build 13 — local test candidate, 2026-10-07
 
 Adds Send Text from the menu bar: a focused multiline panel with paired targets, native copy/paste/select-all shortcuts, ⌘Enter to send, Esc to close, and runtime-only drafts. Text uses existing paired TLS identities with optional `text-v1` negotiation, a 256 KiB UTF-8 limit, matching receipt IDs, bounded queues and duplicate protection. Unconfirmed sends time out after 30 seconds without automatic retries; older peers can still transfer files.

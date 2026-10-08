@@ -282,3 +282,15 @@
 "settings.license" = "MIT License";
 "settings.license_hint" = "PeerJetty is released under the MIT License. See LICENSE in the source repository for the full terms.";
 "settings.about_hint" = "File and text handoff between your paired Macs, over your local network.";
+
+/* Native text windows */
+"text.compose_title" = "Send Text";
+"text.send_to" = "Send to";
+"text.placeholder" = "Type or paste text…";
+"text.local_record_hint" = "Successful sends and receipts are always saved on this Mac.";
+"text.close_action" = "Close";
+"text.send_action" = "Send";
+"text.metadata" = "%1$@ · %2$@";
+"text.copied" = "Copied";
+"text.copy_failed" = "Could not copy text.";
+"text.history_heading" = "Text History";

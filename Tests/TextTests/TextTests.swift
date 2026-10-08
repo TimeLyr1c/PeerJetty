@@ -7,6 +7,27 @@ func check(_ ok: Bool, _ description: String) { if !ok { fputs("FAIL: \(descript
 func rejects(_ description: String, _ body: () throws -> Void) { do { try body(); check(false,description) } catch {} }
 func pump(_ until: () -> Bool, timeout: Double = 6) { let end = Date().addingTimeInterval(timeout); while !until(), Date() < end { RunLoop.main.run(until:Date().addingTimeInterval(0.02)) }; check(until(),"async deadline") }
 
+func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap { descendants($0) } }
+func settle(_ window: NSWindow) {
+    window.displayIfNeeded(); RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    window.contentView!.layoutSubtreeIfNeeded(); window.displayIfNeeded()
+}
+func layoutCheck(_ window: NSWindow, _ size: NSSize) {
+    window.setContentSize(size); settle(window)
+    let root = window.contentView!, stack = root.subviews.compactMap { $0 as? NSStackView }.first!
+    check(abs(root.bounds.width-size.width)<1 && abs(root.bounds.height-size.height)<1,"requested content size")
+    for row in stack.arrangedSubviews {
+        let rect = root.convert(row.bounds, from:row)
+        check(rect.minX >= -1 && rect.maxX <= size.width+1 && rect.minY >= -1 && rect.maxY <= size.height+1,"layout rows within window")
+        for button in descendants(row).compactMap({$0 as? NSButton}) {
+            if !(button is NSPopUpButton) { check(button.bounds.width >= button.intrinsicContentSize.width-1,"native buttons not compressed") }
+        }
+    }
+}
+func button(_ window: NSWindow, _ title: String) -> NSButton {
+    descendants(window.contentView!).compactMap {$0 as? NSButton}.first {$0.title == L10n.text(title)}!
+}
+
 @main struct TextTests {
 static func main() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-text-data-\(UUID())")
@@ -113,13 +134,48 @@ static func main() throws {
     check(composer.selectedPeer?.id == "q","unsent draft preserves temporary target")
     // Inspect resized controls without launching the production app.
     composer.window?.setContentSize(NSSize(width:450,height:300))
-    for view in composer.window!.contentView!.subviews { check(view.frame.minX >= 0 && view.frame.maxX <= 450 && view.frame.minY >= 0 && view.frame.maxY <= 300,"small panel controls in bounds") }
+    layoutCheck(composer.window!, NSSize(width:450,height:300))
+    check(composer.editor.font?.pointSize == 14 && composer.editor.textContainerInset == NSSize(width:14,height:14),"shared text style")
+    composer.editor.string = ""; check(composer.editor.placeholder != nil && composer.editor.string.isEmpty,"placeholder never becomes message content")
     let board = NSPasteboard(name:NSPasteboard.Name("PeerJetty-text-copy-\(UUID())")); defer {board.releaseGlobally()}
     board.clearContents(); board.setString("existing clipboard",forType:.string)
     let copyReader = TextReader(entry:entry,pasteboard:board)
     check(board.string(forType:.string) == "existing clipboard","receiving never overwrites clipboard")
-    (copyReader.window!.contentView!.subviews.compactMap {$0 as? NSButton}.first!).performClick(nil)
+    button(copyReader.window!, "text.copy").performClick(nil)
     check(Data(board.string(forType:.string)!.utf8) == Data(original.utf8),"explicit Copy preserves original text")
+    check(descendants(copyReader.window!.contentView!).compactMap {$0 as? NSTextField}.contains {$0.stringValue == L10n.text("text.copied")},"copy feedback")
+    layoutCheck(copyReader.window!, NSSize(width:360,height:200))
+    let failedReader = TextReader(entry:entry,saved:false,pasteboard:board)
+    layoutCheck(failedReader.window!, NSSize(width:360,height:200))
+    let warningLabel = descendants(failedReader.window!.contentView!).compactMap {$0 as? NSTextField}.first {$0.stringValue == L10n.text("text.history_failed")}!
+    let warningHeight = (warningLabel.stringValue as NSString).boundingRect(with:NSSize(width:warningLabel.bounds.width,height:1000),options:[.usesLineFragmentOrigin,.usesFontLeading],attributes:[.font:warningLabel.font!]).height
+    check(warningLabel.bounds.height >= warningHeight-1,"history warning wraps without clipping")
+    let longText = String(repeating:"中文🙂 Unicode e\u{301}\n",count:2000)
+    let longReader = TextReader(entry:TextEntry(messageID:UUID(),direction:.received,peerID:"peer",peerName:String(repeating:"Long text 中文 Mac mini ",count:12),text:longText),pasteboard:board)
+    settle(longReader.window!); check(longReader.window!.contentView!.bounds.size == NSSize(width:580,height:400),"long device name preserves default reader size")
+    layoutCheck(longReader.window!,NSSize(width:360,height:200))
+    let longBody = descendants(longReader.window!.contentView!).compactMap {$0 as? NSTextView}.first!
+    check(longBody.string == longText && !longBody.isEditable && !longBody.isRichText,"long Unicode reader retains raw read-only content")
+    button(longReader.window!,"text.copy").performClick(nil); check(board.string(forType:.string) == longText,"long text copy unchanged")
+    let historyUI = TextHistoryWindow()
+    check(historyUI.window!.styleMask.contains(.resizable),"history supports resizing")
+    layoutCheck(historyUI.window!, NSSize(width:500,height:350))
+    let table = descendants(historyUI.window!.contentView!).compactMap {$0 as? NSTableView}.first!
+    let secondEntry = TextEntry(messageID:UUID(),direction:.sent,peerID:"peer",peerName:String(repeating:"Mac mini 中文 ",count:12),text:"Next steps for the project…\nMore Unicode 🙂")
+    historyUI.update([entry,secondEntry]); table.selectRowIndexes(IndexSet(integer:1),byExtendingSelection:false)
+    var opened: UUID?, deleted: UUID?, cleared = false, loaded = -1
+    historyUI.onOpen = {opened=$0}; historyUI.onDelete = {if let id=$0 {deleted=id} else {cleared=true}}; historyUI.onLoad = {loaded=$0}
+    button(historyUI.window!,"text.view").performClick(nil); check(opened == secondEntry.id,"view selected ID")
+    button(historyUI.window!,"text.delete").performClick(nil); check(deleted == secondEntry.id,"delete callback selected ID")
+    historyUI.update([secondEntry,entry]); check(table.selectedRow == 0,"refresh preserves message ID selection")
+    historyUI.update([entry]); check(table.selectedRow == -1 && !button(historyUI.window!,"text.view").isEnabled,"removed selection cleared")
+    historyUI.update(Array(repeating:entry,count:100)); button(historyUI.window!,"text.next").performClick(nil); check(loaded == 100,"next page offset"); historyUI.update(Array(repeating:entry,count:100))
+    button(historyUI.window!,"text.previous").performClick(nil); check(loaded == 0,"previous page offset")
+    button(historyUI.window!,"text.clear").performClick(nil); check(cleared,"clear callback retains confirmation boundary")
+    historyUI.update([])
+    let empty = descendants(historyUI.window!.contentView!).first {$0.identifier?.rawValue == "textHistoryEmpty"}!
+    check(!empty.isHidden && !button(historyUI.window!,"text.next").isEnabled,"empty history and pagination")
+    historyUI.update([],error:PeerError.localized("text.history_failed",[])); check(empty.isHidden,"error distinct from empty history")
     for metrics in [
         DropScreenMetrics(frame:NSRect(x:0,y:0,width:800,height:480),visibleFrame:NSRect(x:0,y:40,width:800,height:416)),
         DropScreenMetrics(frame:NSRect(x:0,y:0,width:1440,height:900),visibleFrame:NSRect(x:0,y:0,width:1440,height:860),safeTop:40,leftArea:NSRect(x:0,y:860,width:620,height:40),rightArea:NSRect(x:820,y:860,width:620,height:40)),
@@ -151,17 +207,31 @@ static func main() throws {
     check(closed,"Escape closes panel")
     if let index = CommandLine.arguments.firstIndex(of:"--snapshots"), CommandLine.arguments.count > index+1 {
         let output = URL(fileURLWithPath:CommandLine.arguments[index+1]); try fm.createDirectory(at:output,withIntermediateDirectories:true)
-        func snapshot(_ window:NSWindow,_ name:String) throws {
-            window.appearance = NSAppearance(named:.aqua)
-            let content = window.contentView!; content.wantsLayer = true; content.layer?.backgroundColor = NSColor.white.cgColor
-            content.layoutSubtreeIfNeeded()
+        func snapshot(_ window:NSWindow,_ name:String,_ dark:Bool=false) throws {
+            window.appearance = NSAppearance(named:dark ? .darkAqua : .aqua); settle(window)
+            let content = window.contentView!.superview ?? window.contentView!
             let bitmap = content.bitmapImageRepForCachingDisplay(in:content.bounds)!; content.cacheDisplay(in:content.bounds,to:bitmap)
             try bitmap.representation(using:.png,properties:[:])!.write(to:output.appendingPathComponent(name+".png"))
         }
-        composer.editor.string="Hello from PeerJetty!\n你好，另一台 Mac。\n\nhttps://example.invalid stays plain text."; try snapshot(composer.window!,"composer-small")
-        composer.window?.setContentSize(NSSize(width:560,height:350)); try snapshot(composer.window!,"composer")
-        let historyUI = TextHistoryWindow(); historyUI.update([entry,TextEntry(messageID:UUID(),direction:.sent,peerID:"peer",peerName:"Mac mini",text:"Next steps for the project…")]); try snapshot(historyUI.window!,"history")
-        let reader = TextReader(entry:entry); try snapshot(reader.window!,"reader")
+        composer.editor.string=""; composer.updatePeers([peer,alternative],preferred:"p",resetSelection:true)
+        button(composer.window!,"text.connect").performClick(nil)
+        composer.editor.string="Hello from PeerJetty!\n你好，另一台 Mac。\n\nhttps://example.invalid stays plain text."
+        try snapshot(composer.window!,"composer-small")
+        composer.window?.setContentSize(NSSize(width:560,height:350)); try snapshot(composer.window!,"composer"); try snapshot(composer.window!,"composer-dark",true)
+        composer.sendText(); try snapshot(composer.window!,"composer-waiting"); composer.result(pending,error:PeerError.localized("text.unconfirmed",[])); try snapshot(composer.window!,"composer-failure")
+        composer.sendText(); composer.result(pending,error:nil); try snapshot(composer.window!,"composer-success")
+        composer.editor.string=""; try snapshot(composer.window!,"composer-empty")
+        composer.updatePeers([DiscoveredPeer(id:"p",name:secondEntry.peerName,paired:true,connected:true,supportsText:true)],preferred:"p",resetSelection:true)
+        layoutCheck(composer.window!,NSSize(width:450,height:300)); try snapshot(composer.window!,"composer-long-device")
+        historyUI.update([entry,secondEntry]); try snapshot(historyUI.window!,"history-small")
+        historyUI.window?.setContentSize(NSSize(width:650,height:450)); try snapshot(historyUI.window!,"history"); table.selectRowIndexes(IndexSet(integer:1),byExtendingSelection:false); try snapshot(historyUI.window!,"history-dark",true)
+        historyUI.update([]); try snapshot(historyUI.window!,"history-empty")
+        historyUI.update([],error:PeerError.localized("text.history_failed",[])); try snapshot(historyUI.window!,"history-failure")
+        let longNameReader = TextReader(entry:secondEntry,pasteboard:board); try snapshot(longNameReader.window!,"reader-long-device")
+        let reader = TextReader(entry:TextEntry(messageID:UUID(),direction:.received,peerID:"peer",peerName:"MacBook Air",text:"Hello from PeerJetty!\n你好，另一台 Mac。\n\nhttps://example.invalid stays plain text."),pasteboard:board)
+        try snapshot(reader.window!,"reader"); try snapshot(reader.window!,"reader-dark",true)
+        try snapshot(copyReader.window!,"reader-small"); try snapshot(failedReader.window!,"reader-unsaved-small")
+
     }
     print("PASS: native input, focus, Enter/CmdEnter, drafts, small layout and notification privacy")
     try adversarial(root:root)

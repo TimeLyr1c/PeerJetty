@@ -42,6 +42,16 @@ If SQLite saving fails, the receiver retains the text in memory for this run (up
 
 若 SQLite 保存失败，接收端在本次运行内暂存文本（最多 500 条），仍可查看复制，并在通知中明确标注“历史未保存”；临时内容可查看后才确认。发送端收到匹配确认后才记录，发送端保存失败同样提示，不能伪装成已持久保存。内存暂存退出后消失，不能代替正常保存。
 
+## Native text windows / 原生文本窗口
+
+The composer keeps its top placement and 560 × 350-point default size, with compact target and connection controls. Its 14-point plain text editor has 14-point padding, a rounded border and a display-only placeholder. Close and Send remain ordinary native buttons with separate shortcut hints. Status icons distinguish waiting, success and failure without relying on color alone.
+
+发送面板保留顶部位置和默认 560 × 350 点，目标与连接操作紧凑排列。正文为 14 点系统字体、14 点内边距、圆角细边框，占位提示只显示，不写入正文。关闭／发送使用普通原生按钮，快捷键单独提示；等待、成功和失败均用图标与文字表达。
+
+The reader defaults to 580 × 400 points and resizes down to 360 × 200. Device, direction and local recording time appear above the read-only text. Copy feedback and history-saving warnings have their own rows. The history window defaults to 650 × 450 and resizes down to 500 × 350; native 64-point rows show direction, device, time and a single-line preview. Full device names are available on hover. View/Delete and paging are grouped separately from Clear. Empty and error states are distinct. All windows follow system appearance and retain the original text exactly.
+
+查看窗口默认 580 × 400 点，最小 360 × 200 点，正文上方显示设备、方向和本机记录时间，复制反馈与保存失败警告独立展示。历史默认 650 × 450 点、最小 500 × 350 点，64 点原生列表显示方向、设备、时间与单行预览；长设备名悬停可看全名。查看／删除、分页与清空分别布局，空状态与错误区分。三类窗口跟随深浅色，正文保持原文。
+
 ## Verification / 验证
 
 `Scripts/test-text.sh` runs isolated SQLite, AppKit and loopback TLS tests using temporary files and ephemeral certificates, including the actual 30-second deadline. `--quick` skips only the longer two-engine/timeout/legacy-file suite; it still checks storage, UI and adversarial raw TLS. `--snapshots <directory>` exports input/history/reader screenshots. English and Chinese use the existing `-AppleLanguages` argument. No production Keychain, configuration or history is loaded.

@@ -282,3 +282,15 @@
 "settings.license" = "MIT 许可证";
 "settings.license_hint" = "PeerJetty 采用 MIT 许可证。完整条款请查看源码仓库中的 LICENSE。";
 "settings.about_hint" = "在局域网中，与已配对的 Mac 交接文件和文本。";
+
+/* Native text windows */
+"text.compose_title" = "发送文本";
+"text.send_to" = "发送到";
+"text.placeholder" = "输入或粘贴文本…";
+"text.local_record_hint" = "成功发送和接收的文本始终在本机记录。";
+"text.close_action" = "关闭";
+"text.send_action" = "发送";
+"text.metadata" = "%1$@ · %2$@";
+"text.copied" = "已复制";
+"text.copy_failed" = "无法复制文本。";
+"text.history_heading" = "文本历史";
