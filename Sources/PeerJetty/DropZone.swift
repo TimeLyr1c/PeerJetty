@@ -24,6 +24,8 @@ final class TransferGlyph: NSView {
     private var completion: (() -> Void)?
     private var observer: NSObjectProtocol?
     private let policy: MotionPolicy
+    private var progressMotion: ProgressMotion?
+    private(set) var successDuration: Double = 0
     private(set) var fraction: Double = 0
     private(set) var isSuccess = false
     init(policy: MotionPolicy) {
@@ -54,7 +56,7 @@ final class TransferGlyph: NSView {
         }
     }
     func reset() {
-        revision += 1; completion = nil; id = nil; fraction = 0; isSuccess = false
+        revision += 1; completion = nil; id = nil; fraction = 0; isSuccess = false; progressMotion = nil; successDuration = 0
         MotionEffects.clear(self)
         CATransaction.begin(); CATransaction.setDisableActions(true); arc.strokeEnd = 0; tick.strokeEnd = 0; CATransaction.commit(); colors()
     }
@@ -63,37 +65,46 @@ final class TransferGlyph: NSView {
         guard !isSuccess, total > 0 else { return }
         let target = max(fraction,min(1,max(0,Double(completed)/Double(total))))
         guard target != fraction else { return }
-        let start = arc.presentation()?.strokeEnd ?? arc.strokeEnd
+        let now = CACurrentMediaTime()
+        let current = progressMotion?.sample(at:now) ?? (value:Double(arc.strokeEnd),velocity:0)
         fraction = target; setAccessibilityValue(NSNumber(value:target))
         CATransaction.begin(); CATransaction.setDisableActions(true); arc.strokeEnd = CGFloat(target); CATransaction.commit()
         if policy.allowed, window?.isVisible == true {
-            let animation = CABasicAnimation(keyPath:"strokeEnd"); animation.fromValue = start; animation.toValue = target; animation.duration = policy.profile.status; animation.timingFunction = MotionEffects.smooth
+            let profile = policy.profile
+            let motion = ProgressMotion(from:current.value,target:target,velocity:current.velocity,rate:profile.progressRate,minimum:profile.status,started:now)
+            progressMotion = motion
+            let animation = CABasicAnimation(keyPath:"strokeEnd"); animation.fromValue = motion.from; animation.toValue = target; animation.duration = motion.duration; animation.timingFunction = motion.timing
             MotionEffects.add(animation, to:arc, key:"PeerJetty.progress")
-        }
+        } else { progressMotion = nil }
     }
     func succeed(id: UUID, finished: @escaping () -> Void) {
         if self.id != id { reset(); self.id = id }
         guard !isSuccess else { return }
         revision += 1; let token = revision; completion = finished
-        let profile = policy.profile, start = arc.presentation()?.strokeEnd ?? arc.strokeEnd
+        let profile = policy.profile, now = CACurrentMediaTime()
+        let current = progressMotion?.sample(at:now) ?? (value:Double(arc.strokeEnd),velocity:0)
+        let finishing = ProgressMotion(from:current.value,target:1,velocity:current.velocity,rate:profile.progressRate,minimum:profile.success*0.25,started:now)
+        let fillDuration = max(finishing.duration,profile.success*0.25)
+        progressMotion = nil; successDuration = fillDuration + profile.success*0.75
         let previousColor = arc.presentation()?.strokeColor ?? arc.strokeColor
         isSuccess = true; fraction = 1; setAccessibilityValue(NSNumber(value:1)); colors()
         CATransaction.begin(); CATransaction.setDisableActions(true); arc.strokeEnd = 1; tick.strokeEnd = 1; CATransaction.commit()
         guard policy.allowed else { settle(); return }
-        let color = CABasicAnimation(keyPath:"strokeColor"); color.fromValue = previousColor; color.toValue = arc.strokeColor; color.duration = profile.success * 0.22
+        let color = CABasicAnimation(keyPath:"strokeColor"); color.fromValue = previousColor; color.toValue = arc.strokeColor; color.duration = fillDuration
         MotionEffects.add(color,to:arc,key:"PeerJetty.successColor")
-        let fill = CABasicAnimation(keyPath:"strokeEnd"); fill.fromValue = start; fill.toValue = 1; fill.duration = profile.success * 0.22; fill.timingFunction = MotionEffects.smooth
+        let fill = CABasicAnimation(keyPath:"strokeEnd"); fill.fromValue = current.value; fill.toValue = 1; fill.duration = fillDuration; fill.timingFunction = finishing.timing
         MotionEffects.add(fill,to:arc,key:"PeerJetty.progress")
         let draw = CAKeyframeAnimation(keyPath:"strokeEnd")
         draw.values = [0,Self.shortStrokeFraction,Self.shortStrokeFraction,1]; draw.keyTimes = [0,0.25,0.34,1]
         draw.timingFunctions = [.init(name:.easeIn),.init(name:.easeInEaseOut),.init(controlPoints:0.18,0.65,0.3,1)]
-        draw.duration = profile.success * 0.61; draw.fillMode = .backwards
-        MotionEffects.add(draw,to:tick,key:"PeerJetty.check",delay:profile.success * 0.22)
-        let spring = MotionEffects.spring(duration:profile.success * 0.17,from:0.985)
-        MotionEffects.add(spring,to:layer,key:"PeerJetty.feedback",delay:profile.success * 0.83)
-        DispatchQueue.main.asyncAfter(deadline:.now()+profile.success) { [weak self] in guard let self, self.revision == token else { return }; self.settle() }
+        draw.duration = profile.success * 0.60; draw.fillMode = .backwards
+        MotionEffects.add(draw,to:tick,key:"PeerJetty.check",delay:fillDuration)
+        let spring = MotionEffects.spring(duration:profile.success * 0.15,from:0.985)
+        MotionEffects.add(spring,to:layer,key:"PeerJetty.feedback",delay:fillDuration + profile.success * 0.60)
+        DispatchQueue.main.asyncAfter(deadline:.now()+successDuration) { [weak self] in guard let self, self.revision == token else { return }; self.settle() }
     }
     private func settle() {
+        progressMotion = nil
         MotionEffects.clear(self)
         guard isSuccess, let completion else { return }
         self.completion = nil; revision += 1; completion()
@@ -289,6 +300,7 @@ final class DropPanelController {
     private var hidePending = false
     private var keepUntil = Date.distantPast
     private var resultID: UUID?
+    private var successAnimating = false
     private var finishedIDs: [UUID] = []
     private var transfers: [UUID:TransferUpdate] = [:]
     private var transferOrder: [UUID] = []
@@ -302,7 +314,7 @@ final class DropPanelController {
         view.onDragStarted = { [weak self] in self?.resetFeedback() }
         view.onSuccessFinished = { [weak self] id, hold in
             guard let self, self.resultID == id else { return }
-            self.revision += 1; self.hidePending = false
+            self.revision += 1; self.hidePending = false; self.successAnimating = false
             self.keepUntil = Date().addingTimeInterval(hold); self.hide()
         }
         let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.poll() }
@@ -352,7 +364,7 @@ final class DropPanelController {
 
     }
     func hide(after seconds: Double = 0) {
-        guard visible, !hidePending else { return }
+        guard visible, !hidePending, !successAnimating else { return }
         revision += 1; let token = revision; hidePending = true
         let delay = max(seconds, keepUntil.timeIntervalSinceNow)
         DispatchQueue.main.asyncAfter(deadline: .now() + max(0,delay)) { [weak self] in
@@ -369,7 +381,7 @@ final class DropPanelController {
         }
     }
     func resetFeedback() {
-        revision += 1; hidePending = false; resultID = nil; keepUntil = .distantPast
+        revision += 1; hidePending = false; resultID = nil; successAnimating = false; keepUntil = .distantPast
     }
     func presentTransfer(_ update: TransferUpdate) {
         if finishedIDs.contains(update.id) { return }
@@ -382,7 +394,7 @@ final class DropPanelController {
         }
         resetFeedback(); show()
         if update.finished, update.succeeded {
-            resultID = update.id
+            resultID = update.id; successAnimating = true
             let profile = MotionPolicy.shared.profile
             keepUntil = Date().addingTimeInterval((MotionPolicy.shared.allowed ? profile.success : 0) + profile.hold)
         }

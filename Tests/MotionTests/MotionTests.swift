@@ -57,6 +57,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
     static func tests() throws {
         try ringTests()
         cardShapeTests()
+        progressRateTests()
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true}"#.utf8)
         var configuration = try JSONDecoder().decode(Configuration.self,from:legacy)
         check(configuration.animationsEnabled,"legacy defaults to animations enabled")
@@ -94,7 +95,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let transferID=UUID()
         view.transfer(TransferUpdate(id:transferID,peerName:"Test",receiving:false,completed:10,total:10,status:"Confirmed",finished:true,succeeded:true))
         check(view.progress.isSuccess && !view.progress.isHidden,"confirmed success uses vector check")
-        wait(MotionPolicy.shared.profile.success + 0.10)
+        wait(view.progress.successDuration + 0.10)
         view.transfer(TransferUpdate(id:transferID,peerName:"Test",receiving:false,completed:10,total:10,status:"Confirmed",finished:true,succeeded:true))
         check(customAnimations(view.progress) == 0,"duplicate success never restarts feedback")
         view.transfer(TransferUpdate(id:UUID(),peerName:"Test",receiving:false,completed:0,total:10,status:"Failed",finished:true,succeeded:false))
@@ -126,10 +127,10 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
     static func cardShapeTests() {
         let samples = (0...100).map { MotionEffects.cardTransform(at:Double($0)/100) }
         check(samples[0].m11 == 0.86 && samples[0].m22 == 0.62,"card starts visibly compressed on unequal axes")
-        check(samples[1].m22-samples[0].m22 < 0.01,"zero-velocity start provides initial buffering")
-        check(samples.map(\.m22).max()! > 1.04 && samples.map(\.m22).max()! < 1.05,"bounded perceptible jelly overshoot")
+        check(samples[1].m22-samples[0].m22 > 0.015,"spring starts with velocity instead of a linear-looking slow start")
+        check(samples.map(\.m22).max()! > 1.02 && samples.map(\.m22).max()! < 1.04,"bounded perceptible jelly overshoot")
         let peak = samples.indices.max { samples[$0].m22 < samples[$1].m22 }!
-        check(peak >= 49 && peak <= 52 && samples[20].m22 < 0.9,"expansion uses the timeline instead of settling in its first few frames")
+        check(peak >= 42 && peak <= 46 && samples[10].m22-samples[0].m22 > 2*(samples[30].m22-samples[20].m22),"far-away motion is faster than the approach to equilibrium")
         check(CATransform3DIsIdentity(samples.last!) && abs(samples[99].m22-1) < 0.001,"shape settles before finite endpoint")
         let host=DropCardHost(card:DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76)))
         let frame=host.card.frame
@@ -150,6 +151,44 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check(TransferGlyph.shortStrokeFraction > 0.34 && TransferGlyph.shortStrokeFraction < 0.35,"two stroke timing uses actual segment-length boundary")
         print("PASS: buffered finite jelly curve, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
     }
+    static func progressRateTests() {
+        for rate in [1.0,1.5,3.0] {
+            for delta in [0.0001,0.001,0.01,0.1,0.5,1.0] {
+                for velocity in [0,rate*0.25,rate*0.75,rate] {
+                    let motion=ProgressMotion(from:0,target:delta,velocity:velocity,rate:rate,minimum:0.18,started:0)
+                    var previous=0.0
+                    for index in 0...200 {
+                        let sample=motion.sample(at:motion.duration*Double(index)/200)
+                        check(sample.value+1e-9 >= previous && sample.value <= delta+1e-9,"rate-limited trajectory never retreats or overshoots actual progress")
+                        check(sample.velocity <= rate+1e-8,"derivative obeys maximum visual speed even for small updates")
+                        previous=sample.value
+                    }
+                }
+            }
+            var motion=ProgressMotion(from:0,target:0.02,velocity:0,rate:rate,minimum:0.18,started:0)
+            for index in 1...100 {
+                let now=Double(index)*0.01, current=motion.sample(at:now), target=min(1,Double(index)/100)
+                let next=ProgressMotion(from:current.value,target:target,velocity:current.velocity,rate:rate,minimum:0.18,started:now)
+                check(abs(next.sample(at:now).value-current.value)<1e-9 && abs(next.sample(at:now).velocity-current.velocity)<1e-8,"bursty updates preserve visible position and velocity")
+                motion=next
+            }
+            check(motion.sample(at:10).value == 1 && motion.sample(at:10).velocity == 0,"finite catch-up settles after updates stop")
+        }
+        let saved=MotionPolicy.shared.enabled
+        MotionPolicy.shared.enabled = true
+        let card=DropPanelController(), id=UUID()
+        card.presentTransfer(TransferUpdate(id:id,peerName:"Instant",receiving:false,completed:0,total:100,status:"Sending",finished:false,succeeded:false))
+        card.presentTransfer(TransferUpdate(id:id,peerName:"Instant",receiving:false,completed:100,total:100,status:"Done",finished:true,succeeded:true))
+        let duration=card.view.progress.successDuration
+        check(duration >= MotionPolicy.shared.profile.success,"instant success still respects the visual ring speed limit")
+        card.hide(after:0)
+        wait(MotionPolicy.shared.profile.success+0.05)
+        if duration > MotionPolicy.shared.profile.success+0.1 { check(card.isVisible,"nominal deadline cannot hide an extended successful fill") }
+        wait(max(0,duration-MotionPolicy.shared.profile.success)+0.05)
+        check(card.feedbackRemaining > MotionPolicy.shared.profile.hold-0.3,"hold starts after extended fill and check finish")
+        card.resetFeedback(); card.hide(); MotionPolicy.shared.enabled=saved
+        print("PASS: visual rate cap, tiny/bursty updates, continuous position/velocity, finite catch-up and extended success hold")
+    }
     static func ringTests() throws {
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)
         check(try JSONDecoder().decode(Configuration.self,from:legacy).animationSpeed == .natural,"unknown speed falls back")
@@ -166,7 +205,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             let store = try ConfigurationStore(url:url,fallback:fallback); try store.update {$0.animationSpeed=speed}
             check(try ConfigurationStore(url:url,fallback:fallback).snapshot.animationSpeed == speed,"speed persists")
             let profile = MotionProfile(speed)
-            let expected: [Double] = speed == .fast ? [0.22,0.10,0.32,1,0.16] : speed == .natural ? [0.34,0.18,0.65,1.8,0.24] : [0.48,0.24,0.95,2.8,0.32]
+            let expected: [Double] = speed == .fast ? [0.22,0.10,0.65,1,0.16] : speed == .natural ? [0.34,0.18,1.20,1.8,0.24] : [0.48,0.24,1.75,2.8,0.32]
             check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
             check(profile.cardAppear == (speed == .fast ? 0.38 : speed == .natural ? 0.62 : 0.88),"slower card-specific speed profile")
             let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
@@ -179,10 +218,10 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             var completed = 0; glyph.succeed(id:id) {completed += 1}; glyph.succeed(id:id) {completed += 100}
             check(completed == 0 && glyph.isSuccess,"success sequence is bounded and deduplicated")
             policy.speed = .fast // Snapshot of the in-flight sequence must remain unchanged.
-            wait(profile.success + 0.10)
+            wait(glyph.successDuration + 0.10)
             check(completed == 1 && customAnimations(glyph) == 0,"sequence settles once at captured speed")
-            glyph.reset(); glyph.succeed(id:UUID()) {completed += 100}; glyph.update(id:UUID(),completed:20,total:100)
-            wait(MotionProfile(.fast).success+0.10)
+            glyph.reset(); glyph.succeed(id:UUID()) {completed += 100}; let oldDuration = glyph.successDuration; glyph.update(id:UUID(),completed:20,total:100)
+            wait(oldDuration+0.10)
             check(completed == 1 && glyph.fraction == 0.2 && !glyph.isSuccess,"old completion cannot replace newer progress")
             glyph.reset(); glyph.succeed(id:UUID()) {completed += 1}; policy.enabled=false
             check(completed == 2 && glyph.isSuccess && customAnimations(glyph) == 0,"disable settles success immediately")

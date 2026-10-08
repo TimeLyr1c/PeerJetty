@@ -32,13 +32,40 @@ extension AnimationSpeed {
 
 struct MotionProfile {
     let cardAppear: Double
+    let progressRate: Double
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init(_ speed: AnimationSpeed) {
         switch speed {
-        case .fast: cardAppear = 0.38; (appear,status,success,hold,dismiss) = (0.22,0.10,0.32,1,0.16)
-        case .natural: cardAppear = 0.62; (appear,status,success,hold,dismiss) = (0.34,0.18,0.65,1.8,0.24)
-        case .relaxed: cardAppear = 0.88; (appear,status,success,hold,dismiss) = (0.48,0.24,0.95,2.8,0.32)
+        case .fast: cardAppear = 0.38; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
+        case .natural: cardAppear = 0.62; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
+        case .relaxed: cardAppear = 0.88; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
         }
+    }
+}
+
+/// A monotonic cubic segment with continuous retargeting velocity and a bounded
+/// derivative. Core Animation evaluates it; no timer or per-frame task is needed.
+struct ProgressMotion {
+    let from: Double, target: Double, initialVelocity: Double, duration: Double, started: Double
+    init(from: Double, target: Double, velocity: Double, rate: Double, minimum: Double, started: Double) {
+        self.from = from; self.target = max(from,target); self.started = started
+        let delta = self.target-from, speed = min(rate,max(0,velocity))
+        initialVelocity = speed
+        if delta <= 0 { duration = 0; return }
+        let proposed = max(minimum,1.5*delta/rate)
+        duration = speed > 0 ? min(proposed,3*delta/speed) : proposed
+    }
+    var timing: CAMediaTimingFunction {
+        let delta = target-from
+        let control = delta > 0 ? initialVelocity*duration/(3*delta) : 0
+        return CAMediaTimingFunction(controlPoints:1/3,Float(control),2/3,1)
+    }
+    func sample(at time: Double) -> (value: Double, velocity: Double) {
+        guard duration > 0, time < started+duration else { return (target,0) }
+        let t = max(0,(time-started)/duration), delta = target-from, v = initialVelocity
+        let value = from + v*duration*t + (3*delta-2*v*duration)*t*t + (v*duration-2*delta)*t*t*t
+        let speed = v+(6*delta/duration-4*v)*t+(3*v-6*delta/duration)*t*t
+        return (min(target,max(from,value)),max(0,speed))
     }
 }
 
@@ -71,9 +98,10 @@ enum MotionEffects {
     // Unequal axes give the glass a compressed-to-stretched silhouette without moving its target.
     static func cardTransform(at time: Double) -> CATransform3D {
         guard time < 1 else { return CATransform3DIdentity }
-        let t = max(0,time), damping = 0.56, frequency = 7.5
+        let t = max(0,time), damping = 0.68, frequency = 7.5
         let decay = damping * frequency, oscillation = frequency * sqrt(1-damping*damping)
-        var residual = exp(-decay*t) * (cos(oscillation*t) + decay/oscillation*sin(oscillation*t))
+        // Released with velocity toward equilibrium: fast while far away, slow near it.
+        var residual = exp(-decay*t) * cos(oscillation*t)
         // Softly settle the small tail with zero endpoint velocity; don't truncate a spring.
         let tail = max(0,min(1,(t-0.78)/0.22))
         residual *= 1-tail*tail*(3-2*tail)
@@ -95,7 +123,7 @@ enum MotionEffects {
         shape.calculationMode = .linear; shape.duration = duration
         add(shape,to:view.layer,key:"PeerJetty.cardShape")
         let opacity = CABasicAnimation(keyPath:"opacity")
-        opacity.fromValue = 0.12; opacity.toValue = 1; opacity.duration = duration*0.38
+        opacity.fromValue = 0.35; opacity.toValue = 1; opacity.duration = duration*0.18
         opacity.timingFunction = .init(name:.easeInEaseOut)
         add(opacity,to:view.layer,key:"PeerJetty.cardReveal")
     }
