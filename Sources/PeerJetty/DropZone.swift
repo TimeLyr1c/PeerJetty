@@ -19,6 +19,17 @@ final class TransferGlyph: NSView {
         return short/(short+long)
     }
     private let track = CAShapeLayer(), arc = CAShapeLayer(), tick = CAShapeLayer()
+    private let trails = (0..<3).map { _ in CAShapeLayer() }
+    static func flipAngle(at time: Double, lag: Double = 0) -> Double {
+        let time = min(1,max(0,time)), tail = min(1,max(0,(time-0.78)/0.22))
+        let phase = max(0,time-lag*(1-tail*tail*(3-2*tail)))
+        return 4 * .pi * (1-pow(1-phase,3))
+    }
+    private func hideTrails() {
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        for trail in trails { trail.opacity = 0; for key in trail.animationKeys() ?? [] where key.hasPrefix("PeerJetty.") { trail.removeAnimation(forKey:key) } }
+        CATransaction.commit()
+    }
     private var id: UUID?
     private var revision = 0
     private var completion: (() -> Void)?
@@ -30,11 +41,14 @@ final class TransferGlyph: NSView {
     private(set) var isSuccess = false
     init(policy: MotionPolicy) {
         self.policy = policy; super.init(frame:.zero); wantsLayer = true
-        for shape in [track,arc,tick] { shape.fillColor = NSColor.clear.cgColor; shape.lineWidth = 2.2; shape.lineCap = .round; shape.lineJoin = .round; layer?.addSublayer(shape) }
+        for shape in [track] + trails + [arc,tick] { shape.fillColor = NSColor.clear.cgColor; shape.lineWidth = 2.2; shape.lineCap = .round; shape.lineJoin = .round; layer?.addSublayer(shape) }
+        for trail in trails { trail.opacity = 0; trail.strokeEnd = 1 }
+        var perspective = CATransform3DIdentity; perspective.m34 = -1/180
+        layer?.sublayerTransform = perspective
         tick.strokeEnd = 0
         setAccessibilityElement(true); setAccessibilityRole(.progressIndicator)
         observer = NotificationCenter.default.addObserver(forName:MotionPolicy.changed, object:policy, queue:.main) { [weak self] _ in
-            guard let self, !policy.allowed else { return }; self.settle()
+            guard let self else { return }; if !policy.allowed { self.settle() } else if !policy.trailsAllowed { self.hideTrails() }
         }
         colors()
     }
@@ -42,9 +56,9 @@ final class TransferGlyph: NSView {
     override var isFlipped: Bool { true }
     override func layout() {
         super.layout(); CATransaction.begin(); CATransaction.setDisableActions(true); defer { CATransaction.commit() }
-        for shape in [track,arc,tick] { shape.frame = bounds }
+        for shape in [track,arc,tick] + trails { shape.frame = bounds }
         let path = CGMutablePath(); path.addArc(center:NSPoint(x:bounds.midX,y:bounds.midY), radius:max(0,min(bounds.width,bounds.height)/2-3),startAngle:-.pi/2,endAngle:3 * .pi/2,clockwise:false)
-        track.path = path; arc.path = path
+        track.path = path; arc.path = path; for trail in trails { trail.path = path }
         let points = Self.checkPoints.map { CGPoint(x:bounds.width*$0.x,y:bounds.height*$0.y) }
         let check = CGMutablePath(); check.move(to:points[0]); check.addLine(to:points[1]); check.addLine(to:points[2]); tick.path = check
     }
@@ -52,12 +66,12 @@ final class TransferGlyph: NSView {
     private func colors() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             CATransaction.begin(); CATransaction.setDisableActions(true); defer { CATransaction.commit() }
-            track.strokeColor = NSColor.separatorColor.cgColor; arc.strokeColor = (isSuccess ? NSColor.systemGreen : .systemBlue).cgColor; tick.strokeColor = NSColor.systemGreen.cgColor
+            track.opacity = isSuccess ? 0 : 1; track.strokeColor = NSColor.separatorColor.cgColor; arc.strokeColor = (isSuccess ? NSColor.systemGreen : .systemBlue).cgColor; tick.strokeColor = NSColor.systemGreen.cgColor; for trail in trails { trail.strokeColor = NSColor.systemGreen.cgColor }
         }
     }
     func reset() {
         revision += 1; completion = nil; id = nil; fraction = 0; isSuccess = false; progressMotion = nil; successDuration = 0
-        MotionEffects.clear(self)
+        MotionEffects.clear(self); hideTrails()
         CATransaction.begin(); CATransaction.setDisableActions(true); arc.strokeEnd = 0; tick.strokeEnd = 0; CATransaction.commit(); colors()
     }
     func update(id: UUID, completed: Int64, total: Int64) {
@@ -85,27 +99,43 @@ final class TransferGlyph: NSView {
         let current = progressMotion?.sample(at:now) ?? (value:Double(arc.strokeEnd),velocity:0)
         let finishing = ProgressMotion(from:current.value,target:1,velocity:current.velocity,rate:profile.progressRate,minimum:profile.success*0.25,started:now)
         let fillDuration = max(finishing.duration,profile.success*0.25)
-        progressMotion = nil; successDuration = fillDuration + profile.success*0.75
+        progressMotion = nil; successDuration = fillDuration + profile.ringFlip + profile.success*0.75
         let previousColor = arc.presentation()?.strokeColor ?? arc.strokeColor
         isSuccess = true; fraction = 1; setAccessibilityValue(NSNumber(value:1)); colors()
         CATransaction.begin(); CATransaction.setDisableActions(true); arc.strokeEnd = 1; tick.strokeEnd = 1; CATransaction.commit()
         guard policy.allowed else { settle(); return }
-        let color = CABasicAnimation(keyPath:"strokeColor"); color.fromValue = previousColor; color.toValue = arc.strokeColor; color.duration = fillDuration
-        MotionEffects.add(color,to:arc,key:"PeerJetty.successColor")
+        let color = CABasicAnimation(keyPath:"strokeColor"); color.fromValue = previousColor; color.toValue = arc.strokeColor; color.duration = profile.ringFlip; color.fillMode = .backwards; color.timingFunction = .init(name:.easeInEaseOut)
+        MotionEffects.add(color,to:arc,key:"PeerJetty.successColor",delay:fillDuration)
+        let rotation = CAKeyframeAnimation(keyPath:"transform.rotation.y")
+        rotation.values = (0...60).map { Self.flipAngle(at:Double($0)/60) }
+        rotation.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }; rotation.duration = profile.ringFlip
+        MotionEffects.add(rotation,to:arc,key:"PeerJetty.ringFlip",delay:fillDuration)
+        if policy.trailsAllowed {
+            for (index,trail) in trails.enumerated() {
+                let lag = Double(index+1)*0.045, alpha = [0.18,0.10,0.06][index]
+                let ghost = rotation.copy() as! CAKeyframeAnimation
+                ghost.values = (0...60).map { Self.flipAngle(at:Double($0)/60,lag:lag) }
+                MotionEffects.add(ghost,to:trail,key:"PeerJetty.ringFlip",delay:fillDuration)
+                MotionEffects.add(color.copy() as! CAAnimation,to:trail,key:"PeerJetty.successColor",delay:fillDuration)
+                let fade = CAKeyframeAnimation(keyPath:"opacity"); fade.values = [0,alpha,alpha*0.5,0]; fade.keyTimes = [0,0.12,0.70,1]; fade.duration = profile.ringFlip
+                MotionEffects.add(fade,to:trail,key:"PeerJetty.trailFade",delay:fillDuration)
+            }
+        }
+        let checkStart = fillDuration + profile.ringFlip
         let fill = CABasicAnimation(keyPath:"strokeEnd"); fill.fromValue = current.value; fill.toValue = 1; fill.duration = fillDuration; fill.timingFunction = finishing.timing
         MotionEffects.add(fill,to:arc,key:"PeerJetty.progress")
         let draw = CAKeyframeAnimation(keyPath:"strokeEnd")
         draw.values = [0,Self.shortStrokeFraction,Self.shortStrokeFraction,1]; draw.keyTimes = [0,0.25,0.34,1]
         draw.timingFunctions = [.init(name:.easeIn),.init(name:.easeInEaseOut),.init(controlPoints:0.18,0.65,0.3,1)]
         draw.duration = profile.success * 0.60; draw.fillMode = .backwards
-        MotionEffects.add(draw,to:tick,key:"PeerJetty.check",delay:fillDuration)
+        MotionEffects.add(draw,to:tick,key:"PeerJetty.check",delay:checkStart)
         let spring = MotionEffects.spring(duration:profile.success * 0.15,from:0.985)
-        MotionEffects.add(spring,to:layer,key:"PeerJetty.feedback",delay:fillDuration + profile.success * 0.60)
+        MotionEffects.add(spring,to:layer,key:"PeerJetty.feedback",delay:checkStart + profile.success * 0.60)
         DispatchQueue.main.asyncAfter(deadline:.now()+successDuration) { [weak self] in guard let self, self.revision == token else { return }; self.settle() }
     }
     private func settle() {
         progressMotion = nil
-        MotionEffects.clear(self)
+        MotionEffects.clear(self); hideTrails()
         guard isSuccess, let completion else { return }
         self.completion = nil; revision += 1; completion()
     }

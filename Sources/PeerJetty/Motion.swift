@@ -9,11 +9,13 @@ final class MotionPolicy {
     var enabled = true { didSet { if enabled != oldValue { notify() } } }
     var speed: AnimationSpeed = .natural
     var profile: MotionProfile { MotionProfile(speed) }
+    private let reduceTransparency: () -> Bool
     private let reduceMotion: () -> Bool
     private var observer: NSObjectProtocol?
     var allowed: Bool { enabled && !reduceMotion() }
-    init(reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }) {
-        self.reduceMotion = reduceMotion
+    var trailsAllowed: Bool { allowed && !reduceTransparency() }
+    init(reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }, reduceTransparency: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency || NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast }) {
+        self.reduceMotion = reduceMotion; self.reduceTransparency = reduceTransparency
         observer = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in self?.notify() }
     }
     func notify() { NotificationCenter.default.post(name: Self.changed, object: self) }
@@ -32,6 +34,7 @@ extension AnimationSpeed {
 
 struct MotionProfile {
     let cardAppear: Double
+    var ringFlip: Double { success * 0.9 }
     let progressRate: Double
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init(_ speed: AnimationSpeed) {

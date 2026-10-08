@@ -58,6 +58,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         try ringTests()
         cardShapeTests()
         progressRateTests()
+        flipTests()
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true}"#.utf8)
         var configuration = try JSONDecoder().decode(Configuration.self,from:legacy)
         check(configuration.animationsEnabled,"legacy defaults to animations enabled")
@@ -188,6 +189,41 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check(card.feedbackRemaining > MotionPolicy.shared.profile.hold-0.3,"hold starts after extended fill and check finish")
         card.resetFeedback(); card.hide(); MotionPolicy.shared.enabled=saved
         print("PASS: visual rate cap, tiny/bursty updates, continuous position/velocity, finite catch-up and extended success hold")
+    }
+    static func flipTests() {
+        for lag in [0.0,0.045,0.09,0.135] {
+            var previous=0.0
+            for index in 0...100 {
+                let angle=TransferGlyph.flipAngle(at:Double(index)/100,lag:lag)
+                check(angle >= previous && angle <= 4 * .pi,"two turns are finite and forward-only")
+                previous=angle
+            }
+            check(abs(previous-4 * .pi)<1e-9,"ring and ghosts finish front-facing together")
+        }
+        var reducedTransparency=false
+        let policy=MotionPolicy(reduceMotion:{false},reduceTransparency:{reducedTransparency}); policy.speed = .fast
+        let glyph=TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
+        var finished=0; glyph.succeed(id:UUID()) { finished += 1 }
+        let layers=glyph.layer!.sublayers!
+        check(layers.first!.opacity == 0,"stationary track disappears so only the completed ring flips")
+        let ghosts=layers.filter {$0.animation(forKey:"PeerJetty.trailFade") != nil}
+        check(ghosts.count == 3 && ghosts.allSatisfy {$0.opacity == 0},"three bounded ghosts leave no visible model residue")
+        let ring=layers.first {$0.animation(forKey:"PeerJetty.progress") != nil}!
+        let rotation=ring.animation(forKey:"PeerJetty.ringFlip")!, color=ring.animation(forKey:"PeerJetty.successColor")!
+        let tick=layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.animation(forKey:"PeerJetty.check")!
+        check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime-rotation.beginTime)<0.01,"blue-to-green transition runs during finite rotation")
+        check(tick.beginTime >= rotation.beginTime+rotation.duration-0.01,"check cannot start before the ring stops")
+        check(customAnimations(glyph) <= 14,"fixed small number of shape effects")
+        reducedTransparency=true; policy.notify()
+        check(ghosts.allSatisfy {($0.animationKeys() ?? []).isEmpty && $0.opacity == 0} && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"reduce transparency removes ghosts without disrupting success")
+        policy.enabled=false
+        check(finished == 1 && customAnimations(glyph) == 0,"reduce motion/disable settles exactly once and clears every trail")
+        policy.enabled=true; reducedTransparency=false
+        glyph.reset(); glyph.succeed(id:UUID()) {finished += 100}; let oldDuration=glyph.successDuration
+        glyph.update(id:UUID(),completed:20,total:100)
+        wait(oldDuration+0.05)
+        check(finished == 1 && !glyph.isSuccess && customAnimations(glyph)==0,"new progress cancels old flips, trails and success callback")
+        print("PASS: two vertical-axis turns, three fading trails, color timing, check-after-stop, accessibility and cancellation cleanup")
     }
     static func ringTests() throws {
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)
