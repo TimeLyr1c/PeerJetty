@@ -266,3 +266,19 @@
 "text.notification_body" = "From %1$@. Click to view and copy.";
 "text.latest" = "View Latest Received Text…";
 "text.no_received" = "No text has been received in this run.";
+
+/* Categorized native settings */
+"settings.window_title" = "PeerJetty Settings";
+"settings.tab_general" = "General";
+"settings.tab_devices" = "Devices";
+"settings.tab_transfers" = "Transfers";
+"settings.tab_text" = "Text";
+"settings.tab_about" = "About";
+"settings.save_name" = "Save";
+"settings.connection_heading" = "This Mac’s connection";
+"settings.drop_heading" = "Send files";
+"settings.activity_heading" = "Transfer activity";
+"settings.maintenance" = "Permissions & Maintenance";
+"settings.license" = "MIT License";
+"settings.license_hint" = "PeerJetty is released under the MIT License. See LICENSE in the source repository for the full terms.";
+"settings.about_hint" = "File and text handoff between your paired Macs, over your local network.";

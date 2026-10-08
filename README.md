@@ -48,6 +48,10 @@ The menu bar’s **Send Text…** opens a multiline input panel. Pick a paired d
 
 Successful text sends and receipts are **always saved on each Mac**. Settings can hide the history entry, but hiding does not stop recording. Retention defaults to the latest 500 entries, with 30-day and forever options. See [text usage and privacy](Docs/TEXT.md). The current public 0.3.2 installer does not include this feature; 0.4.0 is a local test candidate.
 
+## Settings (0.4.0 source/test build)
+
+Settings uses a native five-category toolbar: General, Devices, Transfers, Text and About. Choose a category to see its options; compact screens scroll vertically. Device names still require Save, while switches keep their existing save behavior. Switching categories keeps unsaved name edits.
+
 ## Scope and privacy
 
 - Local network only; both devices must be online and awake. No cloud relay, SSH, account, or hardcoded device credentials.

@@ -138,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let menuItem { NSStatusBar.system.removeStatusItem(menuItem) }; menuItem = nil
         showStatus(L10n.text("application.reopen_peerjetty_from_applications_to_show_settings"))
     }
-    @objc private func addDevice() { showSettings(); engine?.openPairing() }
+    @objc private func addDevice() { showSettings(); settings?.selectSection(.devices); engine?.openPairing() }
     @objc private func preview() { drop?.preview() }
     @objc private func checkUpdates() {
         if updateWindow == nil {

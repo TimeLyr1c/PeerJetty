@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — settings interface / 设置界面
+
+Replaces the long settings form with a native five-category preferences toolbar, per-page scrolling, aligned controls and shared status. Keeps existing configuration and callbacks, unsaved name edits, history confirmations and transfer behavior. Adds an About page with MIT terms and a collapsed maintenance section. No product version bump or public installer release.
+
+将长列表设置改为原生顶部五分类，各页独立滚动、控件对齐、底部共享状态；保留原有配置、操作回调、未保存名称、历史确认及传输行为。关于页新增 MIT 条款和折叠维护区域；不增加产品版本、不公开发布安装包。
+
 ## 0.4.0 / build 13 — local test candidate, 2026-10-07
 
 Adds Send Text from the menu bar: a focused multiline panel with paired targets, native copy/paste/select-all shortcuts, ⌘Enter to send, Esc to close, and runtime-only drafts. Text uses existing paired TLS identities with optional `text-v1` negotiation, a 256 KiB UTF-8 limit, matching receipt IDs, bounded queues and duplicate protection. Unconfirmed sends time out after 30 seconds without automatic retries; older peers can still transfer files.

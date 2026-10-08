@@ -1,7 +1,30 @@
 import AppKit
 import PeerCore
 
-final class SettingsController: NSWindowController {
+enum SettingsSection: String, CaseIterable {
+    case general, devices, transfers, text, about
+    var title: String {
+        switch self {
+        case .general: return L10n.text("settings.tab_general")
+        case .devices: return L10n.text("settings.tab_devices")
+        case .transfers: return L10n.text("settings.tab_transfers")
+        case .text: return L10n.text("settings.tab_text")
+        case .about: return L10n.text("settings.tab_about")
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .general: return "gearshape"
+        case .devices: return "desktopcomputer"
+        case .transfers: return "arrow.up.arrow.down"
+        case .text: return "text.alignleft"
+        case .about: return "info.circle"
+        }
+    }
+    var identifier: NSToolbarItem.Identifier { NSToolbarItem.Identifier("settings." + rawValue) }
+}
+
+final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onSave: ((String) -> Void)?
     var onSelect: ((String) -> Void)?
     var onPair: (() -> Void)?
@@ -38,89 +61,198 @@ final class SettingsController: NSWindowController {
     private let showHistory = NSSwitch()
     private let retention = NSPopUpButton()
     private var peers: [DiscoveredPeer] = []
+    private let pageHost = NSView()
+    private var pages: [SettingsSection: NSScrollView] = [:]
+    private let maintenance = NSStackView()
+    private(set) var selectedSection: SettingsSection = .general
+
     init(configuration: Configuration, displayLanguage: DisplayLanguage = LanguagePreferences().selection) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: min(810, (NSScreen.main?.visibleFrame.height ?? 900) - 70)), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = L10n.text("settings.peerjetty_file_handoff"); window.isReleasedWhenClosed = false; window.center()
+        let height = min(520, max(300, (NSScreen.main?.visibleFrame.height ?? 900) - 130))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: height), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        window.title = L10n.text("settings.window_title"); window.isReleasedWhenClosed = false
+        window.toolbarStyle = .preference
         super.init(window: window)
+
+        let toolbar = NSToolbar(identifier: "PeerJetty.Settings")
+        toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
+        toolbar.allowsUserCustomization = false; toolbar.autosavesConfiguration = false
+        window.toolbar = toolbar
+
         language.addItems(withTitles: [L10n.text("settings.language_system"), L10n.text("settings.language_english"), L10n.text("settings.language_chinese")])
         language.selectItem(at: DisplayLanguage.allCases.firstIndex(of: displayLanguage) ?? 0)
         language.identifier = NSUserInterfaceItemIdentifier("displayLanguage")
         language.target = self; language.action = #selector(changeLanguage)
-        name.stringValue = configuration.name; folderLabel.stringValue = configuration.receivePath
-        let title = NSTextField(labelWithString: configuration.onboardingComplete ? L10n.text("settings.devices_settings") : L10n.text("settings.welcome_to_peerjetty"))
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
-        let intro = NSTextField(wrappingLabelWithString: L10n.text("settings.install_peerjetty_on_both_macs_and_pair_them"))
-        intro.textColor = .secondaryLabelColor
-        let version = NSTextField(labelWithString: AppVersion.summary)
-        version.font = .systemFont(ofSize: 11); version.textColor = .secondaryLabelColor
-        version.toolTip = AppVersion.details
-        name.widthAnchor.constraint(greaterThanOrEqualToConstant: 290).isActive = true
-        devices.widthAnchor.constraint(greaterThanOrEqualToConstant: 320).isActive = true
+        name.stringValue = configuration.name; name.identifier = NSUserInterfaceItemIdentifier("deviceName")
+        name.placeholderString = L10n.text("settings.device_name"); name.setAccessibilityLabel(L10n.text("settings.device_name"))
+        folderLabel.stringValue = configuration.receivePath; folderLabel.lineBreakMode = .byTruncatingMiddle
+        folderLabel.maximumNumberOfLines = 2; folderLabel.toolTip = configuration.receivePath
         devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        folderLabel.lineBreakMode = .byTruncatingMiddle; folderLabel.maximumNumberOfLines = 2
-        connectionLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular); connectionLabel.textColor = .secondaryLabelColor
+        devices.identifier = NSUserInterfaceItemIdentifier("devicePicker"); devices.setAccessibilityLabel(SettingsSection.devices.title)
         devices.target = self; devices.action = #selector(selectPeer)
+        connectionLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        connectionLabel.textColor = .secondaryLabelColor
         login.target = self; login.action = #selector(toggleLogin)
         autoOpen.target = self; autoOpen.action = #selector(toggleAutoOpen)
         autoOpen.state = configuration.autoOpenReceivedFiles ? .on : .off
-        let openHint = NSTextField(wrappingLabelWithString: L10n.text("settings.when_enabled_saved_files_from_paired_devices_open"))
-        openHint.font = .systemFont(ofSize: 11); openHint.textColor = .secondaryLabelColor
-        let languageHint = NSTextField(wrappingLabelWithString: L10n.text("settings.language_restart"))
-        languageHint.font = .systemFont(ofSize: 11); languageHint.textColor = .secondaryLabelColor
         historyOpen.title = L10n.text("text.history_title"); historyOpen.target = self; historyOpen.action = #selector(openTextHistory); historyOpen.bezelStyle = .rounded
-        historyOpen.identifier = NSUserInterfaceItemIdentifier("textHistoryEntry"); showHistory.identifier = NSUserInterfaceItemIdentifier("textHistoryVisibility"); retention.identifier = NSUserInterfaceItemIdentifier("textRetention")
+        historyOpen.identifier = NSUserInterfaceItemIdentifier("textHistoryEntry")
+        showHistory.identifier = NSUserInterfaceItemIdentifier("textHistoryVisibility")
+        retention.identifier = NSUserInterfaceItemIdentifier("textRetention")
         historyOpen.isHidden = !configuration.showTextHistory
         showHistory.state = configuration.showTextHistory ? .on : .off
         showHistory.target = self; showHistory.action = #selector(toggleTextHistory)
-        retention.addItems(withTitles:[L10n.text("text.keep500"),L10n.text("text.keep30"),L10n.text("text.keep_forever")])
-        retention.selectItem(at:TextRetention.allCases.firstIndex(of:configuration.textRetention) ?? 0)
+        retention.addItems(withTitles: [L10n.text("text.keep500"), L10n.text("text.keep30"), L10n.text("text.keep_forever")])
+        retention.selectItem(at: TextRetention.allCases.firstIndex(of: configuration.textRetention) ?? 0)
         retention.target = self; retention.action = #selector(changeRetention)
-        let historyHint = NSTextField(wrappingLabelWithString:L10n.text("text.history_setting_hint"))
-        historyHint.font = .systemFont(ofSize:11); historyHint.textColor = .secondaryLabelColor
-        let rows: [NSView] = [title, intro,
-            row([NSTextField(labelWithString: L10n.text("settings.language")), language]), languageHint,
-            row([NSTextField(labelWithString: L10n.text("settings.device_name")), name, button(L10n.text("settings.save_finish_setup"), #selector(save))]),
-            row([NSTextField(labelWithString: L10n.text("settings.receive_folder")), button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]), folderLabel,
-            separator(), NSTextField(wrappingLabelWithString: L10n.text("settings.devices_select_a_paired_device_as_your_default")),
-            row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
-            row([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual)), button(L10n.text("settings.remove_trust"), #selector(forget))]),
-            connectionLabel, separator(),
-            NSTextField(wrappingLabelWithString: L10n.text("settings.drag_toward_the_upper_center_below_the_menu")),
-            row([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview)), button(L10n.text("settings.cancel_transfer"), #selector(cancel))]),
-            progressLabel, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal)), separator(),
-            row([NSTextField(labelWithString: L10n.text("settings.open_after_receiving")), autoOpen]), openHint,
-            row([NSTextField(labelWithString:L10n.text("text.show_history")),showHistory,historyOpen]),
-            historyHint,
-            row([NSTextField(labelWithString:L10n.text("text.retention")),retention,button(L10n.text("text.clear"),#selector(clearTextHistory))]),
-            button(L10n.text("text.send_title"),#selector(sendText)),
-            row([NSTextField(labelWithString: L10n.text("settings.start_at_login")), login, button(L10n.text("settings.local_network_access"), #selector(permissions))]),
-            row([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.reset_identity"), #selector(reset)), button(L10n.text("settings.quit"), #selector(quit))]),
-            statusLabel, version]
-        let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        let content = window.contentView!
-        let scroll = NSScrollView(frame: content.bounds)
-        scroll.autoresizingMask = [.width, .height]; scroll.hasVerticalScroller = true
-        scroll.drawsBackground = false
-        let document = SettingsDocumentView(); document.translatesAutoresizingMaskIntoConstraints = false
-        scroll.documentView = document; content.addSubview(scroll); document.addSubview(stack)
-        NSLayoutConstraint.activate([document.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
-                                     document.heightAnchor.constraint(greaterThanOrEqualTo: scroll.contentView.heightAnchor),
-                                     stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 28),
-                                     stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -28),
-                                     stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 25),
-                                     stack.bottomAnchor.constraint(equalTo: document.bottomAnchor, constant: -20)])
-        for label in [intro, openHint, folderLabel, statusLabel, progressLabel, connectionLabel] { label.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        for view in rows {
-            if view is NSStackView { view.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor).isActive = true }
-            if let label = view as? NSTextField { label.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+
+        var general: [NSView] = []
+        if !configuration.onboardingComplete {
+            general += [heading(L10n.text("settings.welcome_to_peerjetty")), hint("settings.install_peerjetty_on_both_macs_and_pair_them")]
         }
-        for box in rows.compactMap({ $0 as? NSBox }) { box.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        statusLabel.textColor = .secondaryLabelColor; statusLabel.maximumNumberOfLines = 3
+        general += [heading(L10n.text("settings.device_name")),
+            row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]),
+            separator(), setting("settings.language", language), hint("settings.language_restart"),
+            separator(), setting("settings.start_at_login", login)]
+        let deviceRows: [NSView] = [heading(SettingsSection.devices.title), hint("settings.devices_select_a_paired_device_as_your_default"),
+            row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
+            actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))]),
+            actions([button(L10n.text("settings.remove_trust"), #selector(forget))]), separator(),
+            heading(L10n.text("settings.connection_heading")), connectionLabel]
+        let transferRows: [NSView] = [heading(L10n.text("settings.receive_folder")),
+            actions([button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]), folderLabel,
+            setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open"), separator(),
+            heading(L10n.text("settings.drop_heading")), hint("settings.drag_toward_the_upper_center_below_the_menu"),
+            actions([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview))]),
+            separator(), heading(L10n.text("settings.activity_heading")), progressLabel,
+            actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])]
+        let textRows: [NSView] = [heading(L10n.text("text.send_title")), actions([button(L10n.text("text.send_title"), #selector(sendText))]),
+            separator(), heading(L10n.text("text.history_title")), setting("text.show_history", showHistory), hint("text.history_setting_hint"),
+            actions([historyOpen]), setting("text.retention", retention), actions([button(L10n.text("text.clear"), #selector(clearTextHistory))])]
+
+        let version = NSTextField(labelWithString: AppVersion.summary)
+        version.textColor = .secondaryLabelColor; version.toolTip = AppVersion.details
+        let appIcon = NSImageView()
+        appIcon.image = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap { NSImage(contentsOf: $0) } ?? NSImage(named: NSImage.applicationIconName)
+        appIcon.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        appIcon.heightAnchor.constraint(equalToConstant: 56).isActive = true
+        let branding = NSStackView(views: [heading("PeerJetty"), version])
+        branding.orientation = .vertical; branding.alignment = .leading; branding.spacing = 6
+        maintenance.orientation = .vertical; maintenance.alignment = .leading; maintenance.spacing = 12
+        maintenance.detachesHiddenViews = true; maintenance.isHidden = true
+        maintenance.identifier = NSUserInterfaceItemIdentifier("settingsMaintenance")
+        for item in [actions([button(L10n.text("settings.local_network_access"), #selector(permissions))]),
+                     actions([button(L10n.text("settings.reset_identity"), #selector(reset))])] {
+            maintenance.addArrangedSubview(item)
+            item.widthAnchor.constraint(equalTo: maintenance.widthAnchor).isActive = true
+        }
+        let disclosure = button(L10n.text("settings.maintenance"), #selector(toggleMaintenance))
+        disclosure.identifier = NSUserInterfaceItemIdentifier("settingsMaintenanceToggle")
+        disclosure.isBordered = false; disclosure.setButtonType(.pushOnPushOff)
+        disclosure.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil); disclosure.imagePosition = .imageLeading
+        let aboutRows: [NSView] = [actions([row([appIcon, branding])]), hint("settings.about_hint"),
+            actions([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.license"), #selector(showLicense))]),
+            separator(), actions([disclosure]), maintenance, separator(), actions([button(L10n.text("settings.quit"), #selector(quit))])]
+
+        let content = window.contentView!
+        content.addSubview(pageHost); pageHost.translatesAutoresizingMaskIntoConstraints = false
+        statusLabel.textColor = .secondaryLabelColor; statusLabel.font = .systemFont(ofSize: 12)
+        statusLabel.maximumNumberOfLines = 3; statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        let footerLine = separator(); footerLine.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(footerLine); content.addSubview(statusLabel)
+        NSLayoutConstraint.activate([
+            pageHost.leadingAnchor.constraint(equalTo: content.leadingAnchor), pageHost.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            pageHost.topAnchor.constraint(equalTo: content.topAnchor), pageHost.bottomAnchor.constraint(equalTo: footerLine.topAnchor),
+            footerLine.leadingAnchor.constraint(equalTo: content.leadingAnchor), footerLine.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            statusLabel.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24), statusLabel.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
+            statusLabel.topAnchor.constraint(equalTo: footerLine.bottomAnchor, constant: 10), statusLabel.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12),
+            statusLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)])
+        for (section, rows) in [(SettingsSection.general, general), (.devices, deviceRows), (.transfers, transferRows), (.text, textRows), (.about, aboutRows)] {
+            addPage(section, rows: rows)
+        }
+        window.setContentSize(NSSize(width: 650, height: height))
+        selectSection(.general); window.center()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
-    private func row(_ views: [NSView]) -> NSStackView { let row = NSStackView(views: views); row.orientation = .horizontal; row.spacing = 10; row.alignment = .centerY; return row }
-    private func button(_ title: String, _ action: Selector) -> NSButton { let button = NSButton(title: title, target: self, action: action); button.bezelStyle = .rounded; return button }
+
+    func selectSection(_ section: SettingsSection) {
+        window?.makeFirstResponder(nil)
+        selectedSection = section
+        for (key, page) in pages { page.isHidden = key != section }
+        window?.toolbar?.selectedItemIdentifier = section.identifier
+        (window?.contentView?.superview ?? window?.contentView)?.layoutSubtreeIfNeeded()
+        if let page = pages[section] {
+            page.contentView.scroll(to: .zero)
+            page.reflectScrolledClipView(page.contentView)
+        }
+    }
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { SettingsSection.allCases.map { $0.identifier } }
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { toolbarDefaultItemIdentifiers(toolbar) }
+    func toolbarSelectableItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { toolbarDefaultItemIdentifiers(toolbar) }
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        guard let section = SettingsSection.allCases.first(where: { $0.identifier == identifier }) else { return nil }
+        let item = NSToolbarItem(itemIdentifier: identifier)
+        item.label = section.title; item.paletteLabel = section.title; item.toolTip = section.title
+        item.image = NSImage(systemSymbolName: section.symbol, accessibilityDescription: section.title)
+        item.target = self; item.action = #selector(selectToolbarItem)
+        return item
+    }
+    @objc private func selectToolbarItem(_ sender: NSToolbarItem) {
+        if let section = SettingsSection.allCases.first(where: { $0.identifier == sender.itemIdentifier }) { selectSection(section) }
+    }
+    @objc private func toggleMaintenance(_ sender: NSButton) {
+        maintenance.isHidden = sender.state != .on
+        sender.image = NSImage(systemSymbolName: sender.state == .on ? "chevron.down" : "chevron.right", accessibilityDescription: nil)
+    }
+    @objc private func showLicense() {
+        let alert = NSAlert(); alert.messageText = L10n.text("settings.license")
+        alert.informativeText = (Bundle.main.url(forResource: "LICENSE", withExtension: nil).flatMap { try? String(contentsOf: $0, encoding: .utf8) }) ?? L10n.text("settings.license_hint")
+        if let window { alert.beginSheetModal(for: window) }
+    }
+    private func addPage(_ section: SettingsSection, rows: [NSView]) {
+        let scroll = NSScrollView(); scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true; scroll.drawsBackground = false
+        scroll.identifier = NSUserInterfaceItemIdentifier("settingsPage." + section.rawValue)
+        let document = SettingsDocumentView(); document.translatesAutoresizingMaskIntoConstraints = false
+        let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading
+        stack.spacing = 14; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.setHuggingPriority(.required, for: .vertical)
+        scroll.documentView = document; document.addSubview(stack); pageHost.addSubview(scroll); pages[section] = scroll
+        let height = document.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 48); height.priority = .fittingSizeCompression
+        NSLayoutConstraint.activate([
+            scroll.leadingAnchor.constraint(equalTo: pageHost.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: pageHost.trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: pageHost.topAnchor), scroll.bottomAnchor.constraint(equalTo: pageHost.bottomAnchor),
+            document.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor), document.heightAnchor.constraint(greaterThanOrEqualTo: scroll.contentView.heightAnchor), height,
+            stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 28), stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -28),
+            stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 24), stack.bottomAnchor.constraint(lessThanOrEqualTo: document.bottomAnchor, constant: -24)])
+        for view in rows { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+    }
+    private func heading(_ text: String) -> NSTextField {
+        let label = NSTextField(labelWithString: text); label.font = .systemFont(ofSize: 15, weight: .semibold); return label
+    }
+    private func hint(_ key: String) -> NSTextField {
+        let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.textColor = .secondaryLabelColor
+        label.font = .systemFont(ofSize: 12); return label
+    }
+    private func row(_ views: [NSView]) -> NSStackView {
+        let row = NSStackView(views: views); row.orientation = .horizontal; row.spacing = 10; row.alignment = .centerY
+        row.setHuggingPriority(.required, for: .vertical); return row
+    }
+    private func spacer() -> NSView {
+        let spacer = NSView(); spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        spacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 0).isActive = true; return spacer
+    }
+    private func actions(_ views: [NSView]) -> NSStackView { row(views + [spacer()]) }
+    private func setting(_ key: String, _ control: NSView) -> NSStackView {
+        control.setAccessibilityLabel(L10n.text(key))
+        let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.font = .systemFont(ofSize: 13)
+        label.widthAnchor.constraint(equalToConstant: 230).isActive = true
+        return row([label, spacer(), control])
+    }
+    private func button(_ title: String, _ action: Selector) -> NSButton {
+        let button = NSButton(title: title, target: self, action: action); button.bezelStyle = .rounded
+        button.setContentCompressionResistancePriority(.required, for: .horizontal); return button
+    }
     private func separator() -> NSView { let box = NSBox(); box.boxType = .separator; return box }
     func updatePeers(_ peers: [DiscoveredPeer], preferred: String?) {
         let selected = devices.indexOfSelectedItem >= 0 && self.peers.indices.contains(devices.indexOfSelectedItem) ? self.peers[devices.indexOfSelectedItem].id : preferred
@@ -134,7 +266,7 @@ final class SettingsController: NSWindowController {
     }
     private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
     func status(_ text: String) { statusLabel.stringValue = text }
-    func folder(_ path: String) { folderLabel.stringValue = path }
+    func folder(_ path: String) { folderLabel.stringValue = path; folderLabel.toolTip = path }
     func connectionInfo(_ text: String) { connectionLabel.stringValue = text }
     func loginState(_ enabled: Bool) { login.state = enabled ? .on : .off }
     func autoOpenState(_ enabled: Bool) { autoOpen.state = enabled ? .on : .off }

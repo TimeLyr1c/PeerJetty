@@ -70,60 +70,127 @@ struct LocalizationChecks {
         _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
         let settings = SettingsController(configuration: Configuration(name: device, receivePath: "/isolated-test/Inbox"), displayLanguage: .english)
         guard let window = settings.window, let content = window.contentView else { fatalError("No settings view") }
-        window.appearance = NSAppearance(named: .aqua)
-        content.wantsLayer = true; content.layer?.backgroundColor = NSColor.white.cgColor
-        window.setContentSize(NSSize(width: 650, height: 600))
-        content.layoutSubtreeIfNeeded()
-        guard let scroll = content.subviews.first as? NSScrollView, let document = scroll.documentView,
-              let stack = document.subviews.first as? NSStackView else { fatalError("No scrolling form") }
-        document.layoutSubtreeIfNeeded()
-        check(document.frame.width <= scroll.contentView.bounds.width + 1, "Settings must not scroll horizontally")
-        check(stack.frame.width <= document.bounds.width, "Form fits document")
-        for row in stack.arrangedSubviews {
-            let rowInDocument = stack.convert(row.frame, to: document)
-            check(rowInDocument.minX >= -1 && rowInDocument.maxX <= document.bounds.maxX + 1, "Row fits visible document")
-            if let horizontal = row as? NSStackView {
-                for item in horizontal.arrangedSubviews {
-                    let itemInDocument = item.convert(item.bounds, to: document)
-                    check(itemInDocument.minX >= -1 && itemInDocument.maxX <= document.bounds.maxX + 1, "Control fits visible document")
-                    if let button = item as? NSButton {
-                        check(button.frame.width >= button.intrinsicContentSize.width - 1, "Translated button is not clipped")
+        func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap { descendants($0) } }
+        func page(_ section: SettingsSection) -> NSScrollView {
+            descendants(content).first { $0.identifier?.rawValue == "settingsPage." + section.rawValue } as! NSScrollView
+        }
+        func control<T: NSView>(_ identifier: String, as type: T.Type) -> T {
+            descendants(content).first { $0.identifier?.rawValue == identifier } as! T
+        }
+        let languagePicker = control("displayLanguage", as: NSPopUpButton.self)
+        check(languagePicker.indexOfSelectedItem == 1, "Picker shows saved English preference")
+        var changed: DisplayLanguage?
+        settings.onLanguage = { changed = $0 }
+        languagePicker.selectItem(at: 2)
+        NSApp.sendAction(languagePicker.action!, to: languagePicker.target, from: languagePicker)
+        check(changed == .simplifiedChinese, "Picker dispatches selected language")
+        let historyEntry = control("textHistoryEntry", as: NSButton.self)
+        let historyVisibility = control("textHistoryVisibility", as: NSSwitch.self)
+        let retentionControl = control("textRetention", as: NSPopUpButton.self)
+        check(!historyEntry.isHidden && historyVisibility.state == .on && retentionControl.indexOfSelectedItem == 0, "History upgrade defaults")
+        settings.textHistoryState(false, retention: .thirtyDays)
+        check(historyEntry.isHidden && historyVisibility.state == .off && retentionControl.indexOfSelectedItem == 1, "History callbacks survive category layout")
+        settings.textHistoryState(true, retention: .latest500)
+        var loginChanged: Bool?, autoOpenChanged: Bool?
+        settings.onLogin = { loginChanged = $0 }; settings.onAutoOpen = { autoOpenChanged = $0 }
+        for toggle in descendants(content).compactMap({ $0 as? NSSwitch }) {
+            if let action = toggle.action, ["toggleLogin", "toggleAutoOpen"].contains(NSStringFromSelector(action)) {
+                toggle.state = .on; NSApp.sendAction(action, to: toggle.target, from: toggle)
+            }
+        }
+        check(loginChanged == true && autoOpenChanged == true, "General and transfer switches retain callbacks")
+        let draft = control("deviceName", as: NSTextField.self)
+        draft.stringValue = "Unsaved name 中文 🧪"
+        check(window.makeFirstResponder(draft), "Name field accepts keyboard focus")
+        let editor = draft.currentEditor() as! NSTextView
+        editor.string = "Unsaved name 中文 🧪"
+        for section in SettingsSection.allCases { settings.selectSection(section) }
+        check(draft.stringValue == "Unsaved name 中文 🧪", "Switching pages retains unsaved edits")
+        check(settings.selectedSection == .about, "Last page remains selected")
+        for item in window.toolbar!.items {
+            NSApp.sendAction(item.action!, to: item.target, from: item)
+            check(window.toolbar!.selectedItemIdentifier == item.itemIdentifier, "Toolbar changes selected page")
+        }
+        check(window.toolbar!.items.count == 5, "Five native toolbar categories")
+        let maintenance = control("settingsMaintenance", as: NSStackView.self)
+        let disclosure = control("settingsMaintenanceToggle", as: NSButton.self)
+        check(maintenance.isHidden, "Maintenance starts collapsed")
+        disclosure.performClick(nil); check(!maintenance.isHidden, "Maintenance opens")
+        disclosure.performClick(nil); check(maintenance.isHidden, "Maintenance closes")
+        let peer = DiscoveredPeer(id: "isolated-peer", name: "Office Mac — Shared workspace 中文 🧪", paired: true, connected: false)
+        settings.updatePeers([], preferred: nil)
+        settings.updatePeers([peer], preferred: peer.id)
+        check(control("devicePicker", as: NSPopUpButton.self).titleOfSelectedItem?.contains(peer.name) == true, "Offline trusted device remains visible")
+        settings.folder("/isolated-test/Very long folder name/Design resources/Received files/中文目录")
+        settings.connectionInfo("192.0.2.1 / 2001:db8::1 · 12345")
+        settings.progress(TransferUpdate(id: UUID(), peerName: peer.name, receiving: false, completed: 50, total: 100, status: "Transferring", finished: false, succeeded: false))
+        settings.status("Isolated UI check")
+        var fired = Set<String>()
+        settings.onSave = { check($0 == draft.stringValue, "Save receives retained draft"); fired.insert("save") }
+        settings.onPair = { fired.insert("pair") }; settings.onManual = { fired.insert("manual") }
+        settings.onConnect = { check($0 == peer.id, "Connect ID"); fired.insert("connect") }
+        settings.onForget = { check($0 == peer.id, "Forget ID"); fired.insert("forget") }
+        settings.onFolder = { fired.insert("folder") }; settings.onSend = { fired.insert("send") }
+        settings.onPreview = { fired.insert("preview") }; settings.onCancel = { fired.insert("cancel") }
+        settings.onReveal = { fired.insert("reveal") }; settings.onPermissions = { fired.insert("permissions") }
+        settings.onTextHistory = { fired.insert("history") }; settings.onClearTextHistory = { fired.insert("clearHistory") }
+        settings.onSendText = { fired.insert("sendText") }; settings.onUpdates = { fired.insert("updates") }
+        settings.onReset = { fired.insert("reset") }; settings.onQuit = { fired.insert("quit") }
+        let expected: [String: String] = ["save":"save", "pair":"pair", "manual":"manual", "connect":"connect", "forget":"forget",
+            "chooseFolder":"folder", "send":"send", "preview":"preview", "cancel":"cancel", "reveal":"reveal", "permissions":"permissions",
+            "openTextHistory":"history", "clearTextHistory":"clearHistory", "sendText":"sendText", "checkUpdates":"updates", "reset":"reset", "quit":"quit"]
+        for button in descendants(content).compactMap({ $0 as? NSButton }) {
+            if let action = button.action, expected[NSStringFromSelector(action)] != nil { NSApp.sendAction(action, to: button.target, from: button) }
+        }
+        check(fired == Set(expected.values), "All existing action buttons remain wired to callbacks")
+        var hiddenHistory: Bool?, selectedRetention: TextRetention?
+        settings.onTextHistoryVisibility = { hiddenHistory = $0 }; settings.onTextRetention = { selectedRetention = $0 }
+        historyVisibility.state = .off; NSApp.sendAction(historyVisibility.action!, to: historyVisibility.target, from: historyVisibility)
+        retentionControl.selectItem(at: 1); NSApp.sendAction(retentionControl.action!, to: retentionControl.target, from: retentionControl)
+        check(hiddenHistory == false && selectedRetention == .thirtyDays, "Text preferences dispatch callbacks")
+        settings.textHistoryState(true, retention: .latest500)
+        let snapshotIndex = CommandLine.arguments.firstIndex(of: "--snapshot")
+        let snapshot = snapshotIndex.flatMap { CommandLine.arguments.count > $0 + 1 ? URL(fileURLWithPath: CommandLine.arguments[$0 + 1]) : nil }
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            window.appearance = NSAppearance(named: appearance)
+            for height: CGFloat in [520, 340] {
+                window.setContentSize(NSSize(width: 650, height: height))
+                window.displayIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.03))
+                check(abs(content.bounds.height - height) <= 1, "Window keeps requested content height")
+                for section in SettingsSection.allCases {
+                    settings.selectSection(section); window.displayIfNeeded()
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+                    content.layoutSubtreeIfNeeded()
+                    let scroll = page(section), document = scroll.documentView!
+                    document.layoutSubtreeIfNeeded()
+                    let stack = document.subviews.first as! NSStackView
+                    check(document.frame.width <= scroll.contentView.bounds.width + 1, "No horizontal scrolling")
+                    check(abs(scroll.contentView.bounds.minY) <= 1, "Selected page starts at its top")
+                    check(document.frame.height >= scroll.contentView.bounds.height - 1, "Short screens scroll vertically")
+                    for view in descendants(stack) where !view.isHiddenOrHasHiddenAncestor {
+                        let frame = view.convert(view.bounds, to: document)
+                        check(frame.minX >= -1 && frame.maxX <= document.bounds.maxX + 1, "Category control fits document: " + section.rawValue)
+                        if let button = view as? NSButton {
+                            check(button.frame.width >= button.intrinsicContentSize.width - 1, "Translated button is not clipped: " + button.title)
+                        }
+                    }
+                    check(SettingsSection.allCases.filter { !page($0).isHidden } == [section], "Exactly one page is visible")
+                    if let snapshot {
+                        let frameView = content.superview ?? content
+                        frameView.layoutSubtreeIfNeeded()
+                        let bitmap = frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds)!
+                        frameView.cacheDisplay(in: frameView.bounds, to: bitmap)
+                        let suffix = appearance == .aqua ? "light" : "dark"
+                        let filename = snapshot.deletingPathExtension().lastPathComponent + "-" + section.rawValue + "-" + suffix + (height == 340 ? "-short" : "") + ".png"
+                        try bitmap.representation(using: .png, properties: [:])!.write(to: snapshot.deletingLastPathComponent().appendingPathComponent(filename))
                     }
                 }
             }
         }
-        let languagePicker = stack.arrangedSubviews.compactMap { $0 as? NSStackView }
-            .flatMap { $0.arrangedSubviews }.first { $0.identifier?.rawValue == "displayLanguage" } as? NSPopUpButton
-        check(languagePicker?.indexOfSelectedItem == 1, "Picker shows saved English preference")
-        var changed: DisplayLanguage?
-        settings.onLanguage = { changed = $0 }
-        languagePicker?.selectItem(at: 2)
-        if let picker = languagePicker, let action = picker.action { NSApp.sendAction(action, to: picker.target, from: picker) }
-        check(changed == .simplifiedChinese, "Picker dispatches selected language")
-        check(document.frame.height >= scroll.contentView.bounds.height, "Scrollable short screen")
-        func descendants(_ view:NSView) -> [NSView] { [view] + view.subviews.flatMap {descendants($0)} }
-        let controls = descendants(document)
-        let historyEntry = controls.first {$0.identifier?.rawValue == "textHistoryEntry"} as! NSButton
-        let historyVisibility = controls.first {$0.identifier?.rawValue == "textHistoryVisibility"} as! NSSwitch
-        let retentionControl = controls.first {$0.identifier?.rawValue == "textRetention"} as! NSPopUpButton
-        check(!historyEntry.isHidden && historyVisibility.state == .on && retentionControl.indexOfSelectedItem == 0,"History settings upgrade defaults")
-        settings.textHistoryState(false,retention:.thirtyDays)
-        check(historyEntry.isHidden && historyVisibility.state == .off && retentionControl.indexOfSelectedItem == 1,"Hidden history entry and persisted retention selection")
-        settings.textHistoryState(true,retention:.latest500)
-        print("PASS: " + L10n.language + " settings layout at 650×600")
-        if let index = CommandLine.arguments.firstIndex(of: "--snapshot-bottom"), CommandLine.arguments.count > index+1 {
-            content.layoutSubtreeIfNeeded()
-            scroll.contentView.scroll(to:NSPoint(x:0,y:max(0,document.bounds.height-scroll.contentView.bounds.height)))
-            scroll.reflectScrolledClipView(scroll.contentView)
-            let bitmap = content.bitmapImageRepForCachingDisplay(in:content.bounds)!
-            content.cacheDisplay(in:content.bounds,to:bitmap)
-            try bitmap.representation(using:.png,properties:[:])!.write(to:URL(fileURLWithPath:CommandLine.arguments[index+1]))
-        }
-        if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.arguments.count > index + 1 {
-            guard let bitmap = content.bitmapImageRepForCachingDisplay(in: content.bounds) else { fatalError("No bitmap") }
-            content.cacheDisplay(in: content.bounds, to: bitmap)
-            try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
-        }
+        settings.selectSection(.general)
+        check(draft.stringValue == "Unsaved name 中文 🧪", "Layout and callbacks do not replace draft")
+        print("PASS: " + L10n.language + " categorized settings, callbacks, drafts, history, toolbar and 20 light/dark/short-screen layouts")
         if let index = CommandLine.arguments.firstIndex(of: "--app"), CommandLine.arguments.count > index + 1 {
             check(L10n.resources.bundleURL == Bundle.main.bundleURL, "Relocated app uses main resources, not build resources")
             guard let app = Bundle(path: CommandLine.arguments[index + 1]) else { fatalError("No packaged bundle") }

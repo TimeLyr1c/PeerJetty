@@ -266,3 +266,19 @@
 "text.notification_body" = "来自 %1$@。点击查看并复制。";
 "text.latest" = "查看最近收到的文本…";
 "text.no_received" = "本次运行还没有收到文本。";
+
+/* Categorized native settings */
+"settings.window_title" = "PeerJetty 设置";
+"settings.tab_general" = "通用";
+"settings.tab_devices" = "设备";
+"settings.tab_transfers" = "传输";
+"settings.tab_text" = "文本";
+"settings.tab_about" = "关于";
+"settings.save_name" = "保存";
+"settings.connection_heading" = "本机连接信息";
+"settings.drop_heading" = "发送文件";
+"settings.activity_heading" = "传输状态";
+"settings.maintenance" = "权限与维护";
+"settings.license" = "MIT 许可证";
+"settings.license_hint" = "PeerJetty 采用 MIT 许可证。完整条款请查看源码仓库中的 LICENSE。";
+"settings.about_hint" = "在局域网中，与已配对的 Mac 交接文件和文本。";
