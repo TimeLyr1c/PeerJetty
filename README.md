@@ -90,3 +90,5 @@ README and release notes are available in English and Simplified Chinese. The ap
 [MIT](LICENSE). PeerJetty grew from the OpenOnMini Starter supplied by the project founder's roommate. The original source baseline is preserved in `Original/`; PeerJetty's bidirectional LAN implementation lives in `Sources/`. See [license and source notes](LICENSE-NOTES.md).
 
 The accepted five-page settings refinement is included in the local 0.4.0/build22 installer: native toolbar navigation, clear headings, subtle grouped surfaces and device connection summaries.
+
+The local build23 candidate fixes task-specific cancellation, authenticated bilateral unpairing with honest offline/legacy fallback, clearer connection states, receiving-folder alignment and Dock-hidden settings behavior. Manual connection information groups addresses by network interface; Stage Manager and dual-Mac acceptance remain device checks.

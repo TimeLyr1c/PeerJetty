@@ -72,3 +72,10 @@ Settings now uses 13 pt form labels, hints and controls, 13 pt semibold group he
 General and Devices are the first-stage review surfaces: 20 pt page heading, 13 pt help, 15 pt device/name text, quiet 10 pt rounded native-color sections with 18 pt insets and 20 pt separation. SettingsGroupSurface is local to Settings.swift and draws one static native background/edge without shadow, glass or animation. Device name/trust/connection summary uses existing DiscoveredPeer updates and selection, never another probe; local name drafts remain untouched. After owner approval, Transfers/Text/About share the same header and surface layout; Transfers includes a folder symbol. The settings-only comparison now uses f1c67f7 as Before at outputs/previews/settings-app/.
 
 通用／设备为第一阶段样稿；其余三页待确认后统一。顶部五分类、配置回调、动画、协议和身份均保留。
+
+
+### build23 settings behavior
+
+`SettingsPathSurface` provides the native receiving-path field (8 pt inset, 6 pt corner, semantic border). Transfer activity is keyed by UUID and ordered by first active event; a finished task never leaves a Cancel button. The device group reuses a wrapping trust-result notice/re-pair action. Settings remains a normal primary managed window; Dock-hidden deactivation hides it without closing its controller or editing draft, except during sheets/modal interactions. Network information reuses native wrapping labels and a collapsed secondary section; interface metadata comes from `LocalNetworkAddress`, refreshed by an event-driven `NWPathMonitor`.
+
+接收路径使用小型边框容器，活动任务按 UUID 维护；解除结果和重新配对入口复用设备分组。设置不新增动画；隐藏 Dock 时离开前台只隐藏窗口，系统弹窗期间不隐藏。网络地址依据系统接口信息与网络变化事件刷新，不增加持续轮询。

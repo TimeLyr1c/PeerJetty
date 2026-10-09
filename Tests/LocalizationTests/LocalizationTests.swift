@@ -106,6 +106,7 @@ struct LocalizationChecks {
             }
         }
         check(loginChanged == true && autoOpenChanged == true, "General and transfer switches retain callbacks")
+        settings.resetOpeningFocus(); check(window.firstResponder === window,"Opening settings leaves no text field selected")
         let draft = control("deviceName", as: NSTextField.self)
         draft.stringValue = "Unsaved name 中文 🧪"
         check(window.makeFirstResponder(draft), "Name field accepts keyboard focus")
@@ -185,7 +186,16 @@ struct LocalizationChecks {
         check(summaryName.stringValue == L10n.text("settings.no_devices"), "Empty device summary")
         settings.updatePeers([peer],preferred:peer.id)
         check(draft.stringValue == "Unsaved name 中文 🧪", "Peer refresh preserves local draft")
-        settings.connectionInfo("192.0.2.1 / 2001:db8::1 · 12345")
+        settings.connectionAddresses([
+            LocalNetworkAddress(host:"192.0.2.1",interface:"en0",label:"Wi-Fi",local:true),
+            LocalNetworkAddress(host:"100.64.0.2",interface:"utun9",label:"utun9",local:false)
+        ],port:12345)
+        check(control("connectionInfo",as:NSTextField.self).stringValue == L10n.text("connection.port","12345") + "\nWi-Fi (en0): 192.0.2.1", "Physical interface address has a label and port")
+        check(control("otherConnectionGroup",as:NSStackView.self).isHidden, "Other network addresses start collapsed")
+        check(control("otherConnectionInfo",as:NSTextField.self).stringValue.contains("utun9"), "Other interfaces remain available without inferred VPN names")
+        settings.connectionAddresses([],port:nil)
+        check(control("connectionInfo",as:NSTextField.self).stringValue == L10n.text("settings.connection_not_ready"), "Missing listener is explicit")
+        settings.connectionAddresses([LocalNetworkAddress(host:"192.0.2.1",interface:"en0",label:"Wi-Fi",local:true)],port:12345)
         settings.progress(TransferUpdate(id: UUID(), peerName: peer.name, receiving: false, completed: 50, total: 100, status: "Transferring", finished: false, succeeded: false))
         settings.status("Isolated UI check")
         var fired = Set<String>()
@@ -203,9 +213,27 @@ struct LocalizationChecks {
             "chooseFolder":"folder", "send":"send", "cancel":"cancel", "reveal":"reveal", "permissions":"permissions",
             "openLatestText":"latestText", "openTextHistory":"history", "clearTextHistory":"clearHistory", "sendText":"sendText", "checkUpdates":"updates", "reset":"reset", "quit":"quit"]
         for button in descendants(content).compactMap({ $0 as? NSButton }) {
-            if let action = button.action, expected[NSStringFromSelector(action)] != nil { NSApp.sendAction(action, to: button.target, from: button) }
+            if let action = button.action, expected[NSStringFromSelector(action)] != nil {
+                NSApp.sendAction(action, to: button.target, from: button)
+                if NSStringFromSelector(action) == "forget", let sheet = window.attachedSheet {
+                    settings.hideWhenInactive(dockVisible:false)
+                    check(window.attachedSheet === sheet,"Inactive fallback preserves confirmation sheet")
+                    window.endSheet(sheet,returnCode:.alertFirstButtonReturn)
+                    RunLoop.main.run(until:Date().addingTimeInterval(0.05))
+                }
+            }
         }
         check(fired == Set(expected.values), "All existing action buttons remain wired to callbacks")
+        let cancellation = control("cancelActiveTransfer",as:NSButton.self)
+        let first = UUID(), second = UUID()
+        func transfer(_ id:UUID,_ finished:Bool) -> TransferUpdate { TransferUpdate(id:id,peerName:"Test",receiving:true,completed:finished ? 100 : 50,total:100,status:"Test",finished:finished,succeeded:finished) }
+        settings.progress(TransferUpdate(id:settings.cancelTarget!,peerName:"Test",receiving:false,completed:100,total:100,status:"Done",finished:true,succeeded:true))
+        settings.progress(transfer(first,false)); settings.progress(transfer(second,false))
+        check(settings.cancelTarget == second && !cancellation.isHidden,"Latest parallel task is cancellable")
+        settings.progress(transfer(second,true)); check(settings.cancelTarget == first,"Finish switches cancellation to remaining task")
+        settings.progress(transfer(first,true)); check(cancellation.isHidden,"Finished tasks remove useless cancel control")
+        settings.trustChanged(L10n.text("unpair.remote","Mac")); check(!control("trustNotice",as:NSStackView.self).isHidden,"Unpair notice is prominent")
+        settings.trustChanged(nil)
         var hiddenHistory: Bool?, selectedRetention: TextRetention?
         settings.onTextHistoryVisibility = { hiddenHistory = $0 }; settings.onTextRetention = { selectedRetention = $0 }
         historyVisibility.state = .off; NSApp.sendAction(historyVisibility.action!, to: historyVisibility.target, from: historyVisibility)
@@ -257,6 +285,10 @@ struct LocalizationChecks {
             }
         }
         settings.selectSection(.general)
+        window.orderFrontRegardless()
+        settings.hideWhenInactive(dockVisible:true); check(window.isVisible,"Dock-visible settings stay managed by system")
+        settings.hideWhenInactive(dockVisible:false); check(!window.isVisible,"Dock-hidden settings hide on deactivation")
+        check(window.level == .normal && window.collectionBehavior.contains(.primary),"Settings is a normal primary window")
         check(draft.stringValue == "Unsaved name 中文 🧪", "Layout and callbacks do not replace draft")
         print("PASS: " + L10n.language + " categorized settings, callbacks, drafts, history, toolbar and 20 light/dark/short-screen layouts")
         if let index = CommandLine.arguments.firstIndex(of: "--app"), CommandLine.arguments.count > index + 1 {

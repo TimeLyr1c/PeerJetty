@@ -167,8 +167,8 @@
 "settings.manual_address" = "手动地址…";
 "settings.no_transfers_yet" = "暂无传输";
 "settings.open_after_receiving" = "收到后自动打开";
-"settings.paired_offline" = "已配对 / 离线";
-"settings.paired_online" = "已配对 / 在线";
+"settings.paired_offline" = "已配对 / 未连接";
+"settings.paired_online" = "已配对 / 已连接";
 "settings.peer_entry" = "%1$@ · %2$@ · %3$@";
 "settings.peerjetty_file_handoff" = "PeerJetty · 双向文件投放";
 "settings.preparing_to_connect" = "准备连接…";
@@ -176,7 +176,7 @@
 "settings.quit" = "退出";
 "settings.receive_folder" = "接收目录";
 "settings.receiving_progress" = "接收自 %1$@ · %2$@";
-"settings.remove_trust" = "移除授权";
+"settings.remove_trust" = "解除配对…";
 "settings.reset_identity" = "重置身份…";
 "settings.save_finish_setup" = "保存 / 完成初始化";
 "settings.select_add_device_on_both_macs" = "请在两台电脑上点击添加设备";
@@ -346,3 +346,21 @@
 "settings.page_transfers_hint" = "管理文件的接收与发送。";
 "settings.page_text_hint" = "发送文本，管理本机历史。";
 "settings.page_about_hint" = "了解 PeerJetty 与本机应用信息。";
+
+"unpair.repair" = "重新配对…";
+"unpair.confirm" = "解除与 %@ 的配对？相关传输将停止，重新连接需在两台 Mac 上添加设备。如果对方离线或版本较旧，目前只能更新本机。";
+"unpair.remote" = "%@ 已解除与本机的配对。请在两台 Mac 上添加设备以重新配对。";
+"unpair.confirmed" = "已确认与 %@ 双方解除配对。请在两台 Mac 上添加设备以重新配对。";
+"unpair.unconfirmed" = "本机已解除与 %@ 的配对，对方尚未确认。请在两台 Mac 上添加设备以重新配对。";
+"unpair.save_failed" = "无法保存解除配对的更改。";
+"unpair.notification" = "设备配对已变更。打开设备设置查看并重新配对。";
+"connection.help" = "仅自动发现失败时使用；在另一台电脑输入本机地址和端口。";
+"connection.copy" = "复制连接信息";
+"connection.other" = "其他网络地址";
+"connection.no_lan" = "暂无启用的 Wi-Fi 或以太网 IPv4 地址。";
+"connection.no_other" = "暂无其他 IPv4 地址。";
+
+"common.cancel" = "取消";
+"unpair.timeout" = "对方未确认解除配对。";
+
+"connection.port" = "监听端口：%@";

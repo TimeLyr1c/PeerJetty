@@ -28,6 +28,9 @@ let aStore = try ConfigurationStore(url: nil, fallback: Configuration(name: "Tes
 let bStore = try ConfigurationStore(url: nil, fallback: Configuration(name: "Test B", receivePath: br.path))
 let aIdentity = try DeviceIdentity.ephemeral(), bIdentity = try DeviceIdentity.ephemeral()
 let a = PeerEngine(identity: aIdentity, store: aStore), b = PeerEngine(identity: bIdentity, store: bStore)
+var confirmedUnpair = false, remoteUnpair = false
+a.onUnpaired = { _,_,remote,confirmed in if !remote { confirmedUnpair = confirmed } }
+b.onUnpaired = { _,_,remote,confirmed in remoteUnpair = remote && confirmed }
 var aPort: UInt16 = 0, bPort: UInt16 = 0
 var aProof: (UUID, String)?, bProof: (UUID, String)?
 var stage = "pairing", pairedSent = false, done = false
@@ -48,8 +51,8 @@ func confirmIfReady() {
         aProof = nil; bProof = nil
     }
 }
-a.onPairing = { id, _, code in check(stage == "pairing", "trusted reconnect must not request pairing"); aProof = (id, code); confirmIfReady() }
-b.onPairing = { id, _, code in check(stage == "pairing", "trusted reconnect must not request pairing"); bProof = (id, code); confirmIfReady() }
+a.onPairing = { id, _, code in check(stage == "pairing" || stage == "repairing", "trusted reconnect must not request pairing"); aProof = (id, code); confirmIfReady() }
+b.onPairing = { id, _, code in check(stage == "pairing" || stage == "repairing", "trusted reconnect must not request pairing"); bProof = (id, code); confirmIfReady() }
 func startSendingIfReady() {
     if !pairedSent, aStore.snapshot.peers.count == 1, bStore.snapshot.peers.count == 1 {
         pairedSent = true; stage = "forward"; a.closePairing(); b.closePairing()
@@ -109,11 +112,16 @@ a.onTransfer = { update in
 }
 a.onPeers = { peers in
     startSendingIfReady()
+    if stage == "repairing", aStore.snapshot.peers.count == 1, bStore.snapshot.peers.count == 1 {
+        passChecks.append("bilateral re-pair requires matching SAS and both confirmations")
+        done = true
+    }
     if stage == "reconnecting", peers.contains(where: { $0.id == bIdentity.fingerprint && $0.connected }) {
         passChecks.append("trusted TLS reconnect without pairing prompt")
         stage = "revoking"; a.forget(bIdentity.fingerprint)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             check(aStore.snapshot.peers.isEmpty, "local revocation persisted")
+            check(bStore.snapshot.peers.isEmpty && confirmedUnpair && remoteUnpair, "bilateral confirmed unpair persisted on both devices")
             let stranger = PeerEngine(identity: try! DeviceIdentity.ephemeral(), store: try! ConfigurationStore(url: nil, fallback: Configuration(name: "Unknown", receivePath: ar.path)))
             strangerID = stranger.identity.fingerprint
             stranger.onPairing = { _, _, _ in check(false, "closed pairing gate must reject strangers") }
@@ -128,7 +136,8 @@ a.onPeers = { peers in
                 check(forwardReceipt && reverseReceipt, "both senders received verified commit receipts")
                 stranger.stop()
                 passChecks.append("revocation and closed pairing window leave unknown identity untrusted")
-                done = true
+                stage = "repairing"; aProof = nil; bProof = nil
+                a.openPairing(); b.openPairing(); a.connect(host:"127.0.0.1",port:bPort)
             }
         }
     }

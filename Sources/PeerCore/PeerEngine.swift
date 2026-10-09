@@ -28,6 +28,9 @@ private final class Session {
     var localConfirmed = false
     var remoteConfirmed = false
     var authorized = false
+    var supportsUnpair = false
+    var unpairing = false
+    var unpairRequest: (UUID, Date)?
     var supportsText = false
     var textInbox = TextInbox()
     var textPending: [TextPayload] = []
@@ -36,6 +39,9 @@ private final class Session {
     var outgoing: Outgoing?
     var incoming: ReceiveTransaction?
     var incomingID: UUID?
+    // Cancelled incoming frames may already be in flight; drain until the next ordered offer.
+    var cancelledTransfers: [UUID] = []
+    var drainingCancelledIncoming = false
     var pending: [PreparedTransfer] = []
     var lastActivity = Date()
     var uiUpdates: [UUID: TimeInterval] = [:]
@@ -48,6 +54,8 @@ public final class PeerEngine {
     public static let serviceType = "_openonmini._tcp"
     public let identity: DeviceIdentity
     public let store: ConfigurationStore
+    /// Peer ID, display name, remotely initiated, and remote persistence confirmed.
+    public var onUnpaired: ((String, String, Bool, Bool) -> Void)?
     public var onPeers: (([DiscoveredPeer]) -> Void)?
     public var onStatus: ((String) -> Void)?
     public var onPairing: ((UUID, String, String) -> Void)?
@@ -60,7 +68,7 @@ public final class PeerEngine {
     public var onRejectedConnection: ((String) -> Void)?
     public var onPreparation: ((Bool) -> Void)?
     // Internal capability override supports isolated legacy-compatibility tests.
-    var advertisedCapabilities: [String]? = ["text-v1"]
+    var advertisedCapabilities: [String]? = ["text-v1", "unpair-v1"]
     private let queue = DispatchQueue(label: "PeerJetty.Network")
     private let gate = PairingGate()
     private var listener: NWListener?
@@ -158,9 +166,9 @@ public final class PeerEngine {
         let config = store.snapshot
         let ids = Set(endpoints.keys).union(config.peers.map(\.id)).union(sessions.values.filter(\.authorized).map(\.peerID))
         let peers = ids.map { id -> DiscoveredPeer in
-            let connected = sessions.values.contains { $0.peerID == id && $0.authorized }
+            let connected = sessions.values.contains { $0.peerID == id && $0.authorized && !$0.unpairing }
             return DiscoveredPeer(id: id, name: config.peers.first { $0.id == id }?.name ?? endpoints[id]?.1 ?? "Mac",
-                                  paired: config.peers.contains { $0.id == id }, connected: connected || endpoints[id] != nil, supportsText: sessions.values.first(where: { $0.peerID == id && $0.authorized }).map { $0.supportsText })
+                                  paired: config.peers.contains { $0.id == id }, connected: connected, supportsText: sessions.values.first(where: { $0.peerID == id && $0.authorized && !$0.unpairing }).map { $0.supportsText })
         }.sorted { $0.name < $1.name }
         DispatchQueue.main.async { self.onPeers?(peers) }
     }
@@ -223,13 +231,59 @@ public final class PeerEngine {
             session.localConfirmed = true; session.wire.send(Message("confirm")); self.authorizeIfReady(session)
         }
     }
+    private func removeTrust(_ id:String) throws {
+        try store.update { config in
+            config.peers.removeAll { $0.id == id }
+            if config.preferredPeer == id { config.preferredPeer = config.peers.first?.id }
+        }
+    }
+    private func unpaired(_ id:String, name:String, remote:Bool, confirmed:Bool) {
+        DispatchQueue.main.async { self.onUnpaired?(id,name,remote,confirmed) }
+    }
     public func forget(_ id: String) {
         queue.async {
             do {
-                try self.store.update { $0.peers.removeAll { $0.id == id }; if $0.preferredPeer == id { $0.preferredPeer = $0.peers.first?.id } }
-                for session in Array(self.sessions.values) where session.peerID == id { self.fail(session, PeerError.localized("peerengine.device_trust_removed", [])) }
-                self.publishPeers(); self.emit(L10n.text("peerengine.device_trust_removed"))
+                let name = self.store.snapshot.peers.first { $0.id == id }?.name ?? "Mac"
+                try self.removeTrust(id)
+                let candidates = self.sessions.values.filter { $0.peerID == id || $0.expectedID == id }
+                let notify = candidates.first { $0.authorized && $0.supportsUnpair && !$0.unpairing }
+                for session in candidates where session.id != notify?.id { self.fail(session, PeerError.localized("peerengine.device_trust_removed", [])) }
+                if let session = notify {
+                    session.unpairing = true; session.unpairRequest = (UUID(),Date())
+                    self.abortTransfers(session, PeerError.localized("peerengine.device_trust_removed", []))
+                    var request = Message("unpair"); request.id = self.identity.fingerprint; request.transfer = session.unpairRequest!.0
+                    session.wire.send(request)
+                } else { self.unpaired(id,name:name,remote:false,confirmed:false) }
+                self.publishPeers()
             } catch { self.emit(error.localizedDescription) }
+        }
+    }
+    private func handleUnpair(_ message:Message, session:Session) throws {
+        guard session.authorized, session.supportsUnpair, message.id == session.peerID, let request = message.transfer else {
+            throw PeerError.localized("text.invalid_message", [])
+        }
+        if message.kind == "unpairReceipt" {
+            guard session.unpairRequest?.0 == request else { throw PeerError.localized("text.invalid_message", []) }
+            session.unpairRequest = nil
+            unpaired(session.peerID,name:session.name,remote:false,confirmed:message.errorKey == nil)
+            fail(session,PeerError.localized("peerengine.device_trust_removed", [])); return
+        }
+        guard !session.unpairing else { throw PeerError.localized("text.invalid_message", []) }
+        var receipt = Message("unpairReceipt"); receipt.id = identity.fingerprint; receipt.transfer = request
+        do { try removeTrust(session.peerID) }
+        catch {
+            receipt.errorKey = "unpair.save_failed"
+            session.wire.send(receipt); emit(error.localizedDescription); return
+        }
+        session.unpairing = true
+        for other in Array(sessions.values) where other.peerID == session.peerID && other.id != session.id {
+            fail(other,PeerError.localized("peerengine.device_trust_removed", []))
+        }
+        abortTransfers(session,PeerError.localized("peerengine.device_trust_removed", []))
+        unpaired(session.peerID,name:session.name,remote:true,confirmed:true); publishPeers()
+        session.wire.send(receipt) { [weak self, weak session] _ in
+            guard let self, let session else { return }
+            self.fail(session,PeerError.localized("peerengine.device_trust_removed", []))
         }
     }
     private func authorizeIfReady(_ session: Session) {
@@ -255,6 +309,7 @@ public final class PeerEngine {
                       let name = message.name, !name.isEmpty, name.utf8.count <= 256,
                       let commitment = message.commitment, commitment.count == 64 else { throw PeerError.localized("peerengine.device_identity_or_protocol_does_not_match", []) }
                 guard (message.capabilities?.count ?? 0) <= 32, message.capabilities?.allSatisfy({ $0.utf8.count <= 64 }) ?? true else { throw PeerError.localized("text.invalid_message", []) }
+                session.supportsUnpair = message.capabilities?.contains("unpair-v1") == true
                 session.supportsText = message.capabilities?.contains("text-v1") == true
                 session.name = name; session.commitment = commitment
                 var reveal = Message("reveal"); reveal.nonce = session.nonce; session.wire.send(reveal)
@@ -273,7 +328,9 @@ public final class PeerEngine {
                 guard session.remoteNonce != nil, !session.remoteConfirmed else { throw PeerError.localized("peerengine.duplicate_or_premature_pairing_confirmation", []) }
                 session.remoteConfirmed = true; authorizeIfReady(session)
             default:
-                guard session.authorized else { throw PeerError.localized("peerengine.unpaired_devices_cannot_send_files", []) }
+                if message.kind == "unpair" || message.kind == "unpairReceipt" { try handleUnpair(message,session:session); return }
+                if session.authorized && session.unpairing { return } // Drain data while waiting for the bounded revocation receipt.
+                guard session.authorized, !session.unpairing else { throw PeerError.localized("peerengine.unpaired_devices_cannot_send_files", []) }
                 if message.kind == "text" || message.kind == "textReceipt" { try handleText(message, session: session) }
                 else { try handleTransfer(message, session: session) }
             }
@@ -283,7 +340,7 @@ public final class PeerEngine {
     public func sendText(_ text: String, peerID: String) -> UUID {
         let id = UUID()
         queue.async {
-            let session = self.sessions.values.first { $0.peerID == peerID && $0.authorized }
+            let session = self.sessions.values.first { $0.peerID == peerID && $0.authorized && !$0.unpairing }
             let payload = TextPayload(id: id, peerID: peerID, peerName: session?.name ?? "Mac", text: text)
             do {
                 try TextRules.validate(text)
@@ -297,7 +354,7 @@ public final class PeerEngine {
     }
     private func textResult(_ payload: TextPayload, _ error: Error?) { DispatchQueue.main.async { self.onTextResult?(payload, error) } }
     private func sendNextText(_ session: Session) {
-        guard session.textOutgoing == nil, !session.textPending.isEmpty else { return }
+        guard session.authorized, !session.unpairing, session.textOutgoing == nil, !session.textPending.isEmpty else { return }
         let payload = session.textPending.removeFirst(); session.textOutgoing = (payload, Date())
         var message = Message("text"); message.transfer = payload.id; message.text = payload.text
         session.wire.send(message)
@@ -322,7 +379,7 @@ public final class PeerEngine {
                 callback(payload) { [weak self, weak session] in
                     guard let self, let session else { return }
                     self.queue.async {
-                        guard self.sessions[session.id] != nil else { return }
+                        guard self.sessions[session.id] != nil, session.authorized, !session.unpairing else { return }
                         session.textInbox.complete(id)
                         var receipt = Message("textReceipt"); receipt.transfer = id; session.wire.send(receipt)
                     }
@@ -350,15 +407,18 @@ public final class PeerEngine {
         }
     }
     private func sendNext(_ session: Session) {
-        guard session.authorized, session.outgoing == nil, !session.pending.isEmpty else { return }
+        guard session.authorized, !session.unpairing, session.outgoing == nil, !session.pending.isEmpty else { return }
         let outgoing = Outgoing(session.pending.removeFirst()); session.outgoing = outgoing
         var offer = Message("offer"); offer.transfer = outgoing.id; offer.manifest = outgoing.prepared.manifest
         session.lastActivity = Date(); session.wire.send(offer); update(session, outgoing: outgoing, status: L10n.text("peerengine.waiting_for_the_receiver"))
     }
     private func handleTransfer(_ message: Message, session: Session) throws {
         guard let transferID = message.transfer else { throw PeerError.localized("peerengine.transfer_identifier_is_missing", []) }
+        if session.cancelledTransfers.contains(transferID), message.kind != "offer" { return }
         switch message.kind {
         case "offer":
+            guard !session.cancelledTransfers.contains(transferID) else { throw PeerError.localized("peerengine.invalid_transfer_end_message", []) }
+            session.drainingCancelledIncoming = false
             guard session.incoming == nil, let manifest = message.manifest,
                   sessions.values.filter({ $0.incoming != nil }).count < 4 else { throw PeerError.localized("peerengine.receiver_busy_or_invalid_manifest", []) }
             do {
@@ -401,6 +461,7 @@ public final class PeerEngine {
             update(session, outgoing: outgoing, status: L10n.remoteError(key: message.errorKey, arguments: message.errorArguments, fallback: message.text ?? L10n.text("peerengine.the_other_device_could_not_receive_the_files")), finished: true)
             session.outgoing = nil; sendNext(session)
         case "cancel":
+            retireCancelled(transferID,session:session)
             if session.incomingID == transferID {
                 updateIncoming(session, status: L10n.text("peerengine.transfer_cancelled"), finished: true); session.incoming?.cancel(); session.incoming = nil; session.incomingID = nil
             } else if let outgoing = session.outgoing, outgoing.id == transferID {
@@ -452,16 +513,31 @@ public final class PeerEngine {
     }
     private func chunk(_ data: Data, session: Session) {
         do {
-            guard session.authorized, let incoming = session.incoming else { throw PeerError.localized("peerengine.invalid_file_data", []) }
+            if session.authorized && session.unpairing { return }
+            if session.incoming == nil, session.drainingCancelledIncoming { return }
+            guard session.authorized, !session.unpairing, let incoming = session.incoming else { throw PeerError.localized("peerengine.invalid_file_data", []) }
             try incoming.append(data); session.lastActivity = Date(); updateIncoming(session, status: L10n.text("peerengine.receiving"))
         } catch { fail(session, error) }
+    }
+    private func retireCancelled(_ id:UUID,session:Session) {
+        if !session.cancelledTransfers.contains(id) { session.cancelledTransfers.append(id) }
+        if session.cancelledTransfers.count > 256 { session.cancelledTransfers.removeFirst() }
     }
     public func cancel(transferID: UUID) {
         queue.async {
             for session in Array(self.sessions.values) {
                 if session.outgoing?.id == transferID || session.incomingID == transferID {
-                    // Closing prevents already-buffered chunks from being confused with the next task.
-                    self.fail(session, PeerError.localized("peerengine.transfer_cancelled_drop_the_files_again_to_retry", []))
+                    self.retireCancelled(transferID,session:session)
+                    var message = Message("cancel"); message.transfer = transferID
+                    session.wire.send(message)
+                    if session.incomingID == transferID {
+                        self.updateIncoming(session,status:L10n.text("peerengine.transfer_cancelled"),finished:true)
+                        session.incoming?.cancel(); session.incoming = nil; session.incomingID = nil
+                        session.drainingCancelledIncoming = true
+                    } else if let outgoing = session.outgoing, outgoing.id == transferID {
+                        self.update(session,outgoing:outgoing,status:L10n.text("peerengine.transfer_cancelled"),finished:true)
+                        session.outgoing = nil; self.sendNext(session)
+                    }
                 }
             }
         }
@@ -485,6 +561,14 @@ public final class PeerEngine {
     }
     private func fail(_ session: Session, _ error: Error) {
         guard sessions.removeValue(forKey: session.id) != nil else { return }
+        if session.unpairRequest != nil {
+            session.unpairRequest = nil; unpaired(session.peerID,name:session.name,remote:false,confirmed:false)
+        }
+        abortTransfers(session,error)
+        session.wire.close(); DispatchQueue.main.async { self.onPairingEnded?(session.id) }
+        emit(error.localizedDescription); publishPeers()
+    }
+    private func abortTransfers(_ session:Session, _ error:Error) {
         if let text = session.textOutgoing { textResult(text.0, error) }
         for text in session.textPending { textResult(text, error) }
         session.textOutgoing = nil; session.textPending.removeAll()
@@ -495,12 +579,11 @@ public final class PeerEngine {
         }
         if !session.pending.isEmpty { emit(L10n.text("peerengine.queued_transfers_were_not_sent_drop_them_again", String(describing: session.pending.count))) }
         session.incoming?.cancel(); session.incoming = nil; session.outgoing = nil; session.pending.removeAll()
-        session.wire.close(); DispatchQueue.main.async { self.onPairingEnded?(session.id) }
-        emit(error.localizedDescription); publishPeers()
     }
     private func tick() {
         if pairingWasOpen, !gate.isOpen { pairingWasOpen = false; advertise(); emit(L10n.text("peerengine.pairing_is_closed")) }
         for session in Array(sessions.values) {
+            if let pending = session.unpairRequest, Date().timeIntervalSince(pending.1) >= 5 { fail(session,PeerError.localized("unpair.timeout", [])); continue }
             if let outgoing = session.textOutgoing, Date().timeIntervalSince(outgoing.1) >= 30 {
                 session.textOutgoing = nil; session.retiredText.append(outgoing.0.id)
                 if session.retiredText.count > 256 { session.retiredText.removeFirst() }

@@ -66,6 +66,14 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     private let temporaryRow = NSStackView()
     private let connectionGroup = NSStackView()
     private let statusDetails = NSButton()
+    private let cancelButton = NSButton()
+    private var activeTransfers: [UUID:TransferUpdate] = [:]
+    private var transferOrder: [UUID] = []
+    private let trustNotice = NSStackView()
+    private let trustNoticeText = NSTextField(wrappingLabelWithString: "")
+    private let otherConnectionGroup = NSStackView()
+    private let otherConnectionLabel = NSTextField(wrappingLabelWithString: "")
+    private var copiedConnectionInfo = ""
     private let latestTextButton = NSButton()
     private let animations = NSSwitch()
     private let login = NSSwitch()
@@ -84,6 +92,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: height), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = L10n.text("settings.window_title"); window.isReleasedWhenClosed = false
         window.toolbarStyle = .preference
+        window.level = .normal; window.collectionBehavior = [.managed, .primary]
+        window.initialFirstResponder = nil
         super.init(window: window)
         window.delegate = self; window.contentMinSize = NSSize(width:640,height:440)
 
@@ -100,7 +110,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         name.placeholderString = L10n.text("settings.device_name"); name.setAccessibilityLabel(L10n.text("settings.device_name"))
         folderLabel.stringValue = configuration.receivePath; folderLabel.lineBreakMode = .byTruncatingMiddle
         folderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        folderLabel.maximumNumberOfLines = 2; folderLabel.toolTip = configuration.receivePath
+        folderLabel.maximumNumberOfLines = 1; folderLabel.toolTip = configuration.receivePath; folderLabel.setAccessibilityValue(configuration.receivePath)
         devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         devices.identifier = NSUserInterfaceItemIdentifier("devicePicker"); devices.setAccessibilityLabel(SettingsSection.devices.title)
         devices.target = self; devices.action = #selector(selectPeer)
@@ -151,7 +161,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             group("settings.group_presence", rows: [setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch),
                 hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login)]),
             group("settings.group_motion", rows: [setting("settings.animations", animations), hint("settings.animations_hint")])]
-        connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.isHidden = true
+        connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.spacing = 10; connectionGroup.isHidden = true
         connectionGroup.identifier = NSUserInterfaceItemIdentifier("connectionInfoGroup")
         connectionGroup.addArrangedSubview(connectionLabel)
         connectionLabel.widthAnchor.constraint(equalTo:connectionGroup.widthAnchor).isActive = true
@@ -172,17 +182,37 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         summary.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         peerName.widthAnchor.constraint(equalTo:summary.widthAnchor).isActive = true
         peerState.widthAnchor.constraint(equalTo:summary.widthAnchor).isActive = true
-        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [row([symbol("desktopcomputer",size:32), summary, spacer(), button(L10n.text("settings.connect_pair"), #selector(connect))]),
+        trustNotice.orientation = .vertical; trustNotice.alignment = .leading; trustNotice.spacing = 10
+        trustNotice.identifier = NSUserInterfaceItemIdentifier("trustNotice"); trustNotice.isHidden = true
+        trustNoticeText.font = .systemFont(ofSize:13,weight:.medium)
+        trustNotice.addArrangedSubview(trustNoticeText)
+        trustNoticeText.widthAnchor.constraint(equalTo:trustNotice.widthAnchor).isActive = true
+        trustNotice.addArrangedSubview(button(L10n.text("unpair.repair"),#selector(pair)))
+        otherConnectionGroup.identifier = NSUserInterfaceItemIdentifier("otherConnectionGroup")
+        otherConnectionLabel.identifier = NSUserInterfaceItemIdentifier("otherConnectionInfo")
+        otherConnectionGroup.orientation = .vertical; otherConnectionGroup.alignment = .leading; otherConnectionGroup.isHidden = true
+        otherConnectionGroup.addArrangedSubview(otherConnectionLabel)
+        otherConnectionLabel.widthAnchor.constraint(equalTo:otherConnectionGroup.widthAnchor).isActive = true
+        otherConnectionLabel.font = .systemFont(ofSize:13); otherConnectionLabel.textColor = .secondaryLabelColor
+        connectionGroup.addArrangedSubview(hint("connection.help"))
+        connectionGroup.addArrangedSubview(button(L10n.text("connection.copy"),#selector(copyConnection)))
+        connectionGroup.addArrangedSubview(button(L10n.text("connection.other"),#selector(toggleOtherConnections)))
+        connectionGroup.addArrangedSubview(otherConnectionGroup)
+        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [trustNotice, row([symbol("desktopcomputer",size:32), summary, spacer(), button(L10n.text("settings.connect_pair"), #selector(connect))]),
             devices, hint("settings.devices_select_a_paired_device_as_your_default"),
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))])]),
             group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
             group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
+        cancelButton.title = L10n.text("settings.cancel_transfer"); cancelButton.bezelStyle = .rounded
+        cancelButton.font = .systemFont(ofSize:13); cancelButton.target = self; cancelButton.action = #selector(cancel)
+        cancelButton.isHidden = true; cancelButton.identifier = NSUserInterfaceItemIdentifier("cancelActiveTransfer")
+        let folderPath = SettingsPathSurface(content:row([symbol("folder",size:20),folderLabel]))
         let transferRows: [NSView] = [group("settings.receive_folder", rows: [
-            row([symbol("folder",size:20), folderLabel, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
+            row([folderPath, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
             setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open")]),
             group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send))])]),
             group("settings.activity_heading", rows: [progressLabel,
-                actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
+                actions([cancelButton, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
         let textRows: [NSView] = [group("settings.group_text_send", rows: [actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton])]),
             group("settings.group_text_history", rows: [setting("text.show_history", showHistory), hint("text.history_setting_hint"),
                 actions([historyOpen]), setting("text.retention", retention)]),
@@ -421,11 +451,34 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         body.isAutomaticLinkDetectionEnabled = false; body.isAutomaticDataDetectionEnabled = false
         body.string = text; scroll.documentView = body; return scroll
     }
-    func folder(_ path: String) { folderLabel.stringValue = path; folderLabel.toolTip = path }
+    func folder(_ path: String) { folderLabel.stringValue = path; folderLabel.toolTip = path; folderLabel.setAccessibilityValue(path) }
     func connectionInfo(_ text: String) { connectionLabel.stringValue = text }
+    func connectionAddresses(_ addresses:[LocalNetworkAddress],port:UInt16?) {
+        guard let port else { connectionLabel.stringValue = L10n.text("settings.connection_not_ready"); copiedConnectionInfo = ""; otherConnectionLabel.stringValue = ""; return }
+        func describe(_ item:LocalNetworkAddress) -> String { "\(item.label) (\(item.interface)): \(item.host)" }
+        let primary = addresses.filter(\.local), other = addresses.filter { !$0.local }
+        connectionLabel.stringValue = L10n.text("connection.port",String(port)) + "\n" + (primary.isEmpty ? L10n.text("connection.no_lan") : primary.map(describe).joined(separator:"\n"))
+        otherConnectionLabel.stringValue = other.isEmpty ? L10n.text("connection.no_other") : other.map(describe).joined(separator:"\n")
+        copiedConnectionInfo = addresses.map { "\($0.host):\(port)" }.joined(separator:"\n")
+    }
+    @objc private func copyConnection() { guard !copiedConnectionInfo.isEmpty else { return }; NSPasteboard.general.clearContents(); NSPasteboard.general.setString(copiedConnectionInfo,forType:.string) }
+    @objc private func toggleOtherConnections() { otherConnectionGroup.isHidden.toggle() }
+    func trustChanged(_ text:String?) { trustNoticeText.stringValue = text ?? ""; trustNotice.isHidden = text == nil }
+    func hideWhenInactive(dockVisible:Bool) {
+        guard !dockVisible, let window, window.isVisible, window.attachedSheet == nil, NSApp.modalWindow == nil else { return }
+        window.orderOut(nil)
+    }
+    func resetOpeningFocus() { window?.makeFirstResponder(window) }
+
     func loginState(_ enabled: Bool) { login.state = enabled ? .on : .off }
     func autoOpenState(_ enabled: Bool) { autoOpen.state = enabled ? .on : .off }
     func progress(_ update: TransferUpdate) {
+        if update.finished { activeTransfers.removeValue(forKey:update.id); transferOrder.removeAll {$0 == update.id} }
+        else { if activeTransfers[update.id] == nil { transferOrder.append(update.id) }; activeTransfers[update.id] = update }
+        cancelButton.isHidden = activeTransfers.isEmpty
+        renderProgress(transferOrder.last.flatMap { activeTransfers[$0] } ?? update)
+    }
+    private func renderProgress(_ update:TransferUpdate) {
         let percent = update.total > 0 ? Int(Double(update.completed) / Double(update.total) * 100) : 0
         let key = update.receiving ? "settings.receiving_progress" : "settings.sending_progress"
         let detail = L10n.text(key, update.peerName, update.status)
@@ -438,11 +491,18 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func selectPeer() { updatePeerSummary(); if let selected, selected.paired { onSelect?(selected.id) } }
     @objc private func connect() { if let selected { onConnect?(selected.id) } }
     @objc private func pair() { onPair?() }
-    @objc private func forget() { if let selected, selected.paired { onForget?(selected.id) } }
+    @objc private func forget() {
+        guard let selected, selected.paired, let window else { return }
+        let alert = NSAlert(); alert.messageText = L10n.text("settings.remove_trust")
+        alert.informativeText = L10n.text("unpair.confirm",selected.name)
+        alert.addButton(withTitle:L10n.text("settings.remove_trust")); alert.addButton(withTitle:L10n.text("common.cancel"))
+        alert.beginSheetModal(for:window) { [weak self] response in if response == .alertFirstButtonReturn { self?.onForget?(selected.id) } }
+    }
     @objc private func chooseFolder() { onFolder?() }
     @objc private func send() { onSend?() }
 
-    @objc private func cancel() { onCancel?() }
+    var cancelTarget: UUID? { transferOrder.last }
+    @objc private func cancel() { if cancelTarget != nil { onCancel?() } }
     @objc private func reveal() { onReveal?() }
     @objc private func manual() { onManual?() }
     @objc private func permissions() { onPermissions?() }
@@ -488,6 +548,21 @@ private final class SettingsGroupSurface: NSView {
         let path = NSBezierPath(roundedRect:bounds.insetBy(dx:0.5,dy:0.5),xRadius:10,yRadius:10)
         (NSColor.controlBackgroundColor.blended(withFraction:0.035,of:.labelColor) ?? NSColor.controlBackgroundColor).setFill(); path.fill()
         NSColor.separatorColor.withAlphaComponent(0.15).setStroke(); path.lineWidth = 1; path.stroke()
+    }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
+}
+
+private final class SettingsPathSurface: NSView {
+    init(content:NSView) {
+        super.init(frame:.zero); translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content); content.translatesAutoresizingMaskIntoConstraints = false
+        setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
+        NSLayoutConstraint.activate([content.leadingAnchor.constraint(equalTo:leadingAnchor,constant:8),content.trailingAnchor.constraint(equalTo:trailingAnchor,constant:-8),content.topAnchor.constraint(equalTo:topAnchor,constant:8),content.bottomAnchor.constraint(equalTo:bottomAnchor,constant:-8)])
+    }
+    required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
+    override func draw(_ dirtyRect:NSRect) {
+        let path = NSBezierPath(roundedRect:bounds.insetBy(dx:0.5,dy:0.5),xRadius:6,yRadius:6)
+        NSColor.controlBackgroundColor.setFill(); path.fill(); NSColor.separatorColor.withAlphaComponent(0.2).setStroke(); path.stroke()
     }
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
 }

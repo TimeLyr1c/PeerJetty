@@ -1,5 +1,18 @@
 # 0.2.0 验证记录
 
+## 2026-10-09: build23 state, unpairing and settings fixes
+
+- PASS: core integrity/path/no-overwrite checks (9 groups) and loopback TLS harness (9 checks), including bilateral revocation and explicit mutual-SAS re-pairing.
+- PASS: isolated unpair cases: authorized remote deletion, wrong target ID, pre-authorization request, unmatched receipt, five-second timeout, missing legacy capability, offline local removal, local/receiver persistence failure, and ordinary disconnect preserving both trust stores. Revocation during an active file transfer stops both sides and still receives a persisted remote acknowledgement. New text cannot use a revoking control connection.
+- PASS: sender- and receiver-initiated UUID cancellation preserves a concurrent 64 MiB reverse transfer, cleans cancelled staging, preserves the authenticated connection/trust and allows a subsequent file transfer. No framing/version change was introduced.
+- PASS: settings selects the latest-started active UUID, falls back when it finishes and hides Cancel after all tasks finish; late opening restores cached state. English/Chinese native callbacks, name drafts, destructive confirmation sheets, initial window focus, classified addresses, long paths and 40 light/dark/default/minimum-size layouts passed. Snapshots: outputs/previews/settings-build23/ (isolated fixture data, no production identity).
+- PASS: normal primary managed Settings window and Dock-hidden deactivation helper; Dock-on path retains the window, Dock-off hides without destroying drafts; attached confirmation sheets block fallback hiding. This is a controller check, **not a real Stage Manager test**.
+- PASS: text UTF-8 boundaries/duplicates, SQLite retention and failures, native input/focus/shortcuts, TLS authority, parallel files, queue capacity, real 30-second timeout and old file-only capability compatibility. Independent menu/Dock combinations, temporary restoration, restart, persistence failure, system removal and login-event policy checks also passed.
+- No animation, pairing identity, UI speed or icon preference behavior was redesigned. No production Keychain/configuration was read by tests; no installation/push/public release is authorized by this delivery.
+- PENDING: Air/mini real-device bidirectional files/text, remote unpair notification/state refresh and explicit re-pairing; Stage Manager with Dock on/off; folder/system dialog interaction, network changes, VPN/virtual-interface classification and normal keyboard navigation on both machines. Notifications require existing system permission. Offline/old-version peers cannot be remotely revoked immediately.
+
+build23 修复取消按钮与任务对应、双方解除配对和连接状态、接收路径、默认焦点、隐藏 Dock 时的设置隐藏及分类地址。隔离检查通过；Stage Manager、通知和双机真实交互仍需实机验收，不将本机回环测试描述为双机完成。
+
 ## 2026-10-08: real build21 App and DMG delivered
 
 - PASS: release build from clean source 39faeb2; actual app metadata is 0.4.0/build21, arm64, unchanged app.openonmini.desktop bundle identity.

@@ -26,9 +26,9 @@ The stable native autosave name preserves menu positioning, but application conf
 
 ## Connections and complete messages / 连接与完整提示
 
-Devices → Manual connection information starts collapsed, displays this Mac’s local addresses and listener port, and shows Not ready yet before listening. The port is cached independently of the settings window; opening it later generates current addresses. Use these on the other device when nearby discovery fails. Pairing verification remains required.
+Devices → Manual connection information starts collapsed. Active IPv4 Wi-Fi/Ethernet addresses are listed with interface labels and the listener port; other interfaces remain in a separate collapsed list. Classification uses system interface metadata, not IP prefix guesses, and does not promise reachability. Copy connection information copies the listed addresses/port. It shows Not ready yet before listening. The port is cached independently of the settings window; opening it later generates current addresses. Use these on the other device when nearby discovery fails. Pairing verification remains required.
 
-设备 → 手动连接信息默认收起，显示本机地址与监听端口；服务未就绪时明确提示。端口在设置窗口之外缓存，晚打开也能看到当前地址，可在另一台电脑手动连接，仍需要核对配对码。
+设备 → 手动连接信息默认收起，以接口标签逐行显示当前启用的 Wi-Fi／以太网 IPv4 地址和端口；其他接口另行折叠，可复制地址。依据系统接口元数据分类，不根据 IP 前缀猜来源，也不保证可达；未监听时明确提示。端口在设置窗口之外缓存，晚打开也能看到当前地址，可在另一台电脑手动连接，仍需要核对配对码。
 
 Warning cards use a short Open Settings for details cue. Settings retains the original message and offers View details when it exceeds the footer. Details are selectable, scrollable plain text; they do not open links or execute content. Normal version labels display only the product version. About → Diagnostic details retains the build and source commit; build identifiers remain in archives and update provenance.
 
@@ -39,3 +39,18 @@ Warning cards use a short Open Settings for details cue. Settings retains the or
 See [validation](VALIDATION.md). Test the six actions, hide/show/restart, Dock reopen and system removal on both Macs. While hidden, verify bidirectional files/text and notifications. Replay card dismissal and fast reopen with motion on/off and system Reduce Motion. The isolated preview does not connect devices or read production state.
 
 双机检查六项操作、隐藏／恢复／重启、Dock 点击与系统移除，隐藏时检查文件／文本双向传输和通知；回放收起／快速重开，检查动画开关与减少动态效果。隔离预览不连接真实设备、不读生产数据。
+
+
+## Settings and transfer state / 设置与传输状态
+
+Settings is a normal primary managed window. With Dock hidden, switching to another app hides Settings as a conservative fallback; reopening restores its page, position and in-memory draft. Attached sheets and app-modal interactions suppress that hiding. Dock preferences and background transfers do not change. Opening Settings does not automatically select the local-name field; click or Tab still edits normally. Actual Stage Manager grouping remains a real-device check.
+
+设置使用普通主窗口；Dock 隐藏时，切换应用会隐藏设置，重开保留页面、位置和本次运行未保存输入。系统 sheet 或模态交互期间不执行此隐藏，不改 Dock 偏好或后台传输。打开设置不自动选中名称，点击或 Tab 仍正常编辑。Stage Manager 的真实分组仍需双机验收。
+
+Transfers shows the most recently started **active** file task. Cancel targets its UUID; completion/failure/cancellation selects another active task or hides Cancel entirely. Settings opened later replays current active tasks and the latest result. The receive path is in a bordered, vertically centered field with middle truncation, full tooltip and accessibility value.
+
+传输页显示最近开始且仍活动的文件任务，取消按 UUID 指向该任务；结束后切换其他活动任务，全部结束隐藏取消。晚打开设置可恢复状态和最近结果；接收路径有轻边框、居中排列、中间省略及完整提示／辅助功能内容。
+
+Devices separates paired/unpaired from connected/disconnected; discovery alone is not a live connection. Unpair… requires confirmation and shows a prominent device-page result/re-pair entry; when Settings is hidden a generic notification opens that page. Offline/old peers remain explicitly unconfirmed. See [protocol](PROTOCOL.md).
+
+设备页分别呈现配对与连接，发现设备不等于已连接。“解除配对…”先确认，结果与重新配对入口放在设备页醒目位置；未显示设置时用通用系统通知引导。离线／旧版对端明确标为未确认，详见协议。

@@ -3,6 +3,7 @@ import PeerCore
 import ServiceManagement
 import UserNotifications
 import Darwin
+import Network
 
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -28,6 +29,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var peers: [DiscoveredPeer] = []
     private var active: Set<UUID> = []
     private var lastTransfer: UUID?
+    private var transferUpdates: [UUID:TransferUpdate] = [:]
+    private var transferOrder: [UUID] = []
+    private var completedTransfer: TransferUpdate?
+    private var trustFeedback: (id:String,text:String)?
+    private let networkMonitor = NWPathMonitor()
     private var pairingWindows: [UUID: NSWindow] = [:]
     private var pairingCodes: [UUID: (name: String, code: String)] = [:]
     private var lastReceived: [URL] = []
@@ -53,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationDidFinishLaunching(_ notification: Notification) {
         captureLaunchReason()
         setupMenu(); UNUserNotificationCenter.current().delegate = self
+        networkMonitor.pathUpdateHandler = { [weak self] _ in DispatchQueue.main.async { self?.updateConnectionInfo() } }
+        networkMonitor.start(queue:DispatchQueue(label:"PeerJetty.NetworkInfo"))
         // Certificate generation and Keychain access must not block the UI run loop.
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
@@ -98,6 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             guard let self else { return }; self.peers = peers; self.composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); self.settings?.updatePeers(peers, preferred: self.store?.snapshot.preferredPeer)
             let name = peers.first { $0.id == self.store?.snapshot.preferredPeer }?.name ?? L10n.text("dropzone.choose_a_destination")
             self.drop?.view.targetName = name
+            if let notice = self.trustFeedback, peers.contains(where:{$0.id == notice.id && $0.paired && $0.connected}) {
+                self.trustFeedback = nil; self.settings?.trustChanged(nil)
+            }
             if self.active.isEmpty { self.drop?.view.idle() }
         }
         engine.onStatus = { [weak self] text in
@@ -112,12 +123,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         engine.onPairingEnded = { [weak self] id in
             self?.pairingWindows.removeValue(forKey: id)?.close(); self?.pairingCodes.removeValue(forKey: id)
         }
+        engine.onUnpaired = { [weak self] id,name,remote,confirmed in
+            guard let self else { return }
+            let text = L10n.text(remote ? "unpair.remote" : (confirmed ? "unpair.confirmed" : "unpair.unconfirmed"),name)
+            self.trustFeedback = (id,text); self.settings?.trustChanged(text); self.settings?.status(text)
+            if self.settings?.window?.isVisible == true { self.settings?.selectSection(.devices) }
+            if self.settings?.window?.isVisible != true {
+                let content = UNMutableNotificationContent(); content.title = "PeerJetty"; content.body = L10n.text("unpair.notification")
+                content.userInfo = ["trustEvent":true]
+                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier:"trust-"+UUID().uuidString,content:content,trigger:nil))
+            }
+        }
         engine.onTransfer = { [weak self] update in
             guard let self else { return }
-            if update.finished { self.active.remove(update.id) } else { self.active.insert(update.id); self.lastTransfer = update.id }
-            self.refreshBusy(); self.drop?.presentTransfer(update)
-            self.settings?.progress(update)
-            if update.finished, self.active.isEmpty { self.lastTransfer = nil }
+            if update.finished {
+                self.active.remove(update.id); self.transferUpdates.removeValue(forKey:update.id)
+                self.transferOrder.removeAll {$0 == update.id}; self.completedTransfer = update
+            } else {
+                if !self.active.contains(update.id) { self.transferOrder.append(update.id) }
+                self.active.insert(update.id); self.transferUpdates[update.id] = update
+            }
+            self.lastTransfer = self.transferOrder.last
+            self.refreshBusy(); self.drop?.presentTransfer(update); self.settings?.progress(update)
         }
         engine.onReceived = { [weak self] name, urls in
             guard let self else { return }; self.lastReceived = urls; self.notifyReceived(name: name, count: urls.count)
@@ -167,8 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy }
     private func updateConnectionInfo() {
-        let text = listeningPort.map { L10n.text("connection.local_address", Self.localAddresses().joined(separator:" / "), String($0)) } ?? L10n.text("settings.connection_not_ready")
-        settings?.connectionInfo(text)
+        settings?.connectionAddresses(LocalNetworkAddress.discover(),port:listeningPort)
     }
     @objc private func addDevice() { showSettings(); settings?.selectSection(.devices); engine?.openPairing() }
     @objc private func checkUpdates() {
@@ -199,7 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onForget = { [weak self] id in self?.engine?.forget(id) }
             controller.onFolder = { [weak self] in self?.chooseFolder() }
             controller.onSend = { [weak self] in self?.chooseFiles() }
-            controller.onCancel = { [weak self] in if let id = self?.lastTransfer { self?.engine?.cancel(transferID: id) } }
+            controller.onCancel = { [weak self] in if let id = self?.settings?.cancelTarget { self?.engine?.cancel(transferID: id) } }
             controller.onReveal = { [weak self] in self?.revealReceived() }
             controller.onManual = { [weak self] in self?.manualConnection() }
             controller.onPermissions = {
@@ -250,12 +276,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let icons { settings?.iconState(menu:icons.menu, dock:icons.dock, temporary:icons.temporary) }
         settings?.latestTextState(latestText != nil)
         updateConnectionInfo()
+        if let completedTransfer { settings?.progress(completedTransfer) }
+        for id in transferOrder { if let update = transferUpdates[id] { settings?.progress(update) } }
+        if let trustFeedback { settings?.trustChanged(trustFeedback.text); settings?.selectSection(.devices) }
         if let lastStatus { settings?.status(lastStatus) }
         settings?.updatePeers(peers, preferred: store.snapshot.preferredPeer)
         settings?.animationState(store.snapshot.animationsEnabled)
         settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
         settings?.loginState(SMAppService.mainApp.status == .enabled)
-        settings?.showWindow(nil); NSApp.activate(ignoringOtherApps: true); settings?.window?.makeKeyAndOrderFront(nil)
+        settings?.showWindow(nil); NSApp.activate(ignoringOtherApps: true); settings?.window?.makeKeyAndOrderFront(nil); settings?.resetOpeningFocus()
     }
     private func chooseFolder() {
         guard active.isEmpty else { settings?.status(L10n.text("application.wait_for_transfers_to_finish_before_changing_the")); return }
@@ -444,6 +473,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let value = response.notification.request.content.userInfo["textEntry"] as? String, let id = UUID(uuidString:value) {
             DispatchQueue.main.async { [weak self] in self?.openText(id) }
         }
+        if response.notification.request.content.userInfo["trustEvent"] as? Bool == true {
+            DispatchQueue.main.async { [weak self] in self?.showSettings(); self?.settings?.selectSection(.devices) }
+        }
         completion()
     }
     private func requestNotifications() {
@@ -472,17 +504,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         userOpened = true; icons?.recover(); showSettings(); return true
     }
-    func applicationWillTerminate(_ notification: Notification) { icons?.hideTemporary(); engine?.stop() }
-    private static func localAddresses() -> [String] {
-        var addresses: [String] = []; var list: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&list) == 0 else { return [L10n.text("application.see_system_network_settings")] }; defer { freeifaddrs(list) }
-        var node = list
-        while let item = node {
-            let info = item.pointee; node = info.ifa_next
-            guard let address = info.ifa_addr, address.pointee.sa_family == UInt8(AF_INET), info.ifa_flags & UInt32(IFF_LOOPBACK) == 0 else { continue }
-            var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-            if getnameinfo(address, socklen_t(address.pointee.sa_len), &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST) == 0 { addresses.append(String(cString: buffer)) }
-        }
-        return addresses.isEmpty ? [L10n.text("application.no_local_network_address_available")] : Array(Set(addresses)).sorted()
+    func applicationWillTerminate(_ notification: Notification) { networkMonitor.cancel(); icons?.hideTemporary(); engine?.stop() }
+    func applicationDidResignActive(_ notification:Notification) {
+        settings?.hideWhenInactive(dockVisible:icons?.dock ?? true)
     }
 }

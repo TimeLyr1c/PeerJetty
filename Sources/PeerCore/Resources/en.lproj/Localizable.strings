@@ -167,8 +167,8 @@
 "settings.manual_address" = "Manual address…";
 "settings.no_transfers_yet" = "No transfers yet";
 "settings.open_after_receiving" = "Open after receiving";
-"settings.paired_offline" = "Paired / Offline";
-"settings.paired_online" = "Paired / Online";
+"settings.paired_offline" = "Paired / Not connected";
+"settings.paired_online" = "Paired / Connected";
 "settings.peer_entry" = "%1$@ · %2$@ · %3$@";
 "settings.peerjetty_file_handoff" = "PeerJetty · File handoff";
 "settings.preparing_to_connect" = "Preparing to connect…";
@@ -176,7 +176,7 @@
 "settings.quit" = "Quit";
 "settings.receive_folder" = "Receive folder";
 "settings.receiving_progress" = "Receiving from %1$@ · %2$@";
-"settings.remove_trust" = "Remove trust";
+"settings.remove_trust" = "Unpair…";
 "settings.reset_identity" = "Reset identity…";
 "settings.save_finish_setup" = "Save / Finish setup";
 "settings.select_add_device_on_both_macs" = "Select Add device on both Macs";
@@ -346,3 +346,21 @@
 "settings.page_transfers_hint" = "Choose how files arrive and leave.";
 "settings.page_text_hint" = "Send text and manage local history.";
 "settings.page_about_hint" = "PeerJetty, built for your paired Macs.";
+
+"unpair.repair" = "Pair again…";
+"unpair.confirm" = "Unpair with %@? Transfers will stop. Both Macs must add the device again to reconnect. If the other Mac is offline or uses an older version, only this Mac can be updated now.";
+"unpair.remote" = "%@ unpaired this Mac. Add the device on both Macs to pair again.";
+"unpair.confirmed" = "Both Macs have unpaired from %@. Add the device on both Macs to pair again.";
+"unpair.unconfirmed" = "This Mac unpaired from %@; the other Mac has not confirmed. Add the device on both Macs to pair again.";
+"unpair.save_failed" = "Unable to save the unpairing change.";
+"unpair.notification" = "Pairing changed. Open Devices settings to review and pair again.";
+"connection.help" = "Use only if discovery fails. Enter this Mac’s address and port on the other Mac.";
+"connection.copy" = "Copy connection information";
+"connection.other" = "Other network addresses";
+"connection.no_lan" = "No active Wi-Fi or Ethernet IPv4 address.";
+"connection.no_other" = "No other IPv4 addresses.";
+
+"common.cancel" = "Cancel";
+"unpair.timeout" = "The other Mac did not confirm unpairing.";
+
+"connection.port" = "Listening port: %@";
