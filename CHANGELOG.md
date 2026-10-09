@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — earlier check and slightly thicker stroke, planned build21
+
+Moves check start 20ms earlier, to 170ms before ring rotation ends. Stroke increases from 15.5% to 16.5% of radius (~6.5%). Other timing and geometry stay fixed. Preview only.
+
+对勾再提前 20ms，在转圈结束前 170ms 开始；线宽从半径的 15.5% 增至 16.5%（约加粗 6.5%），其他节奏与比例不变，先更新预览。
+
 ## Unreleased — overlapping ring/check handoff, planned build21
 
 Starts the check 150ms before the 720ms ring flip ends, overlapping its final deceleration. Check drawing remains 600ms; success hold still begins after drawing and settlement finish. Geometry and other pacing unchanged. Preview only.

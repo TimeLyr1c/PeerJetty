@@ -135,7 +135,7 @@ struct FileSuccessSequence {
         fill = max(progressDuration, profile.success * 0.25)
         flip = profile.ringFlip
         pause = profile.checkPause
-        overlap = min(0.15, flip * 0.25)
+        overlap = min(0.17, flip * 0.28)
         draw = profile.success * 0.50
         settle = MotionEffects.spring(duration:profile.success * 0.15,from:0.985).duration
     }

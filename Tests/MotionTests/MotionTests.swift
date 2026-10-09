@@ -202,7 +202,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             tick.path!.applyWithBlock { element in
                 if element.pointee.type == .moveToPoint || element.pointee.type == .addLineToPoint { actual.append(element.pointee.points[0]) }
             }
-            check(actual.count==3 && abs(tick.lineWidth/radius-0.155)<1e-9,"reference check scales with circular stroke width")
+            check(actual.count==3 && abs(tick.lineWidth/radius-0.165)<1e-9,"reference check scales with circular stroke width")
             for (index,point) in actual.enumerated() {
                 let gap=1-hypot(point.x-size.width/2,point.y-size.height/2)/radius
                 check(abs(gap-referenceGaps[index])<0.00001,"reference endpoint spacing survives resizing and rectangular bounds")
@@ -295,7 +295,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check((strokes.fromValue as! Double) == 0 && (strokes.toValue as! Double) == 1 && strokes.timingFunction != nil,"one continuous easing crosses the elbow without segment restart")
 
         check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime+color.duration-rotation.beginTime)<0.01,"blue-to-green transition completes before the two green rings rotate")
-        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause+0.15)<0.01,"check starts 150ms before rotation ends")
+        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause+0.17)<0.01,"check starts 170ms before rotation ends")
         reducedTransparency=true; policy.notify()
         check(ghosts.allSatisfy {($0.animationKeys() ?? []).isEmpty && $0.opacity == 0} && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"reduce transparency removes ghosts without disrupting success")
         wait(max(0,rotation.beginTime+rotation.duration-0.05-CACurrentMediaTime()))

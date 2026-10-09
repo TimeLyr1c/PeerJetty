@@ -1,5 +1,12 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: 170ms overlap and slightly thicker stroke, build21 preview
+
+- Source candidate starts the check 170ms before ring rotation ends, 20ms earlier than the preceding 150ms preview; stroke width increases from 15.5% to 16.5% of radius.
+- Isolated preview rebuilt for owner review. No automated tests were run for this small adjustment; no installation, DMG, push or release.
+
+对勾再提前 20ms、线条再加粗，预览已更新；本轮未运行自动测试。
+
 ## 2026-10-08: increased check overlap, build21 preview
 
 - Candidate now starts check drawing 150ms before the 720ms flip ends (previously 90ms), making the overlap 60ms longer. Check drawing, ring geometry and remaining cadence stay fixed.

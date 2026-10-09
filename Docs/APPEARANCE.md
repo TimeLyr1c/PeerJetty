@@ -22,9 +22,9 @@ The native card sits in a transparent host with 32-point padding on each side. A
 
 ## Motion / 运动
 
-Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 150ms overlap between final deceleration and check drawing.
+Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 170ms overlap between final deceleration and check drawing.
 
-动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 150ms 开始画勾。
+动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 170ms 开始画勾。
 
 | Stage / 阶段 | Fixed timing / 固定节奏 |
 |---|---:|
@@ -34,7 +34,7 @@ Animation timing is fixed. Only Enable interface animations and Preview animatio
 | Ring flip, 1.5 turns / 圆环翻转一圈半 | 720 ms |
 | Pause before check / 画勾前暂停 | 0 ms |
 | Check drawing / 对勾绘制 | 600 ms |
-| Check overlap / 画勾提前重叠 | 150 ms |
+| Check overlap / 画勾提前重叠 | 170 ms |
 | File success minimum / 成功反馈最短时长 | 1710 ms |
 | Maximum ring speed / 圆环最大视觉速度 | 150%/s |
 | Hold after check / 完成后停留 | 1.8 s |
@@ -60,15 +60,15 @@ Full bytes without receiver confirmation still show Waiting for confirmation. On
 
 After confirmation, the ring fills and turns green. During the 720ms flip there are exactly two visible green rings: the main ring and one finite companion at 65% peak opacity. Both turn one-and-a-half times in opposite directions, with different X tilts (+0.45 / -0.85 radians at peak) and opposite Z-plane twist (±0.70 radians). Tilt/twist use a smooth sine envelope over ninth-order rotation progress, converging to the same circle at rest. The companion uses eased opacity at entry/exit and fades out as rotation ends; the check starts 150ms before rotation ends and draws over 600ms. These are transform keyframes, not frame callbacks or optical motion blur. The reference screenshot provides geometry, not an exact Apple animation trajectory.
 
-确认后圆环补齐并变绿；720ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.45／−0.85 弧度，平面扭转为 ±0.70 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环平滑显现／淡出，在翻转结束时淡出，最后 150ms 已开始用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
+确认后圆环补齐并变绿；720ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.45／−0.85 弧度，平面扭转为 ±0.70 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环平滑显现／淡出，在翻转结束时淡出，最后 170ms 已开始用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
 
 Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the fixed hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
 
 减少透明度／增强对比度禁用拖影，途中修改也会即时移除；减少动态效果／关闭动画直接展示最终圆环与对勾。重置、取消和新任务清除所有相关效果，旧完成回调不干扰新传输。总时长包含补齐、翻转、绘制和收稳，之后才开始原有停留。本次仅文件圆环试验，借鉴支付式完成反馈，不声称精确复刻 Apple 动画；文本成功效果不变。
 
-The check centerline is measured from the supplied screenshot: reference circle center (470,479), centerline radius 144; points (416,484), (456,534), (526,429). Store points relative to the circle center/radius so rectangular bounds do not distort the ~72.35° elbow or endpoint spacing. Radial clearances are 62.34% / 60.59% / 47.87% of the radius before stroke caps; stroke width is 15.5% of radius, with round caps/joins. Raster scaling/compression limits exactness; owner visual comparison remains required. The same continuous strokeEnd curve crosses the elbow without restarting.
+The check centerline is measured from the supplied screenshot: reference circle center (470,479), centerline radius 144; points (416,484), (456,534), (526,429). Store points relative to the circle center/radius so rectangular bounds do not distort the ~72.35° elbow or endpoint spacing. Radial clearances are 62.34% / 60.59% / 47.87% of the radius before stroke caps; stroke width is 16.5% of radius, with round caps/joins. Raster scaling/compression limits exactness; owner visual comparison remains required. The same continuous strokeEnd curve crosses the elbow without restarting.
 
-对勾按用户截图测量圆心、中心线半径与三个顶点，折角约 72.35°；顶点至圆环的径向留白约为半径的 62.34%／60.59%／47.87%（未计圆头）。路径随圆心／半径缩放，线宽为半径的 15.5%，保持圆头与连续画勾。截图缩放与压缩会影响测量精度，最终比例仍需视觉确认。
+对勾按用户截图测量圆心、中心线半径与三个顶点，折角约 72.35°；顶点至圆环的径向留白约为半径的 62.34%／60.59%／47.87%（未计圆头）。路径随圆心／半径缩放，线宽为半径的 16.5%，保持圆头与连续画勾。截图缩放与压缩会影响测量精度，最终比例仍需视觉确认。
 
 ## Preview and checks / 预览与检查
 
@@ -102,9 +102,9 @@ FileSuccessSequence captures fill/flip/pause/draw/settlement from the fixed prof
 
 完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈半、两个绿环、蓝绿转换、确认条件与停留规则。
 
-Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `d894e53`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `606aa76`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
 
-打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 d894e53 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
+打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 606aa76 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
 
 This is a preview-first candidate: build21 App/DMG generation waits for owner confirmation. Existing version metadata and build20 packages are retained; no automatic installation, push or release.
 
