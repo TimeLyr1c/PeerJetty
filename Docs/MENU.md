@@ -47,10 +47,17 @@ Settings is a normal primary managed window. With Dock hidden, switching to anot
 
 设置使用普通主窗口；Dock 隐藏时，切换应用会隐藏设置，重开保留页面、位置和本次运行未保存输入。系统 sheet 或模态交互期间不执行此隐藏，不改 Dock 偏好或后台传输。打开设置不自动选中名称，点击或 Tab 仍正常编辑。Stage Manager 的真实分组仍需双机验收。
 
-Transfers shows the most recently started **active** file task. Cancel targets its UUID; completion/failure/cancellation selects another active task or hides Cancel entirely. Settings opened later replays current active tasks and the latest result. The receive path is in a bordered, vertically centered field with middle truncation, full tooltip and accessibility value.
+Transfers shows the most recently started **active** file task. Settings has no Cancel action. The drop card has a 28 pt × button with a localized cancel tooltip/accessibility label, targeting the UUID displayed on that card. Completion/failure/cancellation selects another active task or hides the × entirely. Settings opened later replays current active tasks and the latest result. The receive path is in a bordered, vertically centered field with middle truncation, full tooltip and accessibility value.
 
-传输页显示最近开始且仍活动的文件任务，取消按 UUID 指向该任务；结束后切换其他活动任务，全部结束隐藏取消。晚打开设置可恢复状态和最近结果；接收路径有轻边框、居中排列、中间省略及完整提示／辅助功能内容。
+传输页仅显示状态，不再提供取消按钮。投放卡片右侧 28 点叉号按当前显示任务的 UUID 取消，带本地化提示及辅助功能名称；任务结束后切换其他活动任务，全部结束隐藏叉号。晚打开设置可恢复状态和最近结果；接收路径有轻边框、居中排列、中间省略及完整提示／辅助功能内容。
 
 Devices separates paired/unpaired from connected/disconnected; discovery alone is not a live connection. Unpair… requires confirmation and shows a prominent device-page result/re-pair entry; when Settings is hidden a generic notification opens that page. Offline/old peers remain explicitly unconfirmed. See [protocol](PROTOCOL.md).
 
 设备页分别呈现配对与连接，发现设备不等于已连接。“解除配对…”先确认，结果与重新配对入口放在设备页醒目位置；未显示设置时用通用系统通知引导。离线／旧版对端明确标为未确认，详见协议。
+
+
+### build24 unpair result / 解除结果弹窗
+
+A successful remote unpair event or local unpair outcome opens Devices and an app-owned result sheet, independently of system notification permission. The sheet offers OK and Re-pair; it never automatically approves pairing. Existing sheets/modal interactions finish first; the pending result is then shown. A certificate rejection by itself is still a connection failure, not proof of remote revocation. Both endpoints need build23 or newer for bilateral unpairing; use the same build for acceptance.
+
+收到已认证的解除事件或本机解除结果后，打开设备页并展示应用自己的结果 sheet，不依赖系统通知权限；可确认或主动重新配对，不自动批准。已有 sheet／模态交互结束后再展示。证书错误不能证明远端撤销。双端同步需 build23 及以上，验收建议使用同一构建。

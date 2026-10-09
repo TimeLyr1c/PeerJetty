@@ -92,3 +92,5 @@ README and release notes are available in English and Simplified Chinese. The ap
 The accepted five-page settings refinement is included in the local 0.4.0/build22 installer: native toolbar navigation, clear headings, subtle grouped surfaces and device connection summaries.
 
 The local build23 candidate fixes task-specific cancellation, authenticated bilateral unpairing with honest offline/legacy fallback, clearer connection states, receiving-folder alignment and Dock-hidden settings behavior. Manual connection information groups addresses by network interface; Stage Manager and dual-Mac acceptance remain device checks.
+
+The build24 local candidate moves cancellation exclusively to the drop-card × and adds an app-owned unpair result dialog. Both Macs must run build23 or newer for bilateral unpairing; matching builds are recommended for testing.

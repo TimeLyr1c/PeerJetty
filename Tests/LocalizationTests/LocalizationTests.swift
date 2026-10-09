@@ -204,13 +204,12 @@ struct LocalizationChecks {
         settings.onConnect = { check($0 == peer.id, "Connect ID"); fired.insert("connect") }
         settings.onForget = { check($0 == peer.id, "Forget ID"); fired.insert("forget") }
         settings.onFolder = { fired.insert("folder") }; settings.onSend = { fired.insert("send") }
-        settings.onCancel = { fired.insert("cancel") }
         settings.onReveal = { fired.insert("reveal") }; settings.onPermissions = { fired.insert("permissions") }
         settings.onTextHistory = { fired.insert("history") }; settings.onClearTextHistory = { fired.insert("clearHistory") }
         settings.onLatestText = { fired.insert("latestText") }; settings.onSendText = { fired.insert("sendText") }; settings.onUpdates = { fired.insert("updates") }
         settings.onReset = { fired.insert("reset") }; settings.onQuit = { fired.insert("quit") }
         let expected: [String: String] = ["save":"save", "pair":"pair", "manual":"manual", "connect":"connect", "forget":"forget",
-            "chooseFolder":"folder", "send":"send", "cancel":"cancel", "reveal":"reveal", "permissions":"permissions",
+            "chooseFolder":"folder", "send":"send", "reveal":"reveal", "permissions":"permissions",
             "openLatestText":"latestText", "openTextHistory":"history", "clearTextHistory":"clearHistory", "sendText":"sendText", "checkUpdates":"updates", "reset":"reset", "quit":"quit"]
         for button in descendants(content).compactMap({ $0 as? NSButton }) {
             if let action = button.action, expected[NSStringFromSelector(action)] != nil {
@@ -224,14 +223,16 @@ struct LocalizationChecks {
             }
         }
         check(fired == Set(expected.values), "All existing action buttons remain wired to callbacks")
-        let cancellation = control("cancelActiveTransfer",as:NSButton.self)
-        let first = UUID(), second = UUID()
-        func transfer(_ id:UUID,_ finished:Bool) -> TransferUpdate { TransferUpdate(id:id,peerName:"Test",receiving:true,completed:finished ? 100 : 50,total:100,status:"Test",finished:finished,succeeded:finished) }
-        settings.progress(TransferUpdate(id:settings.cancelTarget!,peerName:"Test",receiving:false,completed:100,total:100,status:"Done",finished:true,succeeded:true))
-        settings.progress(transfer(first,false)); settings.progress(transfer(second,false))
-        check(settings.cancelTarget == second && !cancellation.isHidden,"Latest parallel task is cancellable")
-        settings.progress(transfer(second,true)); check(settings.cancelTarget == first,"Finish switches cancellation to remaining task")
-        settings.progress(transfer(first,true)); check(cancellation.isHidden,"Finished tasks remove useless cancel control")
+        check(!descendants(content).contains {$0.identifier?.rawValue == "cancelActiveTransfer"}, "Settings no longer has a cancel transfer button")
+        let existingAlert=NSAlert();existingAlert.messageText="Isolated existing confirmation";existingAlert.beginSheetModal(for:window)
+        let existingSheet=window.attachedSheet!
+        settings.showTrustResult(L10n.text("unpair.remote","Test Mac"))
+        check(window.attachedSheet === existingSheet,"Unpair result waits for existing confirmation")
+        window.endSheet(existingSheet,returnCode:.alertFirstButtonReturn)
+        RunLoop.main.run(until:Date().addingTimeInterval(0.1))
+        check(window.attachedSheet != nil,"Unpair result is an app-owned alert independent of notification permission")
+        if let sheet = window.attachedSheet { window.endSheet(sheet,returnCode:.alertFirstButtonReturn) }
+        RunLoop.main.run(until:Date().addingTimeInterval(0.05))
         settings.trustChanged(L10n.text("unpair.remote","Mac")); check(!control("trustNotice",as:NSStackView.self).isHidden,"Unpair notice is prominent")
         settings.trustChanged(nil)
         var hiddenHistory: Bool?, selectedRetention: TextRetention?

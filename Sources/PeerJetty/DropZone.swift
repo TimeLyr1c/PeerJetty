@@ -183,8 +183,9 @@ final class DropZoneView: NSView {
     private let policy: MotionPolicy
     var onSuccessFinished: ((UUID, Double) -> Void)?
     var onDragStarted: (() -> Void)?
-    private let cancelButton = NSButton(title: L10n.text("dropzone.cancel"), target: nil, action: nil)
-    var onCancel: (() -> Void)?
+    private let cancelButton = NSButton(title: "", target: nil, action: nil)
+    private(set) var cancellableTransferID: UUID?
+    var onCancel: ((UUID) -> Void)?
     var targetName = L10n.text("dropzone.choose_a_destination")
     private let promises: OperationQueue = {
         let queue = OperationQueue(); queue.name = "PeerJetty.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
@@ -215,6 +216,10 @@ final class DropZoneView: NSView {
         subtitle.textColor = .secondaryLabelColor; subtitle.font = .systemFont(ofSize: 13, weight: .medium)
         subtitle.lineBreakMode = .byTruncatingMiddle
         progress.isHidden = true
+        cancelButton.image = NSImage(systemSymbolName:"xmark",accessibilityDescription:L10n.text("dropzone.cancel"))
+        cancelButton.image = cancelButton.image?.withSymbolConfiguration(.init(pointSize:12,weight:.semibold))
+        cancelButton.toolTip = L10n.text("dropzone.cancel"); cancelButton.setAccessibilityLabel(L10n.text("dropzone.cancel"))
+        cancelButton.identifier = NSUserInterfaceItemIdentifier("cancelCardTransfer")
         cancelButton.bezelStyle = .inline; cancelButton.font = .systemFont(ofSize: 12); cancelButton.contentTintColor = .labelColor
         cancelButton.target = self; cancelButton.action = #selector(cancel); cancelButton.isHidden = true
         [icon, title, subtitle, progress, cancelButton].forEach(content.addSubview)
@@ -227,14 +232,14 @@ final class DropZoneView: NSView {
         let subtitleY = centerY - 22
         let titleY = subtitleY + 18 + 4
         icon.frame = NSRect(x: 16, y: centerY - 11, width: 22, height: 22)
-        title.frame = NSRect(x: 49, y: titleY, width: max(0, bounds.width - 49 - (cancelButton.isHidden ? 16 : 92)), height: 22)
-        subtitle.frame = NSRect(x: 49, y: subtitleY, width: max(0, bounds.width - 65), height: 18)
+        title.frame = NSRect(x: 49, y: titleY, width: max(0, bounds.width - 49 - (cancelButton.isHidden ? 16 : 48)), height: 22)
+        subtitle.frame = NSRect(x: 49, y: subtitleY, width: max(0, bounds.width - 49 - (cancelButton.isHidden ? 16 : 48)), height: 18)
         progress.frame = NSRect(x: 12, y: centerY - 15, width: 30, height: 30)
-        cancelButton.frame = NSRect(x: bounds.width - 80, y: titleY, width: 64, height: 22)
+        cancelButton.frame = NSRect(x: bounds.width - 38, y: centerY - 14, width: 28, height: 28)
     }
-    func idle() { show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .labelColor); progress.isHidden = true; cancelButton.isHidden = true }
+    func idle() { cancellableTransferID = nil; show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .labelColor); progress.isHidden = true; cancelButton.isHidden = true }
     func show(title: String, subtitle: String, symbol: String = "arrow.up.circle.fill", color: NSColor = .systemBlue, preserveProgress: Bool = false) {
-        if !preserveProgress { progress.reset(); progress.isHidden = true; icon.isHidden = false }
+        if !preserveProgress { cancellableTransferID = nil; cancelButton.isHidden = promiseTracker == nil; progress.reset(); progress.isHidden = true; icon.isHidden = false }
         if self.title.stringValue != title { icon.layer?.removeAnimation(forKey: "PeerJetty.feedback"); MotionEffects.transition(self.title, policy:policy); MotionEffects.transition(icon, policy:policy) }
         if self.subtitle.stringValue != subtitle { MotionEffects.transition(self.subtitle, policy:policy) }
         self.title.stringValue = title; self.subtitle.stringValue = subtitle
@@ -247,6 +252,7 @@ final class DropZoneView: NSView {
         show(title: waiting ? L10n.text("drop.waiting_confirmation") : update.status, subtitle: L10n.text(update.receiving ? "drop.receiving_peer" : "drop.sending_peer", update.peerName),
              symbol: update.finished ? (update.succeeded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill") : "arrow.up.arrow.down.circle.fill",
              color: update.finished ? (update.succeeded ? .systemGreen : .systemOrange) : .systemBlue, preserveProgress:true)
+        cancellableTransferID = update.finished ? nil : update.id
         cancelButton.isHidden = update.finished
         progress.setAccessibilityLabel(waiting ? L10n.text("drop.waiting_confirmation") : update.status)
         if update.finished, update.succeeded {
@@ -261,7 +267,10 @@ final class DropZoneView: NSView {
         needsLayout = true
     }
     deinit { if let motionObserver { NotificationCenter.default.removeObserver(motionObserver) } }
-    @objc private func cancel() { promiseTracker?.cancel(); onCancel?() }
+    @objc private func cancel() {
+        if let promiseTracker { promiseTracker.cancel() }
+        else if let id = cancellableTransferID { onCancel?(id) }
+    }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         guard DragPayload.accepts(sender.draggingPasteboard) else { return [] }
         onDragStarted?()
@@ -286,7 +295,7 @@ final class DropZoneView: NSView {
         let tracker = PromiseTracker(receivers: receivers.count) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { cleanup(); return }
-                self.promiseTracker = nil
+                self.promiseTracker = nil; self.cancelButton.isHidden = true; self.needsLayout = true
                 switch result {
                 case .success(let urls): self.onFiles?(urls, cleanup)
                 case .failure(let error): cleanup(); self.onFailure?(error.localizedDescription)
@@ -446,7 +455,9 @@ final class DropPanelController {
             finishedIDs.append(update.id); if finishedIDs.count > 256 { finishedIDs.removeFirst() }
             if let other = transferOrder.last.flatMap({transfers[$0]}) { resetFeedback(); show(); view.transfer(other); return }
         } else {
-            transfers[update.id] = update; transferOrder.removeAll {$0 == update.id}; transferOrder.append(update.id)
+            if transfers[update.id] == nil { transferOrder.append(update.id) }
+            transfers[update.id] = update
+            if let newest = transferOrder.last, newest != update.id { return }
         }
         resetFeedback(); show()
         if update.finished, update.succeeded {

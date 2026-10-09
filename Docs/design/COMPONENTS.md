@@ -76,6 +76,6 @@ General and Devices are the first-stage review surfaces: 20 pt page heading, 13 
 
 ### build23 settings behavior
 
-`SettingsPathSurface` provides the native receiving-path field (8 pt inset, 6 pt corner, semantic border). Transfer activity is keyed by UUID and ordered by first active event; a finished task never leaves a Cancel button. The device group reuses a wrapping trust-result notice/re-pair action. Settings remains a normal primary managed window; Dock-hidden deactivation hides it without closing its controller or editing draft, except during sheets/modal interactions. Network information reuses native wrapping labels and a collapsed secondary section; interface metadata comes from `LocalNetworkAddress`, refreshed by an event-driven `NWPathMonitor`.
+`SettingsPathSurface` provides the native receiving-path field (8 pt inset, 6 pt corner, semantic border). Transfer activity is keyed by UUID and ordered by first active event; Settings has no Cancel button; the drop-card × owns the displayed UUID. The device group reuses a wrapping trust-result notice/re-pair action. Settings remains a normal primary managed window; Dock-hidden deactivation hides it without closing its controller or editing draft, except during sheets/modal interactions. Network information reuses native wrapping labels and a collapsed secondary section; interface metadata comes from `LocalNetworkAddress`, refreshed by an event-driven `NWPathMonitor`.
 
-接收路径使用小型边框容器，活动任务按 UUID 维护；解除结果和重新配对入口复用设备分组。设置不新增动画；隐藏 Dock 时离开前台只隐藏窗口，系统弹窗期间不隐藏。网络地址依据系统接口信息与网络变化事件刷新，不增加持续轮询。
+接收路径使用小型边框容器，活动任务按 UUID 维护；解除结果和重新配对入口复用设备分组及原生结果 sheet。设置不再提供取消，叉号在实际卡片上对应当前 UUID。设置不新增动画；隐藏 Dock 时离开前台只隐藏窗口，系统弹窗期间不隐藏。网络地址依据系统接口信息与网络变化事件刷新，不增加持续轮询。

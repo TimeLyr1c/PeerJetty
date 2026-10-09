@@ -1,5 +1,15 @@
 # 0.2.0 验证记录
 
+## 2026-10-09: build24 cancellation and explicit unpair result
+
+- Observed locally: the running process path is /Applications/PeerJetty.app/Contents/MacOS/PeerJetty; installed metadata is 0.4.0/build22 while the previous output is build23. The owner reports the other Mac is build23. This mixed pair cannot synchronize unpairing on the old endpoint, and build22 still conflates discovery with connection. Do not describe the reported certificate error (-9825) as proof of an authenticated unpair event.
+- PASS: settings Cancel action removed. English/Chinese isolated settings checks (40 light/dark/default/minimum layouts), drafts and original callbacks pass. App-owned unpair result sheet appears after an existing sheet finishes, independently of notification permission; explicit re-pair action does not auto-approve trust.
+- PASS: drop-card × uses localized tooltip/accessibility name and 28 pt target; active UUID dispatched, hidden/no-op after completion. Bilingual layout/geometry checks pass. Card controller ignores older task progress when selecting the visible active task; finishing switches to remaining active task, all finished clears cancellation UUID.
+- PASS: full native motion regression and isolated unpair/TLS cancellation suite, including legacy/timeout/offline/persistence failure/unauthorized controls, active-transfer revocation, ordinary disconnect preserving trust, reverse-transfer survival and follow-up integrity. Core protocol and identity were not changed in build24.
+- Pending: install the same build on both Macs and verify real remote/local result dialogs, states, notifications and card × during concurrent transfers. No production installation/configuration, push or public release performed.
+
+本机实际安装仍为 build22，另一台由用户报告为 build23；旧端不支持解除同步。build24 移除设置取消入口，卡片叉号对应当前任务；解除结果改为应用内 sheet，已有弹窗先完成。隔离检查通过，双机同版本实测待完成，不将证书错误误当作解除事件。
+
 ## 2026-10-09: build23 local installer delivered
 
 - PASS: release App and DMG built from clean source `9963beb`; metadata is 0.4.0/build23, arm64, Bundle ID `app.openonmini.desktop`, ad hoc signed. Strict signature and disk-image integrity verification passed.

@@ -133,6 +133,17 @@ struct RunDropPresentationTests {
         let title = labels[0], subtitle = labels[1]
         let progress = view.progress
         let cancel = descendants(view).compactMap { $0 as? NSButton }.first!
+        let activeID=UUID();var cancelledID:UUID?
+        view.onCancel={cancelledID=$0}
+        view.transfer(TransferUpdate(id:activeID,peerName:"Test",receiving:false,completed:1,total:100,status:"Sending",finished:false,succeeded:false))
+        XCTAssertEqual(view.cancellableTransferID,activeID);XCTAssertFalse(cancel.isHidden)
+        NSApp.sendAction(cancel.action!,to:cancel.target,from:cancel)
+        XCTAssertEqual(cancelledID,activeID)
+        view.transfer(TransferUpdate(id:activeID,peerName:"Test",receiving:false,completed:1,total:100,status:"Cancelled",finished:true,succeeded:false))
+        XCTAssertNil(view.cancellableTransferID);XCTAssertTrue(cancel.isHidden)
+        cancelledID=nil;NSApp.sendAction(cancel.action!,to:cancel.target,from:cancel);XCTAssertNil(cancelledID)
+        view.idle()
+
         let icon = descendants(view).compactMap { $0 as? NSImageView }.first!
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = view
@@ -158,7 +169,7 @@ struct RunDropPresentationTests {
                     // Exercise the same visibility combinations used by transfer and file promises.
                     progress.isHidden = state != "transfer"
                     cancel.isHidden = state != "transfer" && state != "loading"
-                    cancel.title = catalog.text("dropzone.cancel")
+                    cancel.title = ""; cancel.toolTip = catalog.text("dropzone.cancel")
                     progress.update(id:UUID(),completed:45,total:100)
                     view.layoutSubtreeIfNeeded()
                     let group = title.frame.union(subtitle.frame)
@@ -171,8 +182,8 @@ struct RunDropPresentationTests {
                     for child in view.subviews where !child.isHidden { XCTAssertTrue(view.bounds.contains(child.frame)) }
                     if !progress.isHidden { XCTAssertTrue(progress.frame.maxX + 5 <= title.frame.minX); XCTAssertEqual(progress.frame.midY,group.midY) }
                     if !cancel.isHidden {
-                        XCTAssertEqual(cancel.frame.midY, title.frame.midY)
-                        XCTAssertTrue(cancel.frame.minX >= title.frame.maxX + 12)
+                        XCTAssertEqual(cancel.frame.midY, view.bounds.midY)
+                        XCTAssertTrue(cancel.frame.minX >= title.frame.maxX + 10)
                         XCTAssertFalse(cancel.frame.intersects(subtitle.frame))
                     }
                     if let snapshot, width == 320 {

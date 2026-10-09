@@ -28,7 +28,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var lastStatus: String?
     private var peers: [DiscoveredPeer] = []
     private var active: Set<UUID> = []
-    private var lastTransfer: UUID?
     private var transferUpdates: [UUID:TransferUpdate] = [:]
     private var transferOrder: [UUID] = []
     private var completedTransfer: TransferUpdate?
@@ -101,7 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         drop.view.onReceivingPromise = { [weak self] in self?.promiseBusy = true; self?.drop?.resetFeedback(); self?.refreshBusy(); self?.drop?.show() }
         drop.view.onFailure = { [weak self] text in self?.promiseBusy = false; self?.refreshBusy(); self?.showStatus(text) }
-        drop.view.onCancel = { [weak self] in if let id = self?.lastTransfer { self?.engine?.cancel(transferID: id) } }
+        drop.view.onCancel = { [weak self] id in self?.engine?.cancel(transferID: id) }
         engine.onPeers = { [weak self] peers in
             guard let self else { return }; self.peers = peers; self.composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); self.settings?.updatePeers(peers, preferred: self.store?.snapshot.preferredPeer)
             let name = peers.first { $0.id == self.store?.snapshot.preferredPeer }?.name ?? L10n.text("dropzone.choose_a_destination")
@@ -133,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 content.userInfo = ["trustEvent":true]
                 UNUserNotificationCenter.current().add(UNNotificationRequest(identifier:"trust-"+UUID().uuidString,content:content,trigger:nil))
             }
+            self.showSettings(); self.settings?.showTrustResult(text)
         }
         engine.onTransfer = { [weak self] update in
             guard let self else { return }
@@ -143,7 +143,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 if !self.active.contains(update.id) { self.transferOrder.append(update.id) }
                 self.active.insert(update.id); self.transferUpdates[update.id] = update
             }
-            self.lastTransfer = self.transferOrder.last
             self.refreshBusy(); self.drop?.presentTransfer(update); self.settings?.progress(update)
         }
         engine.onReceived = { [weak self] name, urls in
@@ -225,7 +224,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onForget = { [weak self] id in self?.engine?.forget(id) }
             controller.onFolder = { [weak self] in self?.chooseFolder() }
             controller.onSend = { [weak self] in self?.chooseFiles() }
-            controller.onCancel = { [weak self] in if let id = self?.settings?.cancelTarget { self?.engine?.cancel(transferID: id) } }
             controller.onReveal = { [weak self] in self?.revealReceived() }
             controller.onManual = { [weak self] in self?.manualConnection() }
             controller.onPermissions = {

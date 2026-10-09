@@ -32,7 +32,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     var onForget: ((String) -> Void)?
     var onFolder: (() -> Void)?
     var onSend: (() -> Void)?
-    var onCancel: (() -> Void)?
     var onReveal: (() -> Void)?
     var onManual: (() -> Void)?
     var onPermissions: (() -> Void)?
@@ -66,7 +65,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     private let temporaryRow = NSStackView()
     private let connectionGroup = NSStackView()
     private let statusDetails = NSButton()
-    private let cancelButton = NSButton()
+    private var pendingTrustResult: String?
     private var activeTransfers: [UUID:TransferUpdate] = [:]
     private var transferOrder: [UUID] = []
     private let trustNotice = NSStackView()
@@ -203,16 +202,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))])]),
             group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
             group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
-        cancelButton.title = L10n.text("settings.cancel_transfer"); cancelButton.bezelStyle = .rounded
-        cancelButton.font = .systemFont(ofSize:13); cancelButton.target = self; cancelButton.action = #selector(cancel)
-        cancelButton.isHidden = true; cancelButton.identifier = NSUserInterfaceItemIdentifier("cancelActiveTransfer")
         let folderPath = SettingsPathSurface(content:row([symbol("folder",size:20),folderLabel]))
         let transferRows: [NSView] = [group("settings.receive_folder", rows: [
             row([folderPath, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
             setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open")]),
             group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send))])]),
             group("settings.activity_heading", rows: [progressLabel,
-                actions([cancelButton, button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
+                actions([button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
         let textRows: [NSView] = [group("settings.group_text_send", rows: [actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton])]),
             group("settings.group_text_history", rows: [setting("text.show_history", showHistory), hint("text.history_setting_hint"),
                 actions([historyOpen]), setting("text.retention", retention)]),
@@ -468,6 +464,24 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         guard !dockVisible, let window, window.isVisible, window.attachedSheet == nil, NSApp.modalWindow == nil else { return }
         window.orderOut(nil)
     }
+    func showTrustResult(_ text:String) { pendingTrustResult = text; presentPendingTrustResult() }
+    func windowDidEndSheet(_ notification:Notification) {
+        DispatchQueue.main.async { [weak self] in self?.presentPendingTrustResult() }
+    }
+    private func presentPendingTrustResult() {
+        guard let text = pendingTrustResult, let window, window.attachedSheet == nil else { return }
+        if NSApp.modalWindow != nil {
+            RunLoop.main.perform(inModes:[.default]) { [weak self] in self?.presentPendingTrustResult() }
+            return
+        }
+        pendingTrustResult = nil
+        selectSection(.devices)
+        let alert = NSAlert(); alert.messageText = L10n.text("unpair.result_title"); alert.informativeText = text
+        alert.addButton(withTitle:L10n.text("application.ok")); alert.addButton(withTitle:L10n.text("unpair.repair"))
+        alert.beginSheetModal(for:window) { [weak self] response in
+            if response == .alertSecondButtonReturn { self?.onPair?() }
+        }
+    }
     func resetOpeningFocus() { window?.makeFirstResponder(window) }
 
     func loginState(_ enabled: Bool) { login.state = enabled ? .on : .off }
@@ -475,7 +489,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     func progress(_ update: TransferUpdate) {
         if update.finished { activeTransfers.removeValue(forKey:update.id); transferOrder.removeAll {$0 == update.id} }
         else { if activeTransfers[update.id] == nil { transferOrder.append(update.id) }; activeTransfers[update.id] = update }
-        cancelButton.isHidden = activeTransfers.isEmpty
         renderProgress(transferOrder.last.flatMap { activeTransfers[$0] } ?? update)
     }
     private func renderProgress(_ update:TransferUpdate) {
@@ -501,8 +514,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func chooseFolder() { onFolder?() }
     @objc private func send() { onSend?() }
 
-    var cancelTarget: UUID? { transferOrder.last }
-    @objc private func cancel() { if cancelTarget != nil { onCancel?() } }
     @objc private func reveal() { onReveal?() }
     @objc private func manual() { onManual?() }
     @objc private func permissions() { onPermissions?() }

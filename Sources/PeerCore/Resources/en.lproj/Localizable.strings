@@ -364,3 +364,5 @@
 "unpair.timeout" = "The other Mac did not confirm unpairing.";
 
 "connection.port" = "Listening port: %@";
+
+"unpair.result_title" = "Pairing changed";

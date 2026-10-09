@@ -364,3 +364,5 @@
 "unpair.timeout" = "对方未确认解除配对。";
 
 "connection.port" = "监听端口：%@";
+
+"unpair.result_title" = "配对状态已变更";
