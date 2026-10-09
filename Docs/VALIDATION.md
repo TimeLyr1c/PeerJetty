@@ -1,5 +1,13 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: real build21 App and DMG delivered
+
+- PASS: release build from clean source 39faeb2; actual app metadata is 0.4.0/build21, arm64, unchanged app.openonmini.desktop bundle identity.
+- PASS: strict app signature check (ad hoc), immutable package provenance and DMG hash agreement; disk image integrity verification passed. Archive: outputs/releases/0.4.0-build21/PeerJetty-0.4.0-build21-arm64.dmg. Real app: outputs/PeerJetty.app.
+- build20 DMG hash remains 4f0edca6900d094fd0ff3e84602fce351cf8eeb79e0d45a1a17bbeb2a594bbf7. No automatic installation, push or public release; real Air/mini transfer acceptance remains pending.
+
+用户确认的效果已编入真实 build21 App 并生成 DMG，签名、来源与完整性检查通过；保留旧包，待双机实测。
+
 ## 2026-10-08: approved refinement prepared for real build21
 
 - Owner approved the final preview and requested integration into the real app.

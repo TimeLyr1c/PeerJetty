@@ -106,9 +106,9 @@ Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/Afte
 
 打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 606aa76 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
 
-The owner approved the final appearance on 2026-10-08: 17.5%-radius stroke and 170ms overlapping check drawing. This refinement is prepared for the real 0.4.0/build21 App and DMG; physical Air/mini acceptance is pending.
+The owner approved the final appearance on 2026-10-08: 17.5%-radius stroke and 170ms overlapping check drawing. The real 0.4.0/build21 App and DMG were generated from clean source 39faeb2; physical Air/mini acceptance is pending.
 
-用户已于 2026-10-08 确认最终预览（线宽 17.5%、提前 170ms 画勾），准备编入正式运行的 0.4.0/build21 App 与 DMG；Air／mini 双机验收另行记录。
+用户已于 2026-10-08 确认最终预览（线宽 17.5%、提前 170ms 画勾），已编入正式运行的 0.4.0/build21 App 并生成 DMG（源码 39faeb2）；Air／mini 双机验收另行记录。
 
 Outbound damping ratio is 0.40 for roughly 5% height overshoot. At the first zero-velocity peak, return frequency increases 75% (stiffness x3.0625) and damping ratio becomes 0.65, avoiding a visible secondary bounce. Both native stages remain continuous and interruption-safe; text/progress springs are unchanged.
 
