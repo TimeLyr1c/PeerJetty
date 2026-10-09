@@ -57,25 +57,21 @@ Full bytes without receiver confirmation still show Waiting for confirmation. On
 
 ### Experimental ring flip / 试验性圆环翻转
 
-After confirmed progress finishes filling, the full ring rotates **one and a half turns around the vertical (Y) axis**, with mild perspective and symmetric ninth-order progress 126t^5-420t^6+540t^7-315t^8+70t^9 (maximum speed at the midpoint). It changes from blue to green during the flip, then pauses facing forward before the check starts. The stationary gray progress track is hidden during success so it does not mask the flip. Three extra vector ring layers trail at phase offsets 0.045/0.09/0.135, peak opacity 18%/10%/6%, and fade to zero before the flip ends. They are finite layers, not a particle emitter or continuous motion blur renderer.
+After confirmation, the ring fills and turns green. During the 620ms flip there are exactly two visible green rings: the main ring and one finite companion at 65% peak opacity. Both turn one-and-a-half times in opposite directions, with different X tilts (+0.35 / -0.70 radians at peak) and opposite Z-plane twist (±0.60 radians). Tilt/twist use a smooth sine envelope over ninth-order rotation progress, converging to the same circle at rest. The companion fades out before the 200ms pause; then the check draws over 600ms. These are transform keyframes, not frame callbacks or optical motion blur. The reference screenshot provides geometry, not an exact Apple animation trajectory.
 
-真实成功确认并补齐后，完整圆环绕**竖直 Y 轴翻转一圈半**，带轻微透视、起止平滑、中点最快的对称九次曲线；翻转过程中由蓝变绿，正面停稳并暂停后开始对勾。成功阶段隐藏静止灰色底圈，避免遮蔽翻转。三个矢量圆环以 0.045／0.09／0.135 相位滞后，峰值不透明度 18%／10%／6%，翻转结束前淡出；不是粒子或持续运动模糊。
+确认后圆环补齐并变绿；620ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.35／−0.70 弧度，平面扭转为 ±0.60 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环在 200ms 暂停前淡出，之后用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
 
 Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the fixed hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
 
 减少透明度／增强对比度禁用拖影，途中修改也会即时移除；减少动态效果／关闭动画直接展示最终圆环与对勾。重置、取消和新任务清除所有相关效果，旧完成回调不干扰新传输。总时长包含补齐、翻转、绘制和收稳，之后才开始原有停留。本次仅文件圆环试验，借鉴支付式完成反馈，不声称精确复刻 Apple 动画；文本成功效果不变。
 
-The compact check retains its ~76° elbow, inset endpoint and round caps. A single continuous CABasicAnimation strokeEnd curve (0.25, 0.10, 0.35, 1) traverses both line segments, without restarting easing at the elbow. Drawing takes 600 ms. Rotation takes 620 ms followed by a 200ms pause; the blue/green change and trails still share that rotation clock. Hold, acknowledgement and real-progress rules are unchanged. This is an original payment-style timing experiment, not Apple's private animation.
+The check centerline is measured from the supplied screenshot: reference circle center (470,479), centerline radius 144; points (416,484), (456,534), (526,429). Store points relative to the circle center/radius so rectangular bounds do not distort the ~72.35° elbow or endpoint spacing. Radial clearances are 62.34% / 60.59% / 47.87% of the radius before stroke caps; stroke width is 12.5% of radius, with round caps/joins. Raster scaling/compression limits exactness; owner visual comparison remains required. The same continuous strokeEnd curve crosses the elbow without restarting.
 
-对勾保留约 76° 折角、内缩端点与圆头，使用一条连续 strokeEnd 曲线（0.25／0.10／0.35／1）完成两段路径，拐角不再重启缓动，因此不会在第一笔结束后重新减速。绘制为 600ms；翻转为 620ms，正面绿色圆环暂停 200ms 后再画勾。颜色和拖影仍跟随翻转时钟，停留、确认和真实进度规则不变。属于自行设计的支付式反馈，非 Apple 私有动画。
-
-The card controller owns the hold deadline, starting after the check sequence finishes. Transfer IDs deduplicate success and invalidate stale hide callbacks; new transfers/drops take over immediately. Concurrent active transfers remain visible instead of being replaced by another transfer's completion. Dismissal orders the window out before restoring opacity. Keyed finite effects are cancelled on hiding; no spinner, particles, per-frame loop or added background polling.
-
-控制器从对勾结束统一计时；传输 ID 防重复，旧隐藏回调失效，新传输／投放立即接管。并行任务未结束时保留活动任务进度；隐藏窗口之后才恢复透明度。有限图层动画在隐藏后清除，无持续旋转、粒子、逐帧循环或新增后台轮询。
+对勾按用户截图测量圆心、中心线半径与三个顶点，折角约 72.35°；顶点至圆环的径向留白约为半径的 62.34%／60.59%／47.87%（未计圆头）。路径随圆心／半径缩放，线宽为半径的 12.5%，保持圆头与连续画勾。截图缩放与压缩会影响测量精度，最终比例仍需视觉确认。
 
 ## Preview and checks / 预览与检查
 
-General → Preview animation opens an isolated native glass preview. Its Replay button simulate preparation, progress, confirmation and dismissal using fixed timing. It refuses real file drops and never connects devices, transfers files, opens history or accesses production identity. The animation toggle/Reduce Motion still applies. Close this window normally; the separate `outputs/GlassMotionPreview.app` test harness also provides ⌘Q.
+General → Preview animation opens an isolated native glass preview. Its Replay button simulates preparation, progress, confirmation and dismissal using fixed timing. It refuses real file drops and never connects devices, transfers files, opens history or accesses production identity. The animation toggle/Reduce Motion still applies. Close this window normally; the separate `outputs/GlassMotionPreview.app` test harness also provides ⌘Q.
 
 通用 → 预览动画打开隔离原生玻璃预览；“重新播放”演示准备、进度、确认和收起，使用固定节奏。拒绝真实文件投放，不连接设备、传文件、打开历史或访问日常身份；总开关和减少动态效果仍生效。正常关闭即可；独立测试预览还支持 ⌘Q。
 
@@ -103,11 +99,11 @@ build21 源码候选保留顶部五类导航，通用分成本机身份、语言
 
 FileSuccessSequence captures fill/flip/pause/draw/settlement from the fixed profile and actual progress catch-up. Completion layers share one epoch; card reveal/shape share one epoch as well. The ring starts and ends at zero rotation velocity; short/long check strokes have no extra plateau. Confirmation and hold rules are unchanged.
 
-完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈半、三拖影、蓝绿转换、确认条件与停留规则。
+完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈半、两个绿环、蓝绿转换、确认条件与停留规则。
 
-Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `74c822a`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `e7b7af9`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
 
-打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 74c822a 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
+打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 e7b7af9 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
 
 This is a preview-first candidate: build21 App/DMG generation waits for owner confirmation. Existing version metadata and build20 packages are retained; no automatic installation, push or release.
 

@@ -3,7 +3,7 @@ set -euo pipefail
 PROJECT_ROOT="${0:A:h:h}"
 cd "$PROJECT_ROOT"
 # Freeze the previous native refinement source. Never switch or alter the live checkout.
-BASELINE_REF=74c822a
+BASELINE_REF=e7b7af9
 ./Scripts/swift.sh build --product PeerJetty -Xswiftc -enable-testing
 BIN_DIR="$(./Scripts/swift.sh build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-design-preview.XXXXXX)"
@@ -24,15 +24,6 @@ for SIDE in Before After; do
       SOURCES+=("Sources/PeerJetty/$FILE.swift")
     fi
   done
-  if [[ "$SIDE" == Before ]]; then
-    # Preview-only bridge for the retired UI preference; never linked into the app.
-    cat > "$TEST_ROOT/LegacySpeed.swift" <<'SWIFT'
-import PeerCore
-enum AnimationSpeed: String, CaseIterable { case fast, natural, relaxed }
-extension Configuration { var animationSpeed: AnimationSpeed { .natural } }
-SWIFT
-    SOURCES+=("$TEST_ROOT/LegacySpeed.swift")
-  fi
   APP="$PREVIEW_ROOT/$SIDE.app"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   /usr/bin/swiftc -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${SOURCES[@]}" Tests/DesignPreview/DesignPreview.swift -o "$APP/Contents/MacOS/Preview"

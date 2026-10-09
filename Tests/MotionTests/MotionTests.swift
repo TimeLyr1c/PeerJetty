@@ -189,9 +189,25 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let points=TransferGlyph.checkPoints, left=points[0], corner=points[1], right=points[2]
         let a=CGPoint(x:left.x-corner.x,y:left.y-corner.y), b=CGPoint(x:right.x-corner.x,y:right.y-corner.y)
         let angle=acos((a.x*b.x+a.y*b.y)/(hypot(a.x,a.y)*hypot(b.x,b.y))) * 180 / .pi
-        check(angle > 74 && angle < 78,"compact check has sharper comfortable elbow")
-        for point in points { check(12-hypot((point.x-0.5)*30,(point.y-0.5)*30)-2.2 > 2.5,"stroked check keeps breathing room inside the ring") }
-        check(TransferGlyph.shortStrokeFraction > 0.34 && TransferGlyph.shortStrokeFraction < 0.35,"two stroke timing uses actual segment-length boundary")
+        check(angle > 72 && angle < 75,"compact check has sharper comfortable elbow")
+        for point in points { check(12-hypot(point.x*12,point.y*12)-1.5 > 2.5,"stroked check keeps breathing room inside the ring") }
+        check(TransferGlyph.shortStrokeFraction > 0.33 && TransferGlyph.shortStrokeFraction < 0.34,"two stroke timing uses actual segment-length boundary")
+        let referenceGaps=[0.623396,0.605876,0.478658]
+        let referenceGlyph=TransferGlyph(policy:MotionPolicy(reduceMotion:{false}))
+        for size in [NSSize(width:30,height:30),NSSize(width:60,height:30),NSSize(width:60,height:60)] {
+            referenceGlyph.setFrameSize(size); referenceGlyph.layoutSubtreeIfNeeded()
+            let radius=min(size.width,size.height)/2-3
+            let tick=referenceGlyph.layer!.sublayers!.last! as! CAShapeLayer
+            var actual:[CGPoint]=[]
+            tick.path!.applyWithBlock { element in
+                if element.pointee.type == .moveToPoint || element.pointee.type == .addLineToPoint { actual.append(element.pointee.points[0]) }
+            }
+            check(actual.count==3 && abs(tick.lineWidth/radius-0.125)<1e-9,"reference check scales with circular stroke width")
+            for (index,point) in actual.enumerated() {
+                let gap=1-hypot(point.x-size.width/2,point.y-size.height/2)/radius
+                check(abs(gap-referenceGaps[index])<0.00001,"reference endpoint spacing survives resizing and rectangular bounds")
+            }
+        }
         print("PASS: native physical springs, fixed settling duration, continuous retarget, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
     }
     static func progressRateTests() {
@@ -254,6 +270,10 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
             check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip+sequence.pause && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
         }
+        let primary=TransferGlyph.ringTransform(at:0.35,companion:false)
+        let secondary=TransferGlyph.ringTransform(at:0.35,companion:true)
+        check(abs(primary.m12-secondary.m12)>0.05 && abs(primary.m23-secondary.m23)>0.05,"two rings spin and flip on distinct tilted planes")
+        check(TransferGlyph.ringTransform(at:0,companion:false).m11 == 1,"ring begins without a transform jump")
         var reducedTransparency=false
         let policy=MotionPolicy(reduceMotion:{false},reduceTransparency:{reducedTransparency})
         let glyph=TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
@@ -264,14 +284,14 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let layers=glyph.layer!.sublayers!
         check(layers.first!.opacity == 0,"stationary track disappears so only the completed ring flips")
         let ghosts=layers.filter {$0.animation(forKey:"PeerJetty.trailFade") != nil}
-        check(ghosts.count == 3 && ghosts.allSatisfy {$0.opacity == 0},"three bounded ghosts leave no visible model residue")
+        check(ghosts.count == 1 && ghosts.allSatisfy {$0.opacity == 0},"exactly two rings with one finite companion")
         let ring=layers.first {$0.animation(forKey:"PeerJetty.progress") != nil}!
         let rotation=ring.animation(forKey:"PeerJetty.ringFlip")!, color=ring.animation(forKey:"PeerJetty.successColor")!
         let tick=layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.animation(forKey:"PeerJetty.check")!
         let strokes = tick as! CABasicAnimation
         check((strokes.fromValue as! Double) == 0 && (strokes.toValue as! Double) == 1 && strokes.timingFunction != nil,"one continuous easing crosses the elbow without segment restart")
 
-        check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime-rotation.beginTime)<0.01,"blue-to-green transition runs during finite rotation")
+        check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime+color.duration-rotation.beginTime)<0.01,"blue-to-green transition completes before the two green rings rotate")
         check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause)<0.01,"check starts after explicit captured pause")
         reducedTransparency=true; policy.notify()
         check(ghosts.allSatisfy {($0.animationKeys() ?? []).isEmpty && $0.opacity == 0} && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"reduce transparency removes ghosts without disrupting success")
@@ -289,7 +309,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         glyph.update(id:UUID(),completed:20,total:100)
         wait(oldDuration+0.05)
         check(finished == 1 && !glyph.isSuccess && customAnimations(glyph)==0,"new progress cancels old flips, trails and success callback")
-        print("PASS: one and a half vertical-axis turns, three fading trails, color timing, check-after-stop, accessibility and cancellation cleanup")
+        print("PASS: one and a half vertical-axis turns, two angled green rings, color timing, check-after-stop, accessibility and cancellation cleanup")
     }
     static func ringTests() throws {
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)

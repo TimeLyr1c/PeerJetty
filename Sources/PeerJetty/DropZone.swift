@@ -11,7 +11,9 @@ enum DragPayload {
 
 /// Small vector renderer. No spinner, display link or per-frame drawing loop.
 final class TransferGlyph: NSView {
-    static let checkPoints = [CGPoint(x:0.32,y:0.49),CGPoint(x:0.45,y:0.65),CGPoint(x:0.68,y:0.34)]
+    // Reference centerline samples, normalized to the ring center/radius rather
+    // than the view bounds: left endpoint, elbow, upper-right endpoint.
+    static let checkPoints = [CGPoint(x:-54.0/144,y:5.0/144),CGPoint(x:-14.0/144,y:55.0/144),CGPoint(x:56.0/144,y:-50.0/144)]
     static var shortStrokeFraction: Double {
         let points = checkPoints
         let short = hypot(points[1].x-points[0].x,points[1].y-points[0].y)
@@ -19,13 +21,22 @@ final class TransferGlyph: NSView {
         return short/(short+long)
     }
     private let track = CAShapeLayer(), arc = CAShapeLayer(), tick = CAShapeLayer()
-    private let trails = (0..<3).map { _ in CAShapeLayer() }
+    private let trails = [CAShapeLayer()] // One companion + the main ring = two visible rings.
     static let flipRadians = 3 * Double.pi
     static func flipAngle(at time: Double, lag: Double = 0) -> Double {
         let time = min(1,max(0,time)), tail = min(1,max(0,(time-0.78)/0.22))
         let phase = max(0,time-lag*(1-tail*tail*(3-2*tail)))
         // Ninth-order smootherstep: flatter endpoints, a narrower middle velocity peak.
         return flipRadians * (pow(phase,5)*(126+phase*(-420+phase*(540+phase*(-315+70*phase)))))
+    }
+    static func ringTransform(at time: Double, companion: Bool) -> CATransform3D {
+        let progress = flipAngle(at:time)/flipRadians
+        let envelope = sin(.pi*progress)
+        let direction: Double = companion ? -1 : 1
+        var transform = CATransform3DIdentity
+        transform = CATransform3DRotate(transform, direction * 0.60 * envelope, 0, 0, 1)
+        transform = CATransform3DRotate(transform, (companion ? -0.70 : 0.35) * envelope, 1, 0, 0)
+        return CATransform3DRotate(transform, direction * flipRadians * progress, 0, 1, 0)
     }
     private func hideTrails() {
         CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -61,7 +72,9 @@ final class TransferGlyph: NSView {
         for shape in [track,arc,tick] + trails { shape.frame = bounds }
         let path = CGMutablePath(); path.addArc(center:NSPoint(x:bounds.midX,y:bounds.midY), radius:max(0,min(bounds.width,bounds.height)/2-3),startAngle:-.pi/2,endAngle:3 * .pi/2,clockwise:false)
         track.path = path; arc.path = path; for trail in trails { trail.path = path }
-        let points = Self.checkPoints.map { CGPoint(x:bounds.width*$0.x,y:bounds.height*$0.y) }
+        let radius = max(0,min(bounds.width,bounds.height)/2-3)
+        for shape in [track,arc,tick] + trails { shape.lineWidth = radius * 0.125 }
+        let points = Self.checkPoints.map { CGPoint(x:bounds.midX+radius*$0.x,y:bounds.midY+radius*$0.y) }
         let check = CGMutablePath(); check.move(to:points[0]); check.addLine(to:points[1]); check.addLine(to:points[2]); tick.path = check
     }
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); colors() }
@@ -112,23 +125,25 @@ final class TransferGlyph: NSView {
         let targetColor=NSColor(cgColor:arc.strokeColor ?? NSColor.systemGreen.cgColor) ?? .systemGreen
         color.values=(0...60).map { (sourceColor.blended(withFraction:Self.flipAngle(at:Double($0)/60)/Self.flipRadians,of:targetColor) ?? targetColor).cgColor }
         color.keyTimes=(0...60).map { NSNumber(value:Double($0)/60) }
-        color.duration=profile.ringFlip; color.fillMode = .backwards; color.timingFunction = .init(name:.linear)
-        MotionEffects.add(color,to:arc,key:"PeerJetty.successColor",delay:fillDuration,startTime:now)
-        let rotation = CAKeyframeAnimation(keyPath:"transform.rotation.y")
-        rotation.values = (0...60).map { Self.flipAngle(at:Double($0)/60) }
+        color.duration=fillDuration; color.fillMode = .backwards; color.timingFunction = .init(name:.linear)
+        MotionEffects.add(color,to:arc,key:"PeerJetty.successColor",startTime:now)
+        let rotation = CAKeyframeAnimation(keyPath:"transform")
+        rotation.values = (0...60).map { NSValue(caTransform3D:Self.ringTransform(at:Double($0)/60,companion:false)) }
         rotation.keyTimes = (0...60).map { NSNumber(value:Double($0)/60) }; rotation.duration = profile.ringFlip; rotation.timingFunction = .init(name:.linear)
         MotionEffects.add(rotation,to:arc,key:"PeerJetty.ringFlip",delay:fillDuration,startTime:now)
         if policy.trailsAllowed {
-            for (index,trail) in trails.enumerated() {
-                let lag = Double(index+1)*0.045, alpha = [0.18,0.10,0.06][index]
-                let ghost = rotation.copy() as! CAKeyframeAnimation
-                ghost.values = (0...60).map { Self.flipAngle(at:Double($0)/60,lag:lag) }
-                MotionEffects.add(ghost,to:trail,key:"PeerJetty.ringFlip",delay:fillDuration,startTime:now)
-                MotionEffects.add(color.copy() as! CAAnimation,to:trail,key:"PeerJetty.successColor",delay:fillDuration,startTime:now)
-                let fade = CAKeyframeAnimation(keyPath:"opacity"); fade.values = [0,alpha,alpha*0.5,0]; fade.keyTimes = [0,0.12,0.70,1]; fade.duration = profile.ringFlip
+            for trail in trails {
+                let companion = rotation.copy() as! CAKeyframeAnimation
+                companion.values = (0...60).map { NSValue(caTransform3D:Self.ringTransform(at:Double($0)/60,companion:true)) }
+                MotionEffects.add(companion,to:trail,key:"PeerJetty.ringFlip",delay:fillDuration,startTime:now)
+                // A distinct green ring, not a phase-delayed blue/green ghost.
+                let fade = CAKeyframeAnimation(keyPath:"opacity")
+                fade.values = [0,0.65,0.65,0]; fade.keyTimes = [0,0.18,0.68,1]
+                fade.duration = profile.ringFlip
                 MotionEffects.add(fade,to:trail,key:"PeerJetty.trailFade",delay:fillDuration,startTime:now)
             }
         }
+
         let checkStart = sequence.checkStart
         let fill = CABasicAnimation(keyPath:"strokeEnd"); fill.fromValue = current.value; fill.toValue = 1; fill.duration = fillDuration; fill.timingFunction = finishing.timing
         MotionEffects.add(fill,to:arc,key:"PeerJetty.progress",startTime:now)

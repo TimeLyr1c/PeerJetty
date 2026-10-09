@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — reference check and two green rings, planned build21
+
+The check now scales relative to the ring using sampled reference proportions (~72° elbow). Replaces three faint ghosts with one green companion: two rings total spin/flip on different tilted planes in opposite directions. Color completes during fill; 620ms flip, 200ms pause and 600ms drawing retained. Isolated preview only.
+
+按参考图校准对勾角度与留白；原三层拖影改为双绿环，在不同倾角反向转动／翻面。补齐阶段完成变绿，保留固定翻转、暂停、画勾节奏，先交付预览。
+
 ## Unreleased — fixed motion timing, planned build21
 
 Removed animation speed selectors and persisted speed configuration. Reveal uses Relaxed card tuning; completion uses a 620ms one-and-a-half-turn flip, 200ms pause and 600ms check. Animation toggle and accessibility overrides remain. Legacy speed values are ignored.

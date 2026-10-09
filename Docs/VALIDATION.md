@@ -1,5 +1,13 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: screenshot check and two tilted green rings, build21 preview
+
+- PASS: production build and final native motion suite. Check angle ~72.35°, sampled endpoint clearances and 12.5%-radius stroke remain proportional at 30×30, 60×30 and 60×60. Continuous drawing, inset geometry and native rendering passed. Screenshot estimates are not a claim of pixel-perfect Apple geometry.
+- PASS: exactly two rings total (main + one green companion), distinct tilted planes and opposing one-and-a-half-turn motion, finite fade and cleanup. Color reaches green before flipping. Existing 620ms flip / 200ms pause / 600ms check, true progress, confirmation, cancellation, parallel/new task, reduced motion/transparency and spring interruption regressions passed.
+- PASS: isolated e7b7af9/current previews rebuilt; retired preference bridge removed because both sides now use fixed timing. No production identity, install, metadata bump, DMG, dependency, push or release. Strict preview signatures verified; full-resolution Air/mini visual acceptance still pending.
+
+参考图对勾与双绿环候选通过原生检查，实际外观供用户预览确认；静态截图无法提供原动画精确轨迹。
+
 ## 2026-10-08: fixed timing and one-and-a-half-turn completion, build21 preview
 
 - PASS: production build and final sequential native motion suite. Fixed profile asserts 1220ms relaxed card calibration, 620ms flip, 200ms pause, 600ms check and 1800ms hold. One-and-a-half turns are monotonic with smooth endpoints; true progress, acknowledgement, green-ring pause, trails, cancellation, parallel/new tasks, native spring interruption and accessibility passed.

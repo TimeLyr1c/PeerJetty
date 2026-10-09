@@ -48,7 +48,7 @@ The local animation switch is respected; public Reduce Motion overrides it witho
 
 ## Current experiment boundary / 当前实验边界
 
-build20's two Y-axis ring turns, three fading trails and blue-to-green transition are a **local experiment**, not the default for all completion UI. No exact Apple Pay reproduction is claimed. The dedicated build21 refinement uses one and a half turns and retains trails with smoother boundaries and smaller card deformation; owner visual acceptance is still pending. Preserve that candidate until the owner accepts/simplifies it in a dedicated change; this specification does not silently remove a just-requested effect. Consider clarity, latency, repeated-use comfort and cost before promotion. Text keeps its existing confirmed-success feedback.
+build20's two Y-axis ring turns, three fading trails and blue-to-green transition are a **local experiment**, not the default for all completion UI. No exact Apple Pay reproduction is claimed. The dedicated build21 refinement uses two angled green rings turning in opposite directions and a screenshot-proportioned check; owner visual acceptance is still pending. Preserve that candidate until the owner accepts/simplifies it in a dedicated change; this specification does not silently remove a just-requested effect. Consider clarity, latency, repeated-use comfort and cost before promotion. Text keeps its existing confirmed-success feedback.
 
 当前一圈半翻转与拖影需要 Air/mini 实际验收；可以在下一次独立改动中选择简化，不扩展到所有控件。默认理念是克制，实验须有用途与证据。
 
@@ -62,7 +62,7 @@ Official references: [Motion transitions](https://motion.dev/docs/react-transiti
 
 ## Physical spring refinement / 物理弹簧精修
 
-SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping in fixed timing (card outbound 0.40 / return 0.65; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 74c822a pacing refinement against this candidate, both using native views and no production identity.
+SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping in fixed timing (card outbound 0.40 / return 0.65; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares e7b7af9 pacing refinement against this candidate, both using native views and no production identity.
 
 原生物理弹簧负责形变，短淡化负责显现，真实限速曲线负责进度，共享完成时间线负责翻转／画勾／停留。预览比较上一轮精修与当前候选；不安装 Web 库、不改传输与配置，仍待用户视觉确认。
 
