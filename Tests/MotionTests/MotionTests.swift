@@ -137,10 +137,12 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             check(abs(before.value-after.value)<1e-8 && abs(before.velocity-after.velocity)<1e-8,"peak joins with continuous position and zero velocity")
             let offset=0.10/parameters.frequency
             check(abs(stages.returnY.sample(at:peak+offset).velocity)>abs(y.sample(at:peak+offset).velocity),"stronger return accelerates faster without changing outbound")
-            for i in 0...1000 { let t=start+Double(i)*stages.duration/1000; check(stages.sample(at:t).y<=1.035,"two-stage rebound stays bounded") }
+            for i in 0...1000 { let t=start+Double(i)*stages.duration/1000; check(stages.sample(at:t).y<=1.055,"two-stage rebound stays bounded") }
+            let returning=(0...1000).map { stages.sample(at:peak+Double($0)*(stages.ends-peak)/1000).y }
+            check(returning.min()! > 0.995,"stronger return damping avoids a visible secondary bounce")
             let resumed=stages.animations(at:peak+0.01,center:.zero) as! [CASpringAnimation]
             check(resumed.count==4 && abs(resumed[1].stiffness-stages.returnY.parameters.frequency*stages.returnY.parameters.frequency)<1e-8,"reopening during return does not multiply gain again")
-            check(samples.map(\.value).max()! <= 1.035 && samples.map(\.value).max()! > 1.029,"physical rebound remains bounded")
+            check(samples.map(\.value).max()! <= 1.055 && samples.map(\.value).max()! > 1.049,"physical rebound remains bounded")
             check(abs(samples.last!.value-1)<0.001 && abs(samples.last!.velocity)<0.02,"native-duration tail is already settled")
             let animation=parameters.animation(keyPath:"transform.scale.y",from:0.82)
             check(abs(animation.duration-profile.cardAppear)<0.01 && animation.duration == animation.settlingDuration,"native settling duration follows each speed without truncation")
@@ -154,7 +156,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let state=MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
         let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAAnimationGroup
         let springs=animation!.animations as! [CASpringAnimation]
-        check(springs.count == 8 && abs(springs[4].stiffness/springs[0].stiffness-2.4025)<1e-8,"two finite spring stages strengthen return once")
+        check(springs.count == 8 && abs(springs[4].stiffness/springs[0].stiffness-3.0625)<1e-8,"two finite spring stages strengthen return once")
         check(abs(springs[4].duration-springs[4].settlingDuration)<0.001,"return runs to native settlement")
         let anchor=host.layer!.anchorPoint, center=CGPoint(x:host.bounds.width*(0.5-anchor.x),y:host.bounds.height*(0.5-anchor.y))
         check(abs(center.x*0.92+(springs[2].fromValue as! Double)-center.x)<0.001 && abs(center.y*0.82+(springs[3].fromValue as! Double)-center.y)<0.001,"visual center is preserved with AppKit anchor")
@@ -165,15 +167,15 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let policy=MotionPolicy(reduceMotion:{false}), motion=WindowMotion(panel,policy:policy,cardAppearance:true)
         MotionEffects.clear(host);motion.reveal(immediately:true) {panel.orderFrontRegardless()};wait(0.04)
         let native=host.layer!.presentation()!.transform
-        check(native.m22 > 0.82 && native.m22 < 1.035,"native early spring frame remains bounded")
+        check(native.m22 > 0.82 && native.m22 < 1.055,"native early spring frame remains bounded")
         check(abs(center.x*native.m11+native.m41-center.x)<0.01 && abs(center.y*native.m22+native.m42-center.y)<0.01,"native presentation center is stationary")
         let begin=host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime
         motion.reveal(immediately:true) {panel.orderFrontRegardless()}
         check(host.layer!.animation(forKey:"PeerJetty.cardShape")!.beginTime == begin,"repeated reveal does not restart spring")
         let transition=CardSpringState(duration:policy.profile.cardAppear,started:begin).switched
-        wait(max(0,transition-CACurrentMediaTime()-0.015))
+        wait(max(0,transition-CACurrentMediaTime()-0.005))
         let beforePeak=host.layer!.presentation()!.transform.m22
-        wait(0.035)
+        wait(0.015)
         let afterPeak=host.layer!.presentation()!.transform.m22
         check(beforePeak>1.01 && afterPeak>1.01 && abs(beforePeak-afterPeak)<0.015,"native stage join retains overshoot without snapping to identity")
         var hidden=false;motion.dismiss {hidden=true;panel.orderOut(nil)};wait(0.04)
@@ -231,22 +233,23 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         print("PASS: visual rate cap, tiny/bursty updates, continuous position/velocity, finite catch-up and extended success hold")
     }
     static func flipTests() {
+        check(abs(TransferGlyph.flipRadians-2 * .pi)<1e-9,"success rotates exactly once")
         for lag in [0.0,0.045,0.09,0.135] {
             var previous=0.0
             for index in 0...100 {
                 let angle=TransferGlyph.flipAngle(at:Double(index)/100,lag:lag)
-                check(angle >= previous && angle <= 4 * .pi,"two turns are finite and forward-only")
+                check(angle >= previous && angle <= TransferGlyph.flipRadians,"one turn is finite and forward-only")
                 previous=angle
             }
-            check(abs(previous-4 * .pi)<1e-9,"ring and ghosts finish front-facing together")
+            check(abs(previous-TransferGlyph.flipRadians)<1e-9,"ring and ghosts finish front-facing together")
         }
         let epsilon = 0.0001
         func speed(_ t:Double) -> Double { (TransferGlyph.flipAngle(at:t+epsilon)-TransferGlyph.flipAngle(at:t-epsilon))/(2*epsilon) }
-        check(speed(0.5)>29 && speed(0.1)<0.6,"steeper middle speed peak with gentler ends")
+        check(speed(0.5)>15 && speed(0.1)<0.3,"steeper middle speed peak with gentler ends")
         check(speed(0.5)>speed(0.25) && speed(0.25)>speed(0.1),"rotation accelerates toward middle")
         check(abs(speed(0.25)-speed(0.75))<1e-5 && speed(0.75)>speed(0.9),"rotation slows symmetrically after middle")
         check(TransferGlyph.flipAngle(at:epsilon)/epsilon < 0.1, "flip starts continuously from rest")
-        check((4 * .pi-TransferGlyph.flipAngle(at:1-epsilon))/epsilon < 0.1, "flip ends with no abrupt velocity cutoff")
+        check((TransferGlyph.flipRadians-TransferGlyph.flipAngle(at:1-epsilon))/epsilon < 0.1, "flip ends with no abrupt velocity cutoff")
         for speed in AnimationSpeed.allCases {
             let profile = MotionProfile(speed)
             let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
@@ -287,7 +290,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         glyph.update(id:UUID(),completed:20,total:100)
         wait(oldDuration+0.05)
         check(finished == 1 && !glyph.isSuccess && customAnimations(glyph)==0,"new progress cancels old flips, trails and success callback")
-        print("PASS: two vertical-axis turns, three fading trails, color timing, check-after-stop, accessibility and cancellation cleanup")
+        print("PASS: one vertical-axis turn, three fading trails, color timing, check-after-stop, accessibility and cancellation cleanup")
     }
     static func ringTests() throws {
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)

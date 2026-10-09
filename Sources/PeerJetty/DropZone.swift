@@ -20,11 +20,12 @@ final class TransferGlyph: NSView {
     }
     private let track = CAShapeLayer(), arc = CAShapeLayer(), tick = CAShapeLayer()
     private let trails = (0..<3).map { _ in CAShapeLayer() }
+    static let flipRadians = 2 * Double.pi
     static func flipAngle(at time: Double, lag: Double = 0) -> Double {
         let time = min(1,max(0,time)), tail = min(1,max(0,(time-0.78)/0.22))
         let phase = max(0,time-lag*(1-tail*tail*(3-2*tail)))
         // Ninth-order smootherstep: flatter endpoints, a narrower middle velocity peak.
-        return 4 * .pi * (pow(phase,5)*(126+phase*(-420+phase*(540+phase*(-315+70*phase)))))
+        return flipRadians * (pow(phase,5)*(126+phase*(-420+phase*(540+phase*(-315+70*phase)))))
     }
     private func hideTrails() {
         CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -109,7 +110,7 @@ final class TransferGlyph: NSView {
         let color = CAKeyframeAnimation(keyPath:"strokeColor")
         let sourceColor=NSColor(cgColor:previousColor ?? NSColor.controlAccentColor.cgColor) ?? .controlAccentColor
         let targetColor=NSColor(cgColor:arc.strokeColor ?? NSColor.systemGreen.cgColor) ?? .systemGreen
-        color.values=(0...60).map { (sourceColor.blended(withFraction:Self.flipAngle(at:Double($0)/60)/(4 * .pi),of:targetColor) ?? targetColor).cgColor }
+        color.values=(0...60).map { (sourceColor.blended(withFraction:Self.flipAngle(at:Double($0)/60)/Self.flipRadians,of:targetColor) ?? targetColor).cgColor }
         color.keyTimes=(0...60).map { NSNumber(value:Double($0)/60) }
         color.duration=profile.ringFlip; color.fillMode = .backwards; color.timingFunction = .init(name:.linear)
         MotionEffects.add(color,to:arc,key:"PeerJetty.successColor",delay:fillDuration,startTime:now)

@@ -1,5 +1,14 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: 5% card overshoot and one-turn completion, build21 preview
+
+- PASS: production build and full native motion suite after narrowing the native peak-join sampling interval to measure continuity rather than total return travel. Height overshoot >4.9% and <5.5%; stronger return frequency x1.75 / damping ratio 0.65 keeps secondary undershoot below 0.5%. Native stage join, interruption, stationary target and finite cleanup passed.
+- PASS: exactly one forward Y-axis turn, symmetric ninth-order slow/fast/slow curve; rotation 340/620/860ms and existing pause 180/250/320ms. Actual pause displays front-facing green ring, no trails and no check. Progress caps, confirmation, cancellation, parallel transfer and accessibility passed.
+- PASS: 5c6d6b6/current isolated previews rebuilt and strict signatures verified. Candidate opened in CUA on Natural. Full-resolution Air/mini visual acceptance remains pending.
+- No production version/build metadata, installed app, identity, dependency or installer archive changed. No installation, push or release; existing nonfatal CLT warnings remain.
+
+卡片过冲约 5%、更快且更稳定的返回，以及稍长的一圈翻转均通过原生检查；预览已打开，最终观感待实机确认。
+
 ## 2026-10-08: steeper rotation and stronger rebound, build21 preview
 
 - PASS: production build and full native motion suite. Ninth-order smootherstep has symmetric monotonic rotation, flatter endpoints, and a sharper middle velocity peak; explicit derivative checks reject the previous flatter curve. Flip/color/trail synchronization retained.

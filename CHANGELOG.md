@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — 5% rebound and one-turn completion, planned build21
+
+Card height overshoot is roughly 5%; return frequency gain is 75% with stronger damping to limit secondary movement. Completion uses one turn at 340/620/860ms, with the existing slow/fast/slow curve and pre-check pause. Comparison baseline 5c6d6b6; preview only.
+
+卡片过冲约 5%，返回频率提高 75%并增强阻尼；圆环改为一圈，翻转 340／620／860ms，保留慢／快／慢曲线和画勾前停顿。仅更新隔离预览，暂不生成安装包。
+
 ## Unreleased — steeper motion tuning, planned build21
 
 Rotation uses ninth-order smootherstep with flatter endpoints and a sharper middle speed peak; duration, turns, color synchronization and continuous check drawing retained. Pause before the check increases to 180/250/320ms. Card damping changes to 0.53 for about 3% overshoot; return frequency gain rises to 55%, applied once. Original geometry and input behavior unchanged. Comparison baseline 3396b22, preview only.
