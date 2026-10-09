@@ -88,3 +88,6 @@ Path labels use an explicit 18 pt single-line height inside the 44 pt centered S
 `FileSendFeedback` in DropPresentation.swift owns the latest request ID, unstarted request IDs and failed-card state. Application consumes `PeerCore.FileSendEvent`; all file entry points use one send helper. Terminal events release busy state even when their presentation is stale. Only the latest request may present a failure, and active transfer events supersede request feedback. Peer discovery refreshes must not silently reset a pending/failed card. Keep original diagnostics in settings and concise bilingual help on the card. No animation or hit-target change.
 
 文件请求反馈独立于实际传输，使用 UUID 过滤旧回调；准备与连接期间没有无效取消操作，失败提示不被发现刷新覆盖。复用现有卡片样式与设置错误详情。
+
+
+Startup connection reuses the existing General presence/startup group and native NSSwitch (`autoConnectLastPeer`). `SettingsController.onAutoConnect` is restored from saved configuration on write failure. It adds no new panel, animation, polling or connection status source; use existing authorized peer snapshots. / 启动连接复用通用页原生开关与配置恢复，不增加弹窗、动画或轮询。

@@ -29,6 +29,8 @@ public struct Configuration: Codable {
     public var receiveBookmark: Data?
     public var peers: [TrustedPeer]
     public var preferredPeer: String?
+    public var lastConnectedPeer: String?
+    public var autoConnectLastPeer: Bool = true
     public var onboardingComplete: Bool
     public var showTextHistory: Bool = true
     public var textRetention: TextRetention = .latest500
@@ -41,7 +43,7 @@ public struct Configuration: Codable {
         self.name = name; self.receivePath = receivePath; peers = []; onboardingComplete = false; autoOpenReceivedFiles = false
     }
     private enum CodingKeys: String, CodingKey {
-        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled, showMenuBarIcon, showDockIcon
+        case name, receivePath, receiveBookmark, peers, preferredPeer, onboardingComplete, autoOpenReceivedFiles, showTextHistory, textRetention, animationsEnabled, showMenuBarIcon, showDockIcon, lastConnectedPeer, autoConnectLastPeer
     }
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -50,6 +52,8 @@ public struct Configuration: Codable {
         receiveBookmark = try values.decodeIfPresent(Data.self, forKey: .receiveBookmark)
         peers = try values.decode([TrustedPeer].self, forKey: .peers)
         preferredPeer = try values.decodeIfPresent(String.self, forKey: .preferredPeer)
+        lastConnectedPeer = try values.decodeIfPresent(String.self, forKey: .lastConnectedPeer)
+        autoConnectLastPeer = try values.decodeIfPresent(Bool.self, forKey: .autoConnectLastPeer) ?? true
         onboardingComplete = try values.decode(Bool.self, forKey: .onboardingComplete)
         showMenuBarIcon = try values.decodeIfPresent(Bool.self, forKey: .showMenuBarIcon)
         showDockIcon = try values.decodeIfPresent(Bool.self, forKey: .showDockIcon)

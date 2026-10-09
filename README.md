@@ -32,6 +32,8 @@ To update, quit PeerJetty, replace the app in Applications, and reopen it. Norma
 
 Development build26 retains pairing after app exit, displays disconnected state, and bounds file reconnection attempts to five seconds. If the destination app is closed, open it on the same LAN and send again; failed requests are not replayed later. This is a local test build, not a new public release.
 
+In development builds, **Settings → General → Connect to last device at startup** is on by default. It remembers the last successfully connected paired device separately from your default sending destination. The first upgrade needs one successful connection to establish this record. Startup discovery may reconnect, but never sends files automatically. Failed attempts stop after five seconds without a popup; one later reappearance retry is allowed.
+
 ## Pair and send
 
 1. Connect both Macs to the same local network and keep both apps running.

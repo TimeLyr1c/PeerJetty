@@ -271,6 +271,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onLanguage = { selection in LanguagePreferences().save(selection) }
 
 
+            controller.onAutoConnect = { [weak self] enabled in
+                do {try store.update {$0.autoConnectLastPeer=enabled};self?.engine?.autoConnectPreferenceChanged()}
+                catch {self?.settings?.autoConnectState(store.snapshot.autoConnectLastPeer);self?.showError(error.localizedDescription)}
+            }
             controller.onAnimations = { [weak self] enabled in
                 do { try store.update { $0.animationsEnabled = enabled }; MotionPolicy.shared.enabled = enabled }
                 catch { self?.settings?.animationState(store.snapshot.animationsEnabled); self?.showError(error.localizedDescription) }
@@ -373,7 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: L10n.text("application.reset_and_quit")); alert.addButton(withTitle: L10n.text("dropzone.cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
-            try DeviceIdentity.reset(); try store?.update { $0.peers = []; $0.preferredPeer = nil; $0.onboardingComplete = false }
+            try DeviceIdentity.reset(); try store?.update { $0.peers = []; $0.preferredPeer = nil; $0.lastConnectedPeer=nil; $0.onboardingComplete = false }
             NSApp.terminate(nil)
         } catch { showError(error.localizedDescription) }
     }

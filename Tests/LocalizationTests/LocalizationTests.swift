@@ -84,6 +84,13 @@ struct LocalizationChecks {
             let groups = descendants(page(section)).filter { $0.identifier?.rawValue.hasPrefix("settingsGroup.") == true }
             check(groups.count == expectedGroups[section], "Settings pages retain intentional native groups")
         }
+        let autoConnect = control("autoConnectLastPeer",as:NSSwitch.self)
+        check(autoConnect.state == .on,"Automatic startup connection defaults on")
+        var autoChanged:Bool?
+        settings.onAutoConnect={autoChanged=$0};autoConnect.state = .off
+        NSApp.sendAction(autoConnect.action!,to:autoConnect.target,from:autoConnect)
+        check(autoChanged == false,"Startup auto-connect toggle dispatches")
+        settings.autoConnectState(true);check(autoConnect.state == .on,"Save failure can restore startup connection toggle")
         let languagePicker = control("displayLanguage", as: NSPopUpButton.self)
         check(languagePicker.indexOfSelectedItem == 1, "Picker shows saved English preference")
         var changed: DisplayLanguage?

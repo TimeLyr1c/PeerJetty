@@ -17,8 +17,76 @@ private func pump(_ done:()->Bool,timeout:Double=8) {
         defer {try? fm.removeItem(at:root)}
         try eofChecks()
         let file=root.appendingPathComponent("fixture.txt");try Data("Fixture 中文\n".utf8).write(to:file)
+        try startup(root:root)
         try requests(root:root,file:file)
         try processExit(root:root,file:file)
+    }
+    static func startup(root:URL) throws {
+        let aid=try DeviceIdentity.ephemeral(),bid=try DeviceIdentity.ephemeral()
+        var config=Configuration(name:"Startup A",receivePath:root.path)
+        config.peers=[TrustedPeer(id:bid.fingerprint,name:"Startup B"),TrustedPeer(id:"another",name:"Default")]
+        config.preferredPeer="another";config.lastConnectedPeer=bid.fingerprint
+        var legacy=try JSONSerialization.jsonObject(with:JSONEncoder().encode(config)) as! [String:Any]
+        legacy.removeValue(forKey:"lastConnectedPeer");legacy.removeValue(forKey:"autoConnectLastPeer")
+        let upgraded=try JSONDecoder().decode(Configuration.self,from:JSONSerialization.data(withJSONObject:legacy))
+        check(upgraded.autoConnectLastPeer && upgraded.lastConnectedPeer == nil,"legacy auto-connect default with no guessed last peer")
+        let location=root.appendingPathComponent("startup-config/configuration.json")
+        let sa=try ConfigurationStore(url:location,fallback:config)
+        try sa.update {_ in}
+        let sb=try ConfigurationStore(url:nil,fallback:Configuration(name:"Startup B",receivePath:root.path))
+        try sb.update {$0.peers=[TrustedPeer(id:aid.fingerprint,name:"Startup A")]}
+        let a=PeerEngine(identity:aid,store:sa),b=PeerEngine(identity:bid,store:sb)
+        var connected=false,port:UInt16=0,files=0,texts=0,statuses:[String]=[]
+        a.onPeers={connected=$0.contains {$0.id==bid.fingerprint && $0.connected}}
+        a.onStatus={statuses.append($0)};b.onListening={port=$0}
+        b.onReceived={_,_ in files+=1};b.onTextReceived={_,ack in texts+=1;ack()}
+        defer {a.stop();b.stop()}
+        b.start(discovery:false);pump({port>0});a.start(discovery:false)
+        a.testingEndpoint(peerID:bid.fingerprint,port:port);pump({connected})
+        check(files==0 && texts==0 && sa.snapshot.preferredPeer=="another","startup connects without sending or changing default")
+        let reopened=try ConfigurationStore(url:location,fallback:upgraded)
+        check(reopened.snapshot.lastConnectedPeer==bid.fingerprint,"successful authorized peer persisted")
+        try sa.update {$0.autoConnectLastPeer=false};a.autoConnectPreferenceChanged()
+        RunLoop.main.run(until:Date().addingTimeInterval(0.1));check(connected,"disabling does not interrupt established transport")
+        a.stop();pump({!connected});a.start(discovery:false)
+        a.testingEndpoint(peerID:bid.fingerprint,port:port);RunLoop.main.run(until:Date().addingTimeInterval(0.3))
+        check(!connected,"disabled startup does not connect")
+        try sa.update {$0.autoConnectLastPeer=true};a.autoConnectPreferenceChanged();pump({connected})
+        a.forget(bid.fingerprint);pump({sa.snapshot.lastConnectedPeer == nil && !connected})
+        check(sa.snapshot.preferredPeer=="another","unpair clears last peer but preserves other default")
+        a.stop();b.stop();RunLoop.main.run(until:Date().addingTimeInterval(0.1))
+        try sa.update {$0.lastConnectedPeer=bid.fingerprint}
+        a.start(discovery:false);a.testingEndpoint(peerID:bid.fingerprint,port:port)
+        RunLoop.main.run(until:Date().addingTimeInterval(0.2));check(!connected,"untrusted remembered ID is ignored")
+        a.stop();RunLoop.main.run(until:Date().addingTimeInterval(0.1))
+        try sa.update {$0.peers.append(TrustedPeer(id:bid.fingerprint,name:"Startup B"))}
+        try sb.update {$0.peers=[TrustedPeer(id:aid.fingerprint,name:"Startup A")]}
+        let listener=try NWListener(using:TLS.parameters(identity:bid,store:sb,gate:PairingGate(),queue:.main),on:.any)
+        var stalledPort:UInt16=0,accepted=0,closed=0,held:[NWConnection]=[]
+        listener.stateUpdateHandler={if case .ready=$0 {stalledPort=listener.port!.rawValue}}
+        func drain(_ c:NWConnection) {
+            c.receive(minimumIncompleteLength:1,maximumLength:4096) {_,_,ended,error in
+                if ended || error != nil {closed+=1} else {drain(c)}
+            }
+        }
+        listener.newConnectionHandler={c in accepted+=1;held.append(c);c.start(queue:.main);drain(c)}
+        listener.start(queue:.main);pump({stalledPort>0})
+        defer {listener.cancel();held.forEach {$0.cancel()}}
+        statuses=[];a.start(discovery:false)
+        a.testingEndpoint(peerID:bid.fingerprint,port:stalledPort)
+        pump({accepted==1})
+        RunLoop.main.run(until:Date().addingTimeInterval(5.2))
+        check(closed==1 && !connected && !statuses.contains(L10n.text("file.connection_timeout")),"automatic timeout is quiet and disconnected")
+        a.testingEndpoint(peerID:bid.fingerprint,port:stalledPort)
+        RunLoop.main.run(until:Date().addingTimeInterval(0.2));check(accepted==1,"unchanged discovery does not retry")
+        a.testingRemoveEndpoint(peerID:bid.fingerprint);a.testingEndpoint(peerID:bid.fingerprint,port:stalledPort);pump({accepted==2})
+        RunLoop.main.run(until:Date().addingTimeInterval(5.2));check(closed==2,"second automatic attempt also closes by deadline")
+        a.testingRemoveEndpoint(peerID:bid.fingerprint);a.testingEndpoint(peerID:bid.fingerprint,port:stalledPort)
+        RunLoop.main.run(until:Date().addingTimeInterval(0.2));check(accepted==2,"automatic attempt budget is two per startup")
+        try sa.update {$0.autoConnectLastPeer=false};a.autoConnectPreferenceChanged()
+        a.testingRemoveEndpoint(peerID:bid.fingerprint);a.testingEndpoint(peerID:bid.fingerprint,port:stalledPort)
+        RunLoop.main.run(until:Date().addingTimeInterval(0.2));check(accepted==2,"disabled retry stops pending attempt")
+        print("PASS: startup trusted TLS, persisted last/default separation, migration, toggle, unpair, quiet five-second timeout and bounded reappearance retry")
     }
     static func eofChecks() throws {
         for size in [0,3,4] {

@@ -1,5 +1,15 @@
 # 0.2.0 验证记录
 
+## 2026-10-09: startup connection to last trusted peer
+
+- PASS: `Scripts/test-connections.sh` adds real ephemeral TLS startup connection, persistent last-successful peer, independent unchanged default destination, old configuration defaults (enabled, no invented last peer), disabling without disconnecting established transport, enabling live, unpair clearing and remembered-but-untrusted rejection. Automatic connection sends neither files nor text. A real stalled TLS/application hello closes after five seconds quietly; unchanged discovery does not retry, reappearance allows a second bounded attempt, later reappearance cannot exceed the startup budget.
+- PASS: all prior EOF/normal-process-exit/SIGKILL/in-transfer-exit, pending-file five-second timeout and stale-error checks. Existing core/file integration and adversarial unpair/cancellation regressions passed. English/Chinese settings action/restoration and 40 light/dark/default/minimum layouts passed; 359 bilingual entries agree.
+- Changes are local configuration and native General switch only; TLS, protocol v1, Keychain/Bundle identity, transfer and animation rules unchanged. No new dependency, heartbeat, background retry timer, file/text replay or production identity access. Existing CLT linker search-path warnings remain nonfatal.
+- Pending: Air/mini actual Bonjour startup, both apps opening simultaneously, closed destination later opening, and app restart after recording one real successful connection. Loopback/discovery injection exercises the production decision path, not physical Bonjour availability. First upgrade has no historical last connection; explicitly connect once.
+
+启动自动连接使用独立的上次成功认证记录，默认开启；关闭开关不切断现有连接，解除清除记录。真实隔离 TLS、五秒关闭、有限发现触发、旧配置和原生双语开关测试通过；不自动发送任何内容。双机 Bonjour 启动与重新出现实测待完成，首次升级需成功连接一次建立记录。
+
+
 ## 2026-10-09: connection lifecycle and bounded file sending (build26)
 
 - DELIVERED: clean source `e2ae5bf`, 0.4.0/build26 arm64 App + DMG; strict ad hoc signature, DMG integrity and relocated packaged localization passed. DMG SHA-256: `d739244a4cee500995d38195f8a83f802faca5be2fbae88ef213cad9ea3ab025`. build25 retained with matching prior checksum. Bundle ID/protocol/identity unchanged. No installation, push or release.

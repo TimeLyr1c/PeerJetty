@@ -68,3 +68,10 @@ A successful remote unpair event or local unpair outcome opens Devices and an ap
 Dragging, menu Send Files and settings Send Files use the same request-scoped flow. While connecting, the card names the destination. Failure shows “Not connected to [device]” and a same-LAN/open-app cue; full original diagnostics and retry guidance remain in settings. A preparation failure has its own sending-failed title. A request cannot overwrite a newer request or active transfer; no cancel × appears before a task starts, and terminal tasks remove it. Restarting the other app allows a fresh explicit send to reconnect without pairing again.
 
 拖拽、菜单和设置发送文件共用同一流程；连接中显示目标名称，失败明确提示未连接及同局域网打开对方应用，设置保留完整错误。请求按 UUID 跟踪，旧错误不能覆盖新任务；任务开始前不显示取消叉号，结束后清除。对方重开后重新投放即可尝试连接，无需重新配对。
+
+
+## Startup connection / 启动连接
+
+General includes “Connect to last device at startup”, enabled by default and immediately saved. It targets the last authorized successful peer, independent of default file destination. Older configuration has no inferred last peer: connect once to populate it. A trusted discovery endpoint starts an automatic connection with a five-second deadline. Failure is quiet; unchanged discovery does not retry. A disappearance/reappearance or endpoint change allows one more attempt (two total per startup). Success or explicit user connection/send ends startup recovery. No file/text, clipboard or pairing approval is automatic. Switching off cancels only an unstarted automatic attempt; established transport and explicit file work continue. Save failure restores the switch and reports the error.
+
+通用页提供默认开启的启动连接开关；上次成功连接与默认目标分开保存。旧配置不猜测历史，需要连接一次建立记录。发现后最多五秒，失败不弹窗，同一发现记录不重复尝试；重新出现最多再试一次。成功或手动操作结束本次启动恢复，关闭开关不打断已连接或明确发起的传输，保存失败恢复原值。解除配对／重置身份清除相应记录，普通退出保留。

@@ -373,3 +373,6 @@
 "file.send_failed" = "无法发送到 %@";
 "file.offline_help" = "请确认对方已打开 PeerJetty，并且两台 Mac 连接到同一局域网。重新投放文件即可重试。";
 "file.offline_card_help" = "请在同一局域网打开对方应用";
+
+"settings.auto_connect" = "启动时自动连接上次设备";
+"settings.auto_connect_hint" = "自动连接上次成功连接的已配对设备，不会自动发送文件。";

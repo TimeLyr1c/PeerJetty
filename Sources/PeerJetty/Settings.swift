@@ -46,6 +46,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     var onDock: ((Bool) -> Void)?
     var onHideTemporary: (() -> Void)?
     var onLatestText: (() -> Void)?
+    var onAutoConnect: ((Bool) -> Void)?
     var onAnimations: ((Bool) -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
@@ -74,6 +75,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     private let otherConnectionLabel = NSTextField(wrappingLabelWithString: "")
     private var copiedConnectionInfo = ""
     private let latestTextButton = NSButton()
+    private let autoConnect = NSSwitch()
     private let animations = NSSwitch()
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
@@ -135,6 +137,9 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         latestTextButton.identifier = NSUserInterfaceItemIdentifier("latestTextEntry"); latestTextButton.isEnabled = false
         connectionLabel.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
         connectionLabel.textColor = .secondaryLabelColor
+        autoConnect.state = configuration.autoConnectLastPeer ? .on : .off
+        autoConnect.identifier = NSUserInterfaceItemIdentifier("autoConnectLastPeer")
+        autoConnect.target=self; autoConnect.action = #selector(toggleAutoConnect)
         animations.state = configuration.animationsEnabled ? .on : .off
         animations.identifier = NSUserInterfaceItemIdentifier("interfaceAnimations")
         animations.target = self; animations.action = #selector(toggleAnimations)
@@ -162,7 +167,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             row([symbol("laptopcomputer", size:32), name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))])]),
             group("settings.language", rows: [setting("settings.language", language), hint("settings.language_restart")]),
             group("settings.group_presence", rows: [setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch),
-                hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login)]),
+                hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login),
+                setting("settings.auto_connect", autoConnect), hint("settings.auto_connect_hint")]),
             group("settings.group_motion", rows: [setting("settings.animations", animations), hint("settings.animations_hint")])]
         connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.spacing = 10; connectionGroup.isHidden = true
         connectionGroup.identifier = NSUserInterfaceItemIdentifier("connectionInfoGroup")
@@ -504,6 +510,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         let detail = L10n.text(key, update.peerName, update.status)
         progressLabel.stringValue = update.finished ? detail : L10n.text("settings.progress_percent", detail, L10n.percent(percent))
     }
+    func autoConnectState(_ enabled:Bool) {autoConnect.state=enabled ? .on : .off}
+    @objc private func toggleAutoConnect() {onAutoConnect?(autoConnect.state == .on)}
     func animationState(_ enabled: Bool) { animations.state = enabled ? .on : .off }
 
     @objc private func toggleAnimations() { onAnimations?(animations.state == .on) }

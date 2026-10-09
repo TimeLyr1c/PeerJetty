@@ -74,3 +74,10 @@ Discovery and trust do not imply an active transport. A peer is connected only w
 All file entry points share an ephemeral UUID request; the same UUID becomes the transfer ID when started. Preparation, connecting, queued, started and failed events include peer identity/name; failures include the original error. An authorized ready session sends immediately. Otherwise an existing connection or discovered endpoint may be tried for five seconds from entering connecting. Deadline/connection failure removes unstarted requests and their temporary preparations; there is no durable offline queue, automatic later replay or retry. The deadline applies to connection/authorization, not file hashing or a transfer already started. Multiple pending requests on a failed session each receive one terminal failure.
 
 发现和信任不代表连接可用。已认证 TLS 会话进入不可用等待、失败或结束后，清理该连接任务并刷新设备；最后一段完整数据先交付再处理结束。普通退出不解除信任或默认目标。文件请求带 UUID，进入连接阶段后最多等待五秒；失败任务不离线保存或自动重发。没有新增心跳，静默断网不承诺立即识别。
+
+
+## Local startup reconnection
+
+`autoConnectLastPeer` (missing = true) and `lastConnectedPeer` (missing = nil) are local configuration only. A successful authorized TLS handshake atomically records the peer ID alongside existing trust maintenance; it does not override a nonempty preferred destination. Startup recovery uses the existing discovery and expected-certificate validation; it never opens the pairing gate or adds protocol messages/capabilities. Only a currently trusted remembered identity is eligible. The startup budget is two discovery-triggered attempts, each bounded to five seconds; unchanged discovery cannot poll/retry. Successful authorization or explicit file/manual connection takes precedence and ends startup recovery. Revocation/reset clears the record. No queued content is sent by recovery.
+
+新增两个本机配置字段，成功认证后保存上次连接身份，与默认目标分离。只向仍信任的发现设备使用原有 TLS 身份校验，不新增协议、配对批准或心跳；不发送旧请求。每次启动最多两次发现触发的五秒尝试，普通退出保留记录，解除与重置清除。
