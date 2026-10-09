@@ -2,6 +2,8 @@
 
 ## 2026-10-09: connection lifecycle and bounded file sending (build26)
 
+- DELIVERED: clean source `e2ae5bf`, 0.4.0/build26 arm64 App + DMG; strict ad hoc signature, DMG integrity and relocated packaged localization passed. DMG SHA-256: `d739244a4cee500995d38195f8a83f802faca5be2fbae88ef213cad9ea3ab025`. build25 retained with matching prior checksum. Bundle ID/protocol/identity unchanged. No installation, push or release.
+
 - PASS: new `Scripts/test-connections.sh` uses ephemeral TLS identities, in-memory trust and temporary directories. Complete final bytes precede EOF/error; partial/empty EOF fails. Discovery alone is disconnected, authorization can reconnect, two authorized connections survive one waiting failure, and the last waiting/closed session disconnects without deleting trust/default. No endpoint, preparation failure, stale endpoint and a real TLS/application-hello stall produce scoped failures; two pending requests fail exactly once at the five-second deadline. Restart never replays failed requests.
 - PASS: separate real child processes: graceful remote service shutdown, SIGKILL and shutdown during a 32 MiB transfer update the parent to disconnected and retain trust/default; active transfer fails and temporary receive state is cleaned. These are two local processes over loopback, not Air/mini physical-device acceptance. Production Keychain, config and history were not used.
 - PASS: request feedback rejects old failure callbacks, releases terminal pending IDs, protects task failures from discovery-idle reset; bilingual card help fits, cancel × is UUID-scoped and gone on terminal state. Existing drop geometry/pasteboard and 24 bilingual layout checks pass. No motion timings or hit regions changed.
