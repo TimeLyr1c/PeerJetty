@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — fixed motion timing, planned build21
+
+Removed animation speed selectors and persisted speed configuration. Reveal uses Relaxed card tuning; completion uses a 620ms one-and-a-half-turn flip, 200ms pause and 600ms check. Animation toggle and accessibility overrides remain. Legacy speed values are ignored.
+
+移除设置和预览的速度选择；固定舒缓弹出、620ms 一圈半翻转、200ms 暂停与 600ms 画勾。保留动画总开关与辅助功能优先规则；旧速度字段自动忽略。
+
 ## Unreleased — 5% rebound and one-turn completion, planned build21
 
 Card height overshoot is roughly 5%; return frequency gain is 75% with stronger damping to limit secondary movement. Completion uses one turn at 340/620/860ms, with the existing slow/fast/slow curve and pre-check pause. Comparison baseline 5c6d6b6; preview only.

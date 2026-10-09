@@ -3,7 +3,7 @@ set -euo pipefail
 PROJECT_ROOT="${0:A:h:h}"
 cd "$PROJECT_ROOT"
 # Freeze the previous native refinement source. Never switch or alter the live checkout.
-BASELINE_REF=5c6d6b6
+BASELINE_REF=74c822a
 ./Scripts/swift.sh build --product PeerJetty -Xswiftc -enable-testing
 BIN_DIR="$(./Scripts/swift.sh build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-design-preview.XXXXXX)"
@@ -24,11 +24,25 @@ for SIDE in Before After; do
       SOURCES+=("Sources/PeerJetty/$FILE.swift")
     fi
   done
+  if [[ "$SIDE" == Before ]]; then
+    # Preview-only bridge for the retired UI preference; never linked into the app.
+    cat > "$TEST_ROOT/LegacySpeed.swift" <<'SWIFT'
+import PeerCore
+enum AnimationSpeed: String, CaseIterable { case fast, natural, relaxed }
+extension Configuration { var animationSpeed: AnimationSpeed { .natural } }
+SWIFT
+    SOURCES+=("$TEST_ROOT/LegacySpeed.swift")
+  fi
   APP="$PREVIEW_ROOT/$SIDE.app"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   /usr/bin/swiftc -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${SOURCES[@]}" Tests/DesignPreview/DesignPreview.swift -o "$APP/Contents/MacOS/Preview"
   /usr/bin/ditto "$BIN_DIR/PeerJetty_PeerCore.bundle" "$APP/Contents/Resources/PeerJetty_PeerCore.bundle"
   /usr/bin/ditto Sources/PeerCore/Resources "$APP/Contents/Resources"
+  if [[ "$SIDE" == Before ]]; then
+    for LANGUAGE in en zh-Hans; do
+      git show "$BASELINE_REF:Sources/PeerCore/Resources/$LANGUAGE.lproj/Localizable.strings" > "$APP/Contents/Resources/$LANGUAGE.lproj/Localizable.strings"
+    done
+  fi
   cp LICENSE "$APP/Contents/Resources/LICENSE"
   cp Assets/AppIcon.png "$APP/Contents/Resources/AppIcon.png"
   /usr/bin/python3 - "$APP/Contents/Info.plist" "$SIDE" <<'PY'

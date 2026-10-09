@@ -12,7 +12,7 @@ Motion 库仅供参考；项目里的 Motion.swift 是自己的原生实现。�
 
 | Responsibility / 职责 | Owner / 归属 |
 |---|---|
-| Preference + accessibility | MotionPolicy; persisted animation enable/speed in PeerCore models |
+| Preference + accessibility | MotionPolicy; persisted animation enable with fixed timing in PeerCore models |
 | Speed profiles / file stages | MotionProfile + FileSuccessSequence + SpringParameters; values documented in ../APPEARANCE.md |
 | Simple fades, physical axis springs, analytical interruption state and keyed cleanup | MotionEffects |
 | Show/hide ordering, interruption revisions | WindowMotion |
@@ -24,7 +24,7 @@ Motion 库仅供参考；项目里的 Motion.swift 是自己的原生实现。�
 
 Use platform behavior first. Hover/color/opacity normally need a native simple transition, not a spring. New ordinary state effects generally target **150–300 ms**; an effect's intent and interruption behavior matter more than its nominal duration. Complex enter/exit, layout and gesture feedback can use AppKit animation contexts, CASpringAnimation or finite Core Animation keyframes through the existing infrastructure. Do not animate layout/hit geometry simply to move a decoration.
 
-普通新动画通常 150–300 毫秒；复杂弹簧按交互调整，考虑阻尼、初速度与收稳，不能把曲线简单拉长后截断。已有三档速度、卡片果冻展开和完成过程是用户明确选择的例外，数值沿用 [APPEARANCE.md](../APPEARANCE.md)，本轮不调整它们。
+普通新动画通常 150–300 毫秒；复杂弹簧按交互调整，考虑阻尼、初速度与收稳，不能把曲线简单拉长后截断。现有固定节奏、卡片果冻展开和完成过程是用户明确选择的例外，数值沿用 [APPEARANCE.md](../APPEARANCE.md)，本轮不调整它们。
 
 Use subtle direction/device relationships only when useful: e.g. a finite source-to-target handoff can explain transfer direction. It must not fabricate bytes, loop while idle or imply success before confirmation. Failure is readable and actionable, not a dramatic shake.
 
@@ -34,7 +34,7 @@ Use subtle direction/device relationships only when useful: e.g. a finite source
 - Drag target/window geometry stays fixed. Visual scale/perspective must not expand registration or shadow-margin hit areas.
 - Progress follows real bytes, never leads or retreats; unknown totals show preparation, and bytes complete without acknowledgement show waiting. Smoothing can lag; no fake replay or delayed network work.
 - A check begins only for confirmed success. Failure/cancel/unconfirmed don't play success; hold starts after the actual finish, and a new task takes over immediately.
-- Capture a speed profile at start; speed selection affects subsequent effects. Interrupt with current presentation/velocity as appropriate. Revisions/IDs guard every delayed cleanup, hide and completion.
+- Capture the fixed timing profile at start. Interrupt with current presentation/velocity as appropriate. Revisions/IDs guard every delayed cleanup, hide and completion.
 - Key custom effects with PeerJetty.*; remove stale effects when hidden/reset/superseded. Hide the window before restoring alpha to prevent a final-frame flash. Do not remove unrelated native animations.
 - No custom frame loop, animation polling, idle rotation, particles or infinite decorative effects. Keep layer count bounded and animation duration finite.
 
@@ -48,13 +48,13 @@ The local animation switch is respected; public Reduce Motion overrides it witho
 
 ## Current experiment boundary / 当前实验边界
 
-build20's two Y-axis ring turns, three fading trails and blue-to-green transition are a **local experiment**, not the default for all completion UI. No exact Apple Pay reproduction is claimed. The dedicated build21 refinement uses one turn and retains trails with smoother boundaries and smaller card deformation; owner visual acceptance is still pending. Preserve that candidate until the owner accepts/simplifies it in a dedicated change; this specification does not silently remove a just-requested effect. Consider clarity, latency, repeated-use comfort and cost before promotion. Text keeps its existing confirmed-success feedback.
+build20's two Y-axis ring turns, three fading trails and blue-to-green transition are a **local experiment**, not the default for all completion UI. No exact Apple Pay reproduction is claimed. The dedicated build21 refinement uses one and a half turns and retains trails with smoother boundaries and smaller card deformation; owner visual acceptance is still pending. Preserve that candidate until the owner accepts/simplifies it in a dedicated change; this specification does not silently remove a just-requested effect. Consider clarity, latency, repeated-use comfort and cost before promotion. Text keeps its existing confirmed-success feedback.
 
-两圈翻转与拖影需要 Air/mini 实际验收；可以在下一次独立改动中选择简化，不扩展到所有控件。默认理念是克制，实验须有用途与证据。
+当前一圈半翻转与拖影需要 Air/mini 实际验收；可以在下一次独立改动中选择简化，不扩展到所有控件。默认理念是克制，实验须有用途与证据。
 
 ## Verification / 验证
 
-For motion changes run Scripts/test-motion.sh; use --deliver-preview only when a native preview is useful. Exercise instant/long/unknown-total transfers, acknowledgement, failures/cancellation, repeated success, parallel/new tasks, rapid reopen and disabling motion mid-effect. Verify all speed profiles and accessibility changes. Use the actual reusable card with simulated events; do not connect production identities to a preview.
+For motion changes run Scripts/test-motion.sh; use --deliver-preview only when a native preview is useful. Exercise instant/long/unknown-total transfers, acknowledgement, failures/cancellation, repeated success, parallel/new tasks, rapid reopen and disabling motion mid-effect. Verify the fixed timing profile and accessibility changes. Use the actual reusable card with simulated events; do not connect production identities to a preview.
 
 Also run relevant drop/text/localization checks when those surfaces change. Record light/dark, complex backgrounds, long localized strings, notch/external screen, target boundaries and final-frame behavior. A locked/absent GUI cannot certify native appearance. Small captures and short CPU/RSS samples aren't full-resolution or WindowServer/GPU performance evidence. Compare changed effects for bounded layers/tasks and actual responsiveness; do not claim two-machine acceptance from single-machine tests.
 
@@ -62,7 +62,7 @@ Official references: [Motion transitions](https://motion.dev/docs/react-transiti
 
 ## Physical spring refinement / 物理弹簧精修
 
-SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping across speeds (card outbound 0.40 / return 0.65; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 5c6d6b6 pacing refinement against this candidate, both using native views and no production identity.
+SpringParameters calibrates the native settling estimate and preserves mass 1 and per-effect damping in fixed timing (card outbound 0.40 / return 0.65; text/success 0.72). SpringMotion/CardSpringState own finite analytical position and velocity snapshots for retargeting; rendering is CASpringAnimation, never a display loop. Card axis/anchor springs share a linear animation-group clock, without applying another easing curve over the physical solution. Fade, progress and completion stages retain their separate responsibilities. Before/After now compares 74c822a pacing refinement against this candidate, both using native views and no production identity.
 
 原生物理弹簧负责形变，短淡化负责显现，真实限速曲线负责进度，共享完成时间线负责翻转／画勾／停留。预览比较上一轮精修与当前候选；不安装 Web 库、不改传输与配置，仍待用户视觉确认。
 

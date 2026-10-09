@@ -67,7 +67,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     private func finishStartup(store: ConfigurationStore, identity: DeviceIdentity) {
         MotionPolicy.shared.enabled = store.snapshot.animationsEnabled
-        MotionPolicy.shared.speed = store.snapshot.animationSpeed
         self.store = store
         let config = store.snapshot
         let flags = IconVisibilityController.migrated(config, nativeMenu: menuBar?.isVisible ?? true)
@@ -230,10 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 if self?.motionPreview == nil { self?.motionPreview = MotionPreviewWindow() }
                 self?.motionPreview?.present()
             }
-            controller.onAnimationSpeed = { [weak self] speed in
-                do { try store.update { $0.animationSpeed = speed }; MotionPolicy.shared.speed = speed }
-                catch { self?.settings?.animationSpeedState(store.snapshot.animationSpeed); self?.showError(error.localizedDescription) }
-            }
+
             controller.onAnimations = { [weak self] enabled in
                 do { try store.update { $0.animationsEnabled = enabled }; MotionPolicy.shared.enabled = enabled }
                 catch { self?.settings?.animationState(store.snapshot.animationsEnabled); self?.showError(error.localizedDescription) }
@@ -263,7 +259,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let lastStatus { settings?.status(lastStatus) }
         settings?.updatePeers(peers, preferred: store.snapshot.preferredPeer)
         settings?.animationState(store.snapshot.animationsEnabled)
-        settings?.animationSpeedState(store.snapshot.animationSpeed)
         settings?.autoOpenState(store.snapshot.autoOpenReceivedFiles)
         settings?.loginState(SMAppService.mainApp.status == .enabled)
         settings?.showWindow(nil); NSApp.activate(ignoringOtherApps: true); settings?.window?.makeKeyAndOrderFront(nil)

@@ -314,14 +314,9 @@
 "settings.temporary_menu" = "The menu bar icon is temporarily visible for this run. Your saved choice remains off.";
 "settings.hide_temporary" = "Hide temporary icon";
 
-"settings.animation_speed" = "Animation speed";
-"settings.speed_fast" = "Fast";
-"settings.speed_natural" = "Natural";
-"settings.speed_relaxed" = "Relaxed";
-"settings.animation_speed_hint" = "Controls motion and success display time. Changes apply to the next animation.";
 "settings.motion_preview" = "Preview animations…";
 "motion.preview_title" = "Animation preview";
-"motion.preview_hint" = "Simulated progress only. No files are sent and no devices are connected. Preview speed changes do not change your saved settings.";
+"motion.preview_hint" = "Simulated progress only. No files are sent and no devices are connected.";
 "motion.replay" = "Replay";
 "drop.waiting_confirmation" = "Waiting for confirmation";
 

@@ -49,7 +49,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onHideTemporary: (() -> Void)?
     var onLatestText: (() -> Void)?
     var onAnimations: ((Bool) -> Void)?
-    var onAnimationSpeed: ((AnimationSpeed) -> Void)?
     var onMotionPreview: (() -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
@@ -69,7 +68,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private let statusDetails = NSButton()
     private let latestTextButton = NSButton()
     private let animations = NSSwitch()
-    private let animationSpeed = NSPopUpButton()
     private let login = NSSwitch()
     private let autoOpen = NSSwitch()
     private let historyOpen = NSButton()
@@ -126,10 +124,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         animations.state = configuration.animationsEnabled ? .on : .off
         animations.identifier = NSUserInterfaceItemIdentifier("interfaceAnimations")
         animations.target = self; animations.action = #selector(toggleAnimations)
-        animationSpeed.addItems(withTitles:AnimationSpeed.allCases.map(\.localizedTitle))
-        animationSpeed.identifier = NSUserInterfaceItemIdentifier("animationSpeed")
-        animationSpeed.target = self; animationSpeed.action = #selector(changeAnimationSpeed)
-        animationSpeedState(configuration.animationSpeed)
         login.target = self; login.action = #selector(toggleLogin)
         autoOpen.target = self; autoOpen.action = #selector(toggleAutoOpen)
         autoOpen.state = configuration.autoOpenReceivedFiles ? .on : .off
@@ -155,7 +149,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
             group("settings.group_presence", rows: [setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch),
                 hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login)]),
             group("settings.group_motion", rows: [setting("settings.animations", animations), hint("settings.animations_hint"),
-                setting("settings.animation_speed", animationSpeed), hint("settings.animation_speed_hint"),
                 actions([button(L10n.text("settings.motion_preview"), #selector(motionPreview))])])]
         connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.isHidden = true
         connectionGroup.identifier = NSUserInterfaceItemIdentifier("connectionInfoGroup")
@@ -382,8 +375,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         progressLabel.stringValue = update.finished ? detail : L10n.text("settings.progress_percent", detail, L10n.percent(percent))
     }
     func animationState(_ enabled: Bool) { animations.state = enabled ? .on : .off }
-    func animationSpeedState(_ speed:AnimationSpeed) { animationSpeed.selectItem(at:AnimationSpeed.allCases.firstIndex(of:speed) ?? 1) }
-    @objc private func changeAnimationSpeed() { onAnimationSpeed?(AnimationSpeed.allCases[animationSpeed.indexOfSelectedItem]) }
     @objc private func motionPreview() { onMotionPreview?() }
     @objc private func toggleAnimations() { onAnimations?(animations.state == .on) }
     @objc private func save() { onSave?(name.stringValue) }

@@ -7,8 +7,7 @@ final class MotionPolicy {
     static let changed = Notification.Name("PeerJetty.MotionPolicyChanged")
     static let shared = MotionPolicy()
     var enabled = true { didSet { if enabled != oldValue { notify() } } }
-    var speed: AnimationSpeed = .natural
-    var profile: MotionProfile { MotionProfile(speed) }
+    var profile: MotionProfile { MotionProfile() }
     private let reduceTransparency: () -> Bool
     private let reduceMotion: () -> Bool
     private var observer: NSObjectProtocol?
@@ -22,27 +21,15 @@ final class MotionPolicy {
     deinit { if let observer { NSWorkspace.shared.notificationCenter.removeObserver(observer) } }
 }
 
-extension AnimationSpeed {
-    var localizedTitle: String {
-        switch self {
-        case .fast: return L10n.text("settings.speed_fast")
-        case .natural: return L10n.text("settings.speed_natural")
-        case .relaxed: return L10n.text("settings.speed_relaxed")
-        }
-    }
-}
-
 struct MotionProfile {
     let cardAppear: Double
     let ringFlip: Double, checkPause: Double
     let progressRate: Double
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
-    init(_ speed: AnimationSpeed) {
-        switch speed {
-        case .fast: ringFlip = 0.34; checkPause = 0.18; cardAppear = 0.52; progressRate = 3; (appear,status,success,hold,dismiss) = (0.22,0.10,0.65,1,0.16)
-        case .natural: ringFlip = 0.62; checkPause = 0.25; cardAppear = 0.86; progressRate = 1.5; (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
-        case .relaxed: ringFlip = 0.86; checkPause = 0.32; cardAppear = 1.22; progressRate = 1; (appear,status,success,hold,dismiss) = (0.48,0.24,1.75,2.8,0.32)
-        }
+    init() {
+        cardAppear = 1.22
+        ringFlip = 0.62; checkPause = 0.20; progressRate = 1.5
+        (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
     }
 }
 

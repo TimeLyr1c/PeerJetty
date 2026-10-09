@@ -314,14 +314,9 @@
 "settings.temporary_menu" = "本次运行临时显示菜单栏图标，保存的选择仍为关闭。";
 "settings.hide_temporary" = "隐藏临时图标";
 
-"settings.animation_speed" = "动画速度";
-"settings.speed_fast" = "快速";
-"settings.speed_natural" = "自然";
-"settings.speed_relaxed" = "舒缓";
-"settings.animation_speed_hint" = "控制动画与成功提示停留时间，调整从下一次动画生效。";
 "settings.motion_preview" = "预览动画…";
 "motion.preview_title" = "动画预览";
-"motion.preview_hint" = "仅演示模拟进度，不传输文件或连接设备。 此窗口的速度选择不更改保存的设置。";
+"motion.preview_hint" = "仅演示模拟进度，不传输文件或连接设备。";
 "motion.replay" = "重新播放";
 "drop.waiting_confirmation" = "等待确认";
 

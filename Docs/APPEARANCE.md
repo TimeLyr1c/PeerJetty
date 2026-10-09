@@ -22,25 +22,26 @@ The native card sits in a transparent host with 32-point padding on each side. A
 
 ## Motion / 运动
 
-General → Animation speed offers **Fast / Natural / Relaxed**, defaulting to Natural for new and legacy configurations (unknown stored values also fall back). A change applies to the next effect; an active effect retains its captured timing. Existing text opening/closing and confirmed success feedback share the speed. Settings/history receive no new custom opening effects.
+Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a shorter pre-check pause.
 
-通用 → 动画速度提供 **快速／自然／舒缓**，新安装、旧配置和未知保存值均默认自然；修改从下一次效果生效，当前效果使用开始时的节奏。文本开合及确认成功反馈使用同一档，设置／历史不增加开合动画。
+动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，画勾前暂停略缩短。
 
-| Stage / 阶段 | Fast / 快速 | Natural / 自然 | Relaxed / 舒缓 |
-|---|---:|---:|---:|
-| Outward spring tuning / 弹出弹簧标定 | 520 ms | 860 ms | 1220 ms |
-| Text appear / 文本展开 | 220 ms | 340 ms | 480 ms |
-| Status / 文字过渡 | 100 ms | 180 ms | 240 ms |
-| Ring flip / 成功圆环翻转 | 340 ms | 620 ms | 860 ms |
-| Pause before check | 180 ms | 250 ms | 320 ms |
-| File success minimum / 文件成功反馈最短时长 | 1105 ms | 1950 ms | 2755 ms |
-| Maximum ring speed / 圆环最大视觉速度 | 300%/s | 150%/s | 100%/s |
-| Hold after check / 完成后停留 | 1 s | 1.8 s | 2.8 s |
-| Dismiss / 收起 | 160 ms | 240 ms | 320 ms |
+| Stage / 阶段 | Fixed timing / 固定节奏 |
+|---|---:|
+| Outward spring calibration / 弹出弹簧标定 | 1220 ms |
+| Text appear / 文本展开 | 340 ms |
+| Status / 文字过渡 | 180 ms |
+| Ring flip, 1.5 turns / 圆环翻转一圈半 | 620 ms |
+| Pause before check / 画勾前暂停 | 200 ms |
+| Check drawing / 对勾绘制 | 600 ms |
+| File success minimum / 成功反馈最短时长 | 1900 ms |
+| Maximum ring speed / 圆环最大视觉速度 | 150%/s |
+| Hold after check / 完成后停留 | 1.8 s |
+| Dismiss / 收起 | 240 ms |
 
-The card now uses native CASpringAnimation axes and anchor compensation, not 61 sampled transforms. Shared SpringParameters uses mass 1; card damping ratio 0.40, text/success feedback 0.72, calibrating frequency against the native settlingDuration; initial normalized velocity is the captured damping ratio × frequency. Time scaling preserves the character at 520/860/1220 ms. Initial size remains 92%/82%, with a visible rebound around 105.0% (bounded below 105.5%). The outward spring switches at its zero-velocity peak; the stronger return runs to actual native settlement without a tail cutoff. Opacity has a short non-spring fade on the same epoch. SpringMotion is sampled only on interruption, not per frame; repeated reveal does not restart, dismissal reopening carries current presentation size and physical velocity. Text retains 97% scaling and its existing timing, using the same parameters. Progress remains monotonic/rate-limited, not a spring.
+The card now uses native CASpringAnimation axes and anchor compensation, not 61 sampled transforms. Shared SpringParameters uses mass 1; card damping ratio 0.40, text/success feedback 0.72, calibrating frequency against the native settlingDuration; initial normalized velocity is the captured damping ratio × frequency. Time scaling preserves the character at 1220 ms. Initial size remains 92%/82%, with a visible rebound around 105.0% (bounded below 105.5%). The outward spring switches at its zero-velocity peak; the stronger return runs to actual native settlement without a tail cutoff. Opacity has a short non-spring fade on the same epoch. SpringMotion is sampled only on interruption, not per frame; repeated reveal does not restart, dismissal reopening carries current presentation size and physical velocity. Text retains 97% scaling and its existing timing, using the same parameters. Progress remains monotonic/rate-limited, not a spring.
 
-卡片改为原生 CASpringAnimation，不再使用 61 点形变采样。共享参数质量为 1，卡片阻尼比 0.40，文本与成功反馈保持 0.72，根据系统收稳时长换算频率和初速度，三档弹出阶段沿用 520／860／1220ms 标定。初始宽 92%／高 82%、回弹约 105.0%，上限 105.5%；返回阶段运行到原生收稳时长，不截断尾部。形变与短透明度显现共用时刻，重复展开不重播；收起中重新打开保留当前视觉尺寸和运动速度。解析状态只在打断时计算，没有逐帧循环。文本沿用 97% 缩放和原有节奏，进度继续真实限速追赶。
+卡片改为原生 CASpringAnimation，不再使用 61 点形变采样。共享参数质量为 1，卡片阻尼比 0.40，文本与成功反馈保持 0.72，根据系统收稳时长换算频率和初速度，弹出阶段沿用 1220ms 标定。初始宽 92%／高 82%、回弹约 105.0%，上限 105.5%；返回阶段运行到原生收稳时长，不截断尾部。形变与短透明度显现共用时刻，重复展开不重播；收起中重新打开保留当前视觉尺寸和运动速度。解析状态只在打断时计算，没有逐帧循环。文本沿用 97% 缩放和原有节奏，进度继续真实限速追赶。
 
 The physical drag target is immediately available and fixed, independently of rendered deformation/opacity. Native window position, layout, transparent margins and registration never animate; keyboard focus remains immediate. Repeated drag sampling does not truncate the effect. Disabling animations/Reduce Motion presents the final state and retains confirmed-success hold time.
 
@@ -50,23 +51,23 @@ The ring follows real byte targets through a rate-limited visual trajectory. It 
 
 圆环依据真实字节目标，以限速曲线平滑追赶；视觉上可以略落后，但不会超前或倒退，设置／辅助功能仍保留真实进度。准备或总量未知不造百分比。新进度沿用当前数学位置和速度，以单调三次曲线衔接；时长下限和端点约束保证瞬间大跳、微小更新与频繁更新都不超过所选速率。仅替换一个有限 Core Animation 效果，不增加轮询或逐帧任务。关闭动画／减少动态效果立即显示真实目标。
 
-Full bytes without receiver confirmation still show Waiting for confirmation. Only real success starts the green-ring completion followed by the two-stroke check and settlement. The visual finish also respects the cap: when far behind, it extends the sequence before the check, never delays actual transfer or acknowledgement, and never invents progress. The default minimum file success sequence is now 1.95 s, including the new flip stage; a ring starting near zero can take about 2.65 s. Hold starts only after this actual sequence finishes, not at a fixed nominal deadline. Failure/cancellation/unconfirmed events do not draw a check. Text keeps its confirmed-success icon feedback at the slower selected success duration.
+Full bytes without receiver confirmation still show Waiting for confirmation. Only real success starts the green-ring completion followed by the two-stroke check and settlement. The visual finish also respects the cap: when far behind, it extends the sequence before the check, never delays actual transfer or acknowledgement, and never invents progress. The default minimum file success sequence is now 1.90 s, including the new flip stage; a ring starting near zero can take about 2.60 s. Hold starts only after this actual sequence finishes, not at a fixed nominal deadline. Failure/cancellation/unconfirmed events do not draw a check. Text keeps its confirmed-success icon feedback at the fixed natural success duration.
 
-字节传完但未获接收确认仍显示“等待确认”；真实成功才补齐绿色圆环，再画两笔对勾并收稳。视觉补齐同样限速，落后较多时先延长圆环过程，不延迟传输或确认、不补演假进度。自然档包含新翻转阶段的文件成功变换最短 1.95 秒；从近零追赶时约 2.65 秒，实际整段完成后才开始停留计时。失败、取消、未确认不画对勾；文本成功图标也使用较慢的所选成功时长。
+字节传完但未获接收确认仍显示“等待确认”；真实成功才补齐绿色圆环，再画两笔对勾并收稳。视觉补齐同样限速，落后较多时先延长圆环过程，不延迟传输或确认、不补演假进度。固定节奏包含新翻转阶段的文件成功变换最短 1.90 秒；从近零追赶时约 2.60 秒，实际整段完成后才开始停留计时。失败、取消、未确认不画对勾；文本成功图标也使用固定自然成功时长。
 
 ### Experimental ring flip / 试验性圆环翻转
 
-After confirmed progress finishes filling, the full ring rotates **once around the vertical (Y) axis**, with mild perspective and symmetric ninth-order progress 126t^5-420t^6+540t^7-315t^8+70t^9 (maximum speed at the midpoint). It changes from blue to green during the flip, then pauses facing forward before the check starts. The stationary gray progress track is hidden during success so it does not mask the flip. Three extra vector ring layers trail at phase offsets 0.045/0.09/0.135, peak opacity 18%/10%/6%, and fade to zero before the flip ends. They are finite layers, not a particle emitter or continuous motion blur renderer.
+After confirmed progress finishes filling, the full ring rotates **one and a half turns around the vertical (Y) axis**, with mild perspective and symmetric ninth-order progress 126t^5-420t^6+540t^7-315t^8+70t^9 (maximum speed at the midpoint). It changes from blue to green during the flip, then pauses facing forward before the check starts. The stationary gray progress track is hidden during success so it does not mask the flip. Three extra vector ring layers trail at phase offsets 0.045/0.09/0.135, peak opacity 18%/10%/6%, and fade to zero before the flip ends. They are finite layers, not a particle emitter or continuous motion blur renderer.
 
-真实成功确认并补齐后，完整圆环绕**竖直 Y 轴翻转一圈**，带轻微透视、起止平滑、中点最快的对称九次曲线；翻转过程中由蓝变绿，正面停稳并暂停后开始对勾。成功阶段隐藏静止灰色底圈，避免遮蔽翻转。三个矢量圆环以 0.045／0.09／0.135 相位滞后，峰值不透明度 18%／10%／6%，翻转结束前淡出；不是粒子或持续运动模糊。
+真实成功确认并补齐后，完整圆环绕**竖直 Y 轴翻转一圈半**，带轻微透视、起止平滑、中点最快的对称九次曲线；翻转过程中由蓝变绿，正面停稳并暂停后开始对勾。成功阶段隐藏静止灰色底圈，避免遮蔽翻转。三个矢量圆环以 0.045／0.09／0.135 相位滞后，峰值不透明度 18%／10%／6%，翻转结束前淡出；不是粒子或持续运动模糊。
 
-Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the existing selected hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
+Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the fixed hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
 
 减少透明度／增强对比度禁用拖影，途中修改也会即时移除；减少动态效果／关闭动画直接展示最终圆环与对勾。重置、取消和新任务清除所有相关效果，旧完成回调不干扰新传输。总时长包含补齐、翻转、绘制和收稳，之后才开始原有停留。本次仅文件圆环试验，借鉴支付式完成反馈，不声称精确复刻 Apple 动画；文本成功效果不变。
 
-The compact check retains its ~76° elbow, inset endpoint and round caps. A single continuous CABasicAnimation strokeEnd curve (0.25, 0.10, 0.35, 1) traverses both line segments, without restarting easing at the elbow. Drawing takes 325/600/875 ms (about 17% quicker than the previous candidate). Rotation takes 340/620/860 ms followed by a 180/250/320ms pause; the blue/green change and trails still share that rotation clock. Hold, acknowledgement and real-progress rules are unchanged. This is an original payment-style timing experiment, not Apple's private animation.
+The compact check retains its ~76° elbow, inset endpoint and round caps. A single continuous CABasicAnimation strokeEnd curve (0.25, 0.10, 0.35, 1) traverses both line segments, without restarting easing at the elbow. Drawing takes 600 ms. Rotation takes 620 ms followed by a 200ms pause; the blue/green change and trails still share that rotation clock. Hold, acknowledgement and real-progress rules are unchanged. This is an original payment-style timing experiment, not Apple's private animation.
 
-对勾保留约 76° 折角、内缩端点与圆头，使用一条连续 strokeEnd 曲线（0.25／0.10／0.35／1）完成两段路径，拐角不再重启缓动，因此不会在第一笔结束后重新减速。绘制为 325／600／875ms，比上一轮快约 17%；翻转为 340／620／860ms，正面绿色圆环暂停 180／250／320ms 后再画勾。颜色和拖影仍跟随翻转时钟，停留、确认和真实进度规则不变。属于自行设计的支付式反馈，非 Apple 私有动画。
+对勾保留约 76° 折角、内缩端点与圆头，使用一条连续 strokeEnd 曲线（0.25／0.10／0.35／1）完成两段路径，拐角不再重启缓动，因此不会在第一笔结束后重新减速。绘制为 600ms；翻转为 620ms，正面绿色圆环暂停 200ms 后再画勾。颜色和拖影仍跟随翻转时钟，停留、确认和真实进度规则不变。属于自行设计的支付式反馈，非 Apple 私有动画。
 
 The card controller owns the hold deadline, starting after the check sequence finishes. Transfer IDs deduplicate success and invalidate stale hide callbacks; new transfers/drops take over immediately. Concurrent active transfers remain visible instead of being replaced by another transfer's completion. Dismissal orders the window out before restoring opacity. Keyed finite effects are cancelled on hiding; no spinner, particles, per-frame loop or added background polling.
 
@@ -74,9 +75,9 @@ The card controller owns the hold deadline, starting after the check sequence fi
 
 ## Preview and checks / 预览与检查
 
-General → Preview animation opens an isolated native glass preview. Its local speed selector and Replay button simulate preparation, progress, confirmation and dismissal without changing the saved speed. It refuses real file drops and never connects devices, transfers files, opens history or accesses production identity. The animation toggle/Reduce Motion still applies. Close this window normally; the separate `outputs/GlassMotionPreview.app` test harness also provides ⌘Q.
+General → Preview animation opens an isolated native glass preview. Its Replay button simulate preparation, progress, confirmation and dismissal using fixed timing. It refuses real file drops and never connects devices, transfers files, opens history or accesses production identity. The animation toggle/Reduce Motion still applies. Close this window normally; the separate `outputs/GlassMotionPreview.app` test harness also provides ⌘Q.
 
-通用 → 预览动画打开隔离原生玻璃预览；局部速度选择与“重新播放”演示准备、进度、确认和收起，不修改保存速度。拒绝真实文件投放，不连接设备、传文件、打开历史或访问日常身份；总开关和减少动态效果仍生效。正常关闭即可；独立测试预览还支持 ⌘Q。
+通用 → 预览动画打开隔离原生玻璃预览；“重新播放”演示准备、进度、确认和收起，使用固定节奏。拒绝真实文件投放，不连接设备、传文件、打开历史或访问日常身份；总开关和减少动态效果仍生效。正常关闭即可；独立测试预览还支持 ⌘Q。
 
 `Scripts/test-motion.sh --deliver-preview` builds that standalone harness. `Scripts/test-motion.sh --compare` compares build16 at `52a3415` with the working tree; `PEERJETTY_MOTION_BASELINE_REF` overrides the reference. Short CPU/RSS samples exclude WindowServer/GPU and are not a full app benchmark. Native low-resolution replay captures live in ignored `outputs/previews/motion-build17/`; they supplement, rather than replace, full-resolution Air/mini acceptance. See [validation](VALIDATION.md).
 
@@ -100,13 +101,13 @@ The build21 source candidate retains five native toolbar categories. Settings.sw
 
 build21 源码候选保留顶部五类导航，通用分成本机身份、语言、显示与启动、动画四组。其他页分离主操作、危险操作与详情，采用 190 点标签列和对齐的原生控件，不新增玻璃表单或分类动画；草稿与操作回调保持。
 
-FileSuccessSequence captures fill/flip/pause/draw/settlement from the selected profile and actual progress catch-up. Completion layers share one epoch; card reveal/shape share one epoch as well. The ring starts and ends at zero rotation velocity; short/long check strokes have no extra plateau. Confirmation/hold/three speed settings are unchanged.
+FileSuccessSequence captures fill/flip/pause/draw/settlement from the fixed profile and actual progress catch-up. Completion layers share one epoch; card reveal/shape share one epoch as well. The ring starts and ends at zero rotation velocity; short/long check strokes have no extra plateau. Confirmation and hold rules are unchanged.
 
-完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈、三拖影、蓝绿转换、确认条件与停留规则。
+完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈半、三拖影、蓝绿转换、确认条件与停留规则。
 
-Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `5c6d6b6`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `74c822a`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
 
-打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 5c6d6b6 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。三档动画在动画窗口中选择；对比启动器不进入正式 App。
+打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 74c822a 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
 
 This is a preview-first candidate: build21 App/DMG generation waits for owner confirmation. Existing version metadata and build20 packages are retained; no automatic installation, push or release.
 
@@ -116,4 +117,4 @@ Outbound damping ratio is 0.40 for roughly 5% height overshoot. At the first zer
 
 弹出阻尼比为 0.40，高度过冲约 5%；首次峰值速度归零后，返回频率提高 75%（刚度 3.0625 倍），返回阻尼比改为 0.65，减少后续晃动。两阶段保留位置／速度连续与打断保护，文本和进度不变。
 
-SDK 27 native cleanup estimates for the two stages are about 289/478/678ms. These include the conservative native tail; they are not the first peak or first return time. / 当前 SDK 的两阶段原生清理估计约为 289／478／678ms，包含系统保守尾部估计，不是第一次过冲或回归标准尺寸的时间。
+SDK 27 native cleanup estimates for the two stages are about 678ms. These include the conservative native tail; they are not the first peak or first return time. / 当前 SDK 的两阶段原生清理估计约为 678ms，包含系统保守尾部估计，不是第一次过冲或回归标准尺寸的时间。

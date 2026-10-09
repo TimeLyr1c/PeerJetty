@@ -20,7 +20,7 @@ final class TransferGlyph: NSView {
     }
     private let track = CAShapeLayer(), arc = CAShapeLayer(), tick = CAShapeLayer()
     private let trails = (0..<3).map { _ in CAShapeLayer() }
-    static let flipRadians = 2 * Double.pi
+    static let flipRadians = 3 * Double.pi
     static func flipAngle(at time: Double, lag: Double = 0) -> Double {
         let time = min(1,max(0,time)), tail = min(1,max(0,(time-0.78)/0.22))
         let phase = max(0,time-lag*(1-tail*tail*(3-2*tail)))
@@ -496,7 +496,6 @@ final class MotionPreviewWindow: NSWindowController, NSWindowDelegate {
     private var card: DropZoneView!
     private var host: DropCardHost!
     private var generation = 0
-    private let speeds = NSPopUpButton()
     private var observer: NSObjectProtocol?
     private var hiding = false
     init() {
@@ -507,7 +506,6 @@ final class MotionPreviewWindow: NSWindowController, NSWindowDelegate {
         card.targetName = "PeerJetty"
         host = DropCardHost(card:card); host.frame.origin = NSPoint(x:68,y:105); window.contentView?.addSubview(host)
         let hint = NSTextField(wrappingLabelWithString:L10n.text("motion.preview_hint")); hint.frame = NSRect(x:24,y:260,width:472,height:40); window.contentView?.addSubview(hint)
-        speeds.addItems(withTitles:AnimationSpeed.allCases.map(\.localizedTitle)); speeds.frame = NSRect(x:24,y:40,width:160,height:28); speeds.target = self; speeds.action = #selector(changeSpeed); window.contentView?.addSubview(speeds)
         observer = NotificationCenter.default.addObserver(forName:MotionPolicy.changed, object:MotionPolicy.shared, queue:.main) { [weak self] _ in
             guard let self else { return }
             self.policy.enabled = MotionPolicy.shared.enabled
@@ -520,11 +518,9 @@ final class MotionPreviewWindow: NSWindowController, NSWindowDelegate {
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
     func present() {
-        policy.speed = MotionPolicy.shared.speed; policy.enabled = MotionPolicy.shared.enabled
-        speeds.selectItem(at:AnimationSpeed.allCases.firstIndex(of:policy.speed) ?? 1)
+        policy.enabled = MotionPolicy.shared.enabled
         window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps:true); play()
     }
-    @objc private func changeSpeed() { policy.speed = AnimationSpeed.allCases[speeds.indexOfSelectedItem]; play() }
     @objc private func play() {
         generation += 1; hiding = false; let token = generation, id = UUID()
         MotionEffects.clear(host); host.alphaValue = 1; card.idle(); host.layoutSubtreeIfNeeded()

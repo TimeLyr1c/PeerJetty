@@ -34,7 +34,6 @@ import AppKit
         settings.onMenuBar = { [weak self] value in menuVisible=value; self?.settings.iconState(menu:menuVisible,dock:dockVisible,temporary:false) }
         settings.onDock = { [weak self] value in dockVisible=value; self?.settings.iconState(menu:menuVisible,dock:dockVisible,temporary:false) }
         settings.onAnimations = { value in MotionPolicy.shared.enabled=value }
-        settings.onAnimationSpeed = { value in MotionPolicy.shared.speed=value }
         controls = NSWindow(contentRect:NSRect(x:0,y:0,width:650,height:115),styleMask:[.titled,.closable],backing:.buffered,defer:false)
         controls.title = L10n.text("design.title"); controls.isReleasedWhenClosed=false; controls.delegate=self
         let content=controls.contentView!

@@ -1,5 +1,15 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: fixed timing and one-and-a-half-turn completion, build21 preview
+
+- PASS: production build and final sequential native motion suite. Fixed profile asserts 1220ms relaxed card calibration, 620ms flip, 200ms pause, 600ms check and 1800ms hold. One-and-a-half turns are monotonic with smooth endpoints; true progress, acknowledgement, green-ring pause, trails, cancellation, parallel/new tasks, native spring interruption and accessibility passed.
+- PASS: legacy fast/natural/relaxed/unknown speed fields decode successfully and disappear on encoding. Animation toggle write-failure fallback retained; no production configuration or identity accessed.
+- PASS: 329 bilingual entries and native categorized settings/layout/callback checks. Settings and animation preview no longer expose a speed selector. CUA reopened the actual candidate and started its fixed preview. Air/mini final visual acceptance remains pending.
+- PASS: isolated 74c822a/current previews rebuilt. Before has a preview-only legacy speed type bridge and baseline strings, never part of the production app; strict signatures checked. No metadata bump, installation, DMG, push or release.
+- Initial parallel test builds conflicted on shared SwiftPM objects; the final motion suite ran sequentially and passed. Existing nonfatal CLT warnings remain.
+
+固定节奏和一圈半翻转已通过原生检查；设置与预览速度控件均移除，旧速度配置兼容，实际观感待用户确认。
+
 ## 2026-10-08: 5% card overshoot and one-turn completion, build21 preview
 
 - PASS: production build and full native motion suite after narrowing the native peak-join sampling interval to measure continuity rather than total return travel. Height overshoot >4.9% and <5.5%; stronger return frequency x1.75 / damping ratio 0.65 keeps secondary undershoot below 0.5%. Native stage join, interruption, stationary target and finite cleanup passed.

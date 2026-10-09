@@ -124,12 +124,7 @@ struct LocalizationChecks {
         animationSwitch.state = .off; NSApp.sendAction(animationSwitch.action!,to:animationSwitch.target,from:animationSwitch)
         check(changedAnimation == false, "Animation switch callback")
         settings.animationState(true); check(animationSwitch.state == .on, "Failed save can restore animation choice")
-        let speed = control("animationSpeed",as:NSPopUpButton.self)
-        check(speed.indexOfSelectedItem == 1,"default natural speed")
-        var selectedSpeed:AnimationSpeed?; settings.onAnimationSpeed = {selectedSpeed=$0}
-        speed.selectItem(at:2); NSApp.sendAction(speed.action!,to:speed.target,from:speed)
-        check(selectedSpeed == .relaxed,"speed callback")
-        settings.animationSpeedState(.natural); check(speed.indexOfSelectedItem == 1,"speed save rollback")
+        check(!descendants(window.contentView!).contains { $0.identifier?.rawValue == "animationSpeed" }, "speed selector removed")
         var previewRequested=false; settings.onMotionPreview = {previewRequested=true}
         let previewButton = descendants(window.contentView!).compactMap {$0 as? NSButton}.first {$0.title == L10n.text("settings.motion_preview")}!
         previewButton.performClick(nil); check(previewRequested,"motion preview callback")

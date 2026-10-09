@@ -126,8 +126,8 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         MotionPolicy.shared.enabled=false; composer.close(); MotionPolicy.shared.enabled=true
     }
     static func cardShapeTests() {
-        for speed in AnimationSpeed.allCases {
-            let profile=MotionProfile(speed), parameters=SpringParameters(duration:profile.cardAppear,dampingRatio:SpringParameters.cardRatio)
+        for profile in [MotionProfile()] {
+            let parameters=SpringParameters(duration:profile.cardAppear,dampingRatio:SpringParameters.cardRatio)
             let start=CACurrentMediaTime()
             let y=SpringMotion(from:0.82,target:1,velocity:0.18*parameters.dampingRatio*parameters.frequency,parameters:parameters,started:start)
             let samples=(0...1000).map { y.sample(at:start+Double($0)*profile.cardAppear/1000) }
@@ -145,7 +145,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             check(samples.map(\.value).max()! <= 1.055 && samples.map(\.value).max()! > 1.049,"physical rebound remains bounded")
             check(abs(samples.last!.value-1)<0.001 && abs(samples.last!.velocity)<0.02,"native-duration tail is already settled")
             let animation=parameters.animation(keyPath:"transform.scale.y",from:0.82)
-            check(abs(animation.duration-profile.cardAppear)<0.01 && animation.duration == animation.settlingDuration,"native settling duration follows each speed without truncation")
+            check(abs(animation.duration-profile.cardAppear)<0.01 && animation.duration == animation.settlingDuration,"native settling duration follows fixed timing without truncation")
             let time=start+profile.cardAppear*0.18, state=y.sample(at:time)
             let retarget=SpringMotion(from:state.value,target:1,velocity:state.velocity,parameters:parameters,started:time)
             check(abs(retarget.sample(at:time).velocity-state.velocity)<1e-8,"retarget preserves physical velocity")
@@ -153,7 +153,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         }
         let host=DropCardHost(card:DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76)))
         let frame=host.card.frame
-        let state=MotionEffects.cardAppear(host,duration:MotionProfile(.natural).cardAppear)
+        let state=MotionEffects.cardAppear(host,duration:MotionProfile().cardAppear)
         let animation=host.layer?.animation(forKey:"PeerJetty.cardShape") as? CAAnimationGroup
         let springs=animation!.animations as! [CASpringAnimation]
         check(springs.count == 8 && abs(springs[4].stiffness/springs[0].stiffness-3.0625)<1e-8,"two finite spring stages strengthen return once")
@@ -192,7 +192,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check(angle > 74 && angle < 78,"compact check has sharper comfortable elbow")
         for point in points { check(12-hypot((point.x-0.5)*30,(point.y-0.5)*30)-2.2 > 2.5,"stroked check keeps breathing room inside the ring") }
         check(TransferGlyph.shortStrokeFraction > 0.34 && TransferGlyph.shortStrokeFraction < 0.35,"two stroke timing uses actual segment-length boundary")
-        print("PASS: native physical springs, three settling durations, continuous retarget, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
+        print("PASS: native physical springs, fixed settling duration, continuous retarget, bounded unequal-axis overshoot, stationary hit area and inset sharp check geometry")
     }
     static func progressRateTests() {
         for rate in [1.0,1.5,3.0] {
@@ -233,30 +233,29 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         print("PASS: visual rate cap, tiny/bursty updates, continuous position/velocity, finite catch-up and extended success hold")
     }
     static func flipTests() {
-        check(abs(TransferGlyph.flipRadians-2 * .pi)<1e-9,"success rotates exactly once")
+        check(abs(TransferGlyph.flipRadians-3 * .pi)<1e-9,"success rotates one and a half turns")
         for lag in [0.0,0.045,0.09,0.135] {
             var previous=0.0
             for index in 0...100 {
                 let angle=TransferGlyph.flipAngle(at:Double(index)/100,lag:lag)
-                check(angle >= previous && angle <= TransferGlyph.flipRadians,"one turn is finite and forward-only")
+                check(angle >= previous && angle <= TransferGlyph.flipRadians,"one and a half turns is finite and forward-only")
                 previous=angle
             }
             check(abs(previous-TransferGlyph.flipRadians)<1e-9,"ring and ghosts finish front-facing together")
         }
         let epsilon = 0.0001
         func speed(_ t:Double) -> Double { (TransferGlyph.flipAngle(at:t+epsilon)-TransferGlyph.flipAngle(at:t-epsilon))/(2*epsilon) }
-        check(speed(0.5)>15 && speed(0.1)<0.3,"steeper middle speed peak with gentler ends")
+        check(speed(0.5)/TransferGlyph.flipRadians>2.4 && speed(0.1)/TransferGlyph.flipRadians<0.05,"steeper middle speed peak with gentler ends")
         check(speed(0.5)>speed(0.25) && speed(0.25)>speed(0.1),"rotation accelerates toward middle")
         check(abs(speed(0.25)-speed(0.75))<1e-5 && speed(0.75)>speed(0.9),"rotation slows symmetrically after middle")
         check(TransferGlyph.flipAngle(at:epsilon)/epsilon < 0.1, "flip starts continuously from rest")
         check((TransferGlyph.flipRadians-TransferGlyph.flipAngle(at:1-epsilon))/epsilon < 0.1, "flip ends with no abrupt velocity cutoff")
-        for speed in AnimationSpeed.allCases {
-            let profile = MotionProfile(speed)
+        for profile in [MotionProfile()] {
             let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
             check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip+sequence.pause && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
         }
         var reducedTransparency=false
-        let policy=MotionPolicy(reduceMotion:{false},reduceTransparency:{reducedTransparency}); policy.speed = .fast
+        let policy=MotionPolicy(reduceMotion:{false},reduceTransparency:{reducedTransparency})
         let glyph=TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
         let nativePanel=NSPanel(contentRect:NSRect(x:100,y:100,width:30,height:30),styleMask:[.borderless],backing:.buffered,defer:false)
         nativePanel.contentView=glyph;nativePanel.orderFrontRegardless();wait(0.02)
@@ -284,43 +283,45 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check(abs(green.redComponent-expectedGreen.redComponent)<0.01 && abs(green.greenComponent-expectedGreen.greenComponent)<0.01 && abs(green.blueComponent-expectedGreen.blueComponent)<0.01,"pause shows final green rather than an unfinished color transition")
         check(customAnimations(glyph) <= 14,"fixed small number of shape effects")
         policy.enabled=false
-        check(finished == 1 && customAnimations(glyph) == 0,"reduce motion/disable settles exactly once and clears every trail")
+        check(finished == 1 && customAnimations(glyph) == 0,"reduce motion/disable settles one and a half turns and clears every trail")
         policy.enabled=true; reducedTransparency=false
         glyph.reset(); glyph.succeed(id:UUID()) {finished += 100}; let oldDuration=glyph.successDuration
         glyph.update(id:UUID(),completed:20,total:100)
         wait(oldDuration+0.05)
         check(finished == 1 && !glyph.isSuccess && customAnimations(glyph)==0,"new progress cancels old flips, trails and success callback")
-        print("PASS: one vertical-axis turn, three fading trails, color timing, check-after-stop, accessibility and cancellation cleanup")
+        print("PASS: one and a half vertical-axis turns, three fading trails, color timing, check-after-stop, accessibility and cancellation cleanup")
     }
     static func ringTests() throws {
         let legacy = Data(#"{"name":"test","receivePath":"/tmp","peers":[],"onboardingComplete":true,"animationSpeed":"unknown-future-value"}"#.utf8)
-        check(try JSONDecoder().decode(Configuration.self,from:legacy).animationSpeed == .natural,"unknown speed falls back")
+        check(try JSONDecoder().decode(Configuration.self,from:legacy).animationsEnabled,"obsolete speed field ignored")
+        for value in ["fast", "natural", "relaxed", "future"] {
+            let data=Data(String(data:legacy,encoding:.utf8)!.replacingOccurrences(of:"unknown-future-value",with:value).utf8)
+            let decoded=try JSONDecoder().decode(Configuration.self,from:data)
+            let encoded=String(data:try JSONEncoder().encode(decoded),encoding:.utf8)!
+            check(!encoded.contains("animationSpeed"),"legacy speed does not persist or affect fixed profile")
+        }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-speed-\(UUID())")
         try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
         defer { try? FileManager.default.removeItem(at:folder) }
         let fallback = Configuration(name:"Test",receivePath:"/tmp")
-        let url = folder.appendingPathComponent("config.json"), blocked = folder.appendingPathComponent("blocked")
+        let blocked = folder.appendingPathComponent("blocked")
         try Data().write(to:blocked)
         let failing = try ConfigurationStore(url:blocked.appendingPathComponent("config.json"),fallback:fallback)
-        do { try failing.update {$0.animationSpeed = .fast}; preconditionFailure("must reject write") } catch {}
-        check(failing.snapshot.animationSpeed == .natural,"save failure keeps preference")
-        for speed in AnimationSpeed.allCases {
-            let store = try ConfigurationStore(url:url,fallback:fallback); try store.update {$0.animationSpeed=speed}
-            check(try ConfigurationStore(url:url,fallback:fallback).snapshot.animationSpeed == speed,"speed persists")
-            let profile = MotionProfile(speed)
-            let expected: [Double] = speed == .fast ? [0.22,0.10,0.65,1,0.16] : speed == .natural ? [0.34,0.18,1.20,1.8,0.24] : [0.48,0.24,1.75,2.8,0.32]
+        do { try failing.update {$0.animationsEnabled = false}; preconditionFailure("must reject write") } catch {}
+        check(failing.snapshot.animationsEnabled,"save failure keeps preference")
+        for profile in [MotionProfile()] {
+            let expected: [Double] = [0.34,0.18,1.20,1.8,0.24]
             check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
-            check(profile.cardAppear == (speed == .fast ? 0.52 : speed == .natural ? 0.86 : 1.22),"slower card-specific speed profile")
+            check(profile.cardAppear == 1.22 && profile.ringFlip == 0.62 && profile.checkPause == 0.20,"fixed relaxed reveal and natural completion timing")
             let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
-            check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"constant damping ratio across speeds")
-            let policy = MotionPolicy(reduceMotion:{false}); policy.speed=speed
+            check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"native feedback damping ratio")
+            let policy = MotionPolicy(reduceMotion:{false})
             let glyph = TransferGlyph(policy:policy); glyph.setFrameSize(NSSize(width:30,height:30)); glyph.layoutSubtreeIfNeeded()
             let id=UUID(); glyph.update(id:id,completed:55,total:100); glyph.update(id:id,completed:30,total:100)
             check(glyph.fraction == 0.55 && !glyph.isSuccess,"real progress cannot retreat")
             glyph.update(id:id,completed:150,total:100); check(glyph.fraction == 1 && !glyph.isSuccess,"full bytes does not imply success")
             var completed = 0; glyph.succeed(id:id) {completed += 1}; glyph.succeed(id:id) {completed += 100}
             check(completed == 0 && glyph.isSuccess,"success sequence is bounded and deduplicated")
-            policy.speed = .fast // Snapshot of the in-flight sequence must remain unchanged.
             wait(glyph.successDuration + 0.10)
             check(completed == 1 && customAnimations(glyph) == 0,"sequence settles once at captured speed")
             glyph.reset(); glyph.succeed(id:UUID()) {completed += 100}; let oldDuration = glyph.successDuration; glyph.update(id:UUID(),completed:20,total:100)
@@ -330,13 +331,13 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             check(completed == 2 && glyph.isSuccess && customAnimations(glyph) == 0,"disable settles success immediately")
         }
         var reduced=false
-        let policy = MotionPolicy(reduceMotion:{reduced}); policy.speed = .fast
+        let policy = MotionPolicy(reduceMotion:{reduced})
         let glyph=TransferGlyph(policy:policy); var settled=false
         glyph.succeed(id:UUID()) {settled=true}; reduced=true; policy.notify()
-        check(settled && policy.enabled && policy.speed == .fast && customAnimations(glyph)==0,"reduced motion overrides without changing preferences")
-        let savedSpeed=MotionPolicy.shared.speed, savedEnabled=MotionPolicy.shared.enabled
-        defer { MotionPolicy.shared.speed=savedSpeed; MotionPolicy.shared.enabled=savedEnabled }
-        MotionPolicy.shared.speed = .fast; MotionPolicy.shared.enabled = false
+        check(settled && policy.enabled && customAnimations(glyph)==0,"reduced motion overrides without changing preferences")
+        let savedEnabled=MotionPolicy.shared.enabled
+        defer { MotionPolicy.shared.enabled=savedEnabled }
+        MotionPolicy.shared.enabled = false
         let panel=DropPanelController(); let first=UUID(), second=UUID(), third=UUID()
         panel.presentTransfer(TransferUpdate(id:first,peerName:"One",receiving:false,completed:10,total:10,status:"Done",finished:true,succeeded:true))
         check(panel.currentFeedbackID == first && panel.feedbackRemaining > 0.8,"hold starts after final check")
@@ -357,7 +358,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let preview = MotionPreviewWindow()
         let previewCard = descendants(preview.window!.contentView!).compactMap {$0 as? DropZoneView}.first!
         check(previewCard.registeredDraggedTypes.isEmpty,"isolated preview refuses actual file drops")
-        print("PASS: three speed profiles, migration/write failure, spring damping, monotonic ring, confirmation, deduplication, interruption, reduced motion, success hold and parallel transfer")
+        print("PASS: fixed motion profile, migration/write failure, spring damping, monotonic ring, confirmation, deduplication, interruption, reduced motion, success hold and parallel transfer")
     }
     private static var retained: [AnyObject] = []
     static func showPreview() {
