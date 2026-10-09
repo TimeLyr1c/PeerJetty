@@ -17,3 +17,9 @@ Source and screenshot review delivered first. Build22 App/DMG awaits layout appr
 Owner requested the top toolbar remain. General/Devices now add a page heading and short help, lightweight grouped surfaces (10 pt corner, 18 pt inner padding, 20 pt separation), and device symbol/name presentation. Peer summary separates paired trust from active connection, follows picker/discovery updates, handles empty state, and keeps literal names/drafts. No extra connection polling, UI dependency or animations. Native semantic background and subtle edge adapt to appearance; no shadow/vibrancy. Other three pages are unchanged pending visual review.
 
 Checks: bilingual resource coverage and native callback/draft/layout checks cover light/dark, default/minimum sizes, long names, empty peers and connected-state refresh. Screenshots are isolated rendered AppKit views; Air/mini real-device acceptance remains pending. No build22 installer produced; build21 archived installer remains unchanged.
+
+## Accepted five-page implementation / 五页风格合入
+
+The owner approved the prototype. General, Devices, Transfers, Text and About now share the page-header and quiet grouped-surface layout. Transfers adds a folder symbol; native callbacks, identity, history semantics and animations are unchanged. Build22 is the next local installer, not a public release. No automatic install or remote push.
+
+用户确认样稿后统一五页；本地构建号为 22，产品版本保持 0.4.0。双机实际观感与双向传输仍需 Air／mini 验收。

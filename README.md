@@ -88,3 +88,5 @@ README and release notes are available in English and Simplified Chinese. The ap
 ## License and credits
 
 [MIT](LICENSE). PeerJetty grew from the OpenOnMini Starter supplied by the project founder's roommate. The original source baseline is preserved in `Original/`; PeerJetty's bidirectional LAN implementation lives in `Sources/`. See [license and source notes](LICENSE-NOTES.md).
+
+The accepted five-page settings refinement is included in the local 0.4.0/build22 installer: native toolbar navigation, clear headings, subtle grouped surfaces and device connection summaries.

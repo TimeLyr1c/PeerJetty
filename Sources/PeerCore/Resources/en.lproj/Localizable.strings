@@ -342,3 +342,7 @@
 "settings.state_unpaired" = "Not paired";
 "settings.state_connected" = "Connected";
 "settings.state_disconnected" = "Not connected";
+
+"settings.page_transfers_hint" = "Choose how files arrive and leave.";
+"settings.page_text_hint" = "Send text and manage local history.";
+"settings.page_about_hint" = "PeerJetty, built for your paired Macs.";

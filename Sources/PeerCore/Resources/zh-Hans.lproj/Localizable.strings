@@ -342,3 +342,7 @@
 "settings.state_unpaired" = "未配对";
 "settings.state_connected" = "已连接";
 "settings.state_disconnected" = "未连接";
+
+"settings.page_transfers_hint" = "管理文件的接收与发送。";
+"settings.page_text_hint" = "发送文本，管理本机历史。";
+"settings.page_about_hint" = "了解 PeerJetty 与本机应用信息。";

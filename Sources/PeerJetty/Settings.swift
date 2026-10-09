@@ -178,7 +178,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
             group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
         let transferRows: [NSView] = [group("settings.receive_folder", rows: [
-            row([folderLabel, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
+            row([symbol("folder",size:20), folderLabel, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
             setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open")]),
             group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send))])]),
             group("settings.activity_heading", rows: [progressLabel,
@@ -284,13 +284,12 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true; scroll.drawsBackground = false
         scroll.identifier = NSUserInterfaceItemIdentifier("settingsPage." + section.rawValue)
         let document = SettingsDocumentView(); document.translatesAutoresizingMaskIntoConstraints = false
-        let styled = section == .general || section == .devices
-        let header = NSStackView(views:[pageTitle(section.title),hint(section == .general ? "settings.page_general_hint" : "settings.page_devices_hint")])
+        let header = NSStackView(views:[pageTitle(section.title),hint("settings.page_" + section.rawValue + "_hint")])
         header.orientation = .vertical; header.alignment = .leading; header.spacing = 6
         for view in header.arrangedSubviews { view.widthAnchor.constraint(equalTo:header.widthAnchor).isActive = true }
-        let contents = styled ? [header] + rows.map { SettingsGroupSurface(content:$0) as NSView } : rows
+        let contents = [header] + rows.map { SettingsGroupSurface(content:$0) as NSView }
         let stack = NSStackView(views: contents); stack.orientation = .vertical; stack.alignment = .leading
-        stack.spacing = styled ? 20 : 28; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.spacing = 20; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
         stack.setHuggingPriority(.required, for: .vertical)
         scroll.documentView = document; document.addSubview(stack); pageHost.addSubview(scroll); pages[section] = scroll
         let height = document.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 56); height.priority = .fittingSizeCompression
@@ -301,10 +300,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 32), stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -32),
             stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 28), stack.bottomAnchor.constraint(lessThanOrEqualTo: document.bottomAnchor, constant: -28)])
         for view in contents { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        for view in (styled ? [] : Array(rows.dropLast())) {
-            let line = separator(); stack.insertArrangedSubview(line, at: stack.arrangedSubviews.firstIndex(of:view)! + 1)
-            stack.setCustomSpacing(14,after:view); stack.setCustomSpacing(14,after:line)
-        }
         for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo:stack.widthAnchor).isActive = true }
     }
     /// Native groups, without another background/card layer. Hidden disclosures collapse.

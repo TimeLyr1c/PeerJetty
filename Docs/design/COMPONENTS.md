@@ -69,6 +69,6 @@ Settings now uses 13 pt form labels, hints and controls, 13 pt semibold group he
 
 ## App-style settings prototype / App 风格设置样稿
 
-General and Devices are the first-stage review surfaces: 20 pt page heading, 13 pt help, 15 pt device/name text, quiet 10 pt rounded native-color sections with 18 pt insets and 20 pt separation. SettingsGroupSurface is local to Settings.swift and draws one static native background/edge without shadow, glass or animation. Device name/trust/connection summary uses existing DiscoveredPeer updates and selection, never another probe; local name drafts remain untouched. Transfers/Text/About deliberately retain the previous layout until owner visual approval. The settings-only comparison now uses f1c67f7 as Before at outputs/previews/settings-app/.
+General and Devices are the first-stage review surfaces: 20 pt page heading, 13 pt help, 15 pt device/name text, quiet 10 pt rounded native-color sections with 18 pt insets and 20 pt separation. SettingsGroupSurface is local to Settings.swift and draws one static native background/edge without shadow, glass or animation. Device name/trust/connection summary uses existing DiscoveredPeer updates and selection, never another probe; local name drafts remain untouched. After owner approval, Transfers/Text/About share the same header and surface layout; Transfers includes a folder symbol. The settings-only comparison now uses f1c67f7 as Before at outputs/previews/settings-app/.
 
 通用／设备为第一阶段样稿；其余三页待确认后统一。顶部五分类、配置回调、动画、协议和身份均保留。
