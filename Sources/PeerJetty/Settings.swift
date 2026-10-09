@@ -56,7 +56,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     private let peerName = NSTextField(wrappingLabelWithString: "")
     private let peerState = NSTextField(wrappingLabelWithString: "")
     private let language = NSPopUpButton()
-    private let folderLabel = NSTextField(wrappingLabelWithString: "")
+    private let folderLabel = NSTextField(labelWithString: "")
     private let statusLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.preparing_to_connect"))
     private let progressLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.no_transfers_yet"))
     private let connectionLabel = NSTextField(wrappingLabelWithString: "")
@@ -109,6 +109,10 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         name.placeholderString = L10n.text("settings.device_name"); name.setAccessibilityLabel(L10n.text("settings.device_name"))
         folderLabel.stringValue = configuration.receivePath; folderLabel.lineBreakMode = .byTruncatingMiddle
         folderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        folderLabel.cell?.usesSingleLineMode = true; folderLabel.cell?.wraps = false
+        folderLabel.heightAnchor.constraint(equalToConstant:18).isActive = true
+        folderLabel.setContentHuggingPriority(.required,for:.vertical)
+        folderLabel.identifier = NSUserInterfaceItemIdentifier("receiveFolderPath")
         folderLabel.maximumNumberOfLines = 1; folderLabel.toolTip = configuration.receivePath; folderLabel.setAccessibilityValue(configuration.receivePath)
         devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         devices.identifier = NSUserInterfaceItemIdentifier("devicePicker"); devices.setAccessibilityLabel(SettingsSection.devices.title)
@@ -202,7 +206,10 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))])]),
             group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
             group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
-        let folderPath = SettingsPathSurface(content:row([symbol("folder",size:20),folderLabel]))
+        let folderIcon = symbol("folder",size:20)
+        folderIcon.identifier = NSUserInterfaceItemIdentifier("receiveFolderIcon")
+        let folderPath = SettingsPathSurface(content:row([folderIcon,folderLabel]))
+        folderPath.identifier = NSUserInterfaceItemIdentifier("receiveFolderSurface")
         let transferRows: [NSView] = [group("settings.receive_folder", rows: [
             row([folderPath, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
             setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open")]),
@@ -568,7 +575,7 @@ private final class SettingsPathSurface: NSView {
         super.init(frame:.zero); translatesAutoresizingMaskIntoConstraints = false
         addSubview(content); content.translatesAutoresizingMaskIntoConstraints = false
         setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
-        NSLayoutConstraint.activate([content.leadingAnchor.constraint(equalTo:leadingAnchor,constant:8),content.trailingAnchor.constraint(equalTo:trailingAnchor,constant:-8),content.topAnchor.constraint(equalTo:topAnchor,constant:8),content.bottomAnchor.constraint(equalTo:bottomAnchor,constant:-8)])
+        NSLayoutConstraint.activate([content.leadingAnchor.constraint(equalTo:leadingAnchor,constant:8),content.trailingAnchor.constraint(equalTo:trailingAnchor,constant:-8),content.centerYAnchor.constraint(equalTo:centerYAnchor),content.topAnchor.constraint(greaterThanOrEqualTo:topAnchor,constant:8),content.bottomAnchor.constraint(lessThanOrEqualTo:bottomAnchor,constant:-8),heightAnchor.constraint(equalToConstant:44)])
     }
     required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
     override func draw(_ dirtyRect:NSRect) {

@@ -260,6 +260,14 @@ struct LocalizationChecks {
                     check(document.frame.width <= scroll.contentView.bounds.width + 1, "No horizontal scrolling")
                     check(abs(scroll.contentView.bounds.minY) <= 1, "Selected page starts at its top")
                     check(document.frame.height >= scroll.contentView.bounds.height - 1, "Short screens scroll vertically")
+                    if section == .transfers {
+                        let path=control("receiveFolderPath",as:NSTextField.self)
+                        let surface=control("receiveFolderSurface",as:NSView.self)
+                        let folderIcon=control("receiveFolderIcon",as:NSImageView.self)
+                        let pathRect=path.convert(path.bounds,to:surface),iconRect=folderIcon.convert(folderIcon.bounds,to:surface)
+                        check(abs(pathRect.midY-surface.bounds.midY)<0.5 && abs(iconRect.midY-surface.bounds.midY)<0.5,"Path and folder icon are vertically centered")
+                        check(path.maximumNumberOfLines == 1 && path.frame.height <= 20,"Path is a compact single-line label")
+                    }
                     if section == .devices {
                         let nameFrame = summaryName.convert(summaryName.bounds,to:document)
                         let stateFrame = summaryState.convert(summaryState.bounds,to:document)

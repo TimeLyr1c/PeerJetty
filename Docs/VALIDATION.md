@@ -1,5 +1,12 @@
 # 0.2.0 验证记录
 
+## 2026-10-09: receive-path vertical centering (build25)
+
+- Installed build24 verified; this was a layout defect, not an old installer. A single-line native path label replaces the wrapping label and has an explicit 18 pt height; the 44 pt path surface centers its content vertically with at least 8 pt padding. Folder symbol and native choose button share the center line. Middle truncation, tooltip and accessibility path remain intact.
+- PASS: English/Chinese settings callbacks and 40 light/dark/default/minimum layouts; explicit path/icon midpoint assertions and compact single-line height. Isolated screenshot inspected at outputs/previews/settings-path-fix/zh-transfers-dark.png. Real-device optical review pending. No changes to folder permissions, transfer or pairing.
+
+已确认本机为 build24；修正路径文字被布局拉高造成的偏上，改用固定 18 点单行标签，路径容器高度 44 点。中英文、深浅色、最小窗口及中心位置检查通过，实机观感待用户确认。
+
 ## 2026-10-09: build24 cancellation and explicit unpair result
 
 - DELIVERED: clean source `43c46a2`, 0.4.0/build24 arm64 App and DMG; strict ad hoc signature and DMG verification passed. build23 archive hashes still match. DMG SHA-256: `70069e2106a7a649ab89e17af3fb838d2b63af99d7eb659594ca8a5409cd7d9a`. No installation or publication.
