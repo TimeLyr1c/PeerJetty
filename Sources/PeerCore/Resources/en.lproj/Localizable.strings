@@ -333,3 +333,12 @@
 
 "settings.group_text_send" = "Text delivery";
 "settings.group_text_history" = "Local history";
+
+"settings.page_general_hint" = "Make PeerJetty feel at home on this Mac.";
+"settings.page_devices_hint" = "Choose where files and text go.";
+"settings.no_devices" = "No devices yet";
+"settings.device_state" = "%@ · %@";
+"settings.state_paired" = "Paired";
+"settings.state_unpaired" = "Not paired";
+"settings.state_connected" = "Connected";
+"settings.state_disconnected" = "Not connected";

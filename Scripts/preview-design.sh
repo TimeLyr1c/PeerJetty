@@ -3,7 +3,7 @@ set -euo pipefail
 PROJECT_ROOT="${0:A:h:h}"
 cd "$PROJECT_ROOT"
 # Freeze the previous native refinement source. Never switch or alter the live checkout.
-BASELINE_REF=9574dde
+BASELINE_REF=f1c67f7
 ./Scripts/swift.sh build --product PeerJetty -Xswiftc -enable-testing
 BIN_DIR="$(./Scripts/swift.sh build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-design-preview.XXXXXX)"
@@ -13,7 +13,7 @@ if [[ -f "$BIN_DIR/PeerCore.o" ]]; then
 else
   CORE_OBJECTS=("$BIN_DIR/PeerCore.build/"*.o(N))
 fi
-PREVIEW_ROOT="$PROJECT_ROOT/outputs/previews/settings-build22"
+PREVIEW_ROOT="$PROJECT_ROOT/outputs/previews/settings-app"
 for SIDE in Before After; do
   SOURCES=()
   for FILE in Motion Settings AppVersion; do

@@ -333,3 +333,12 @@
 
 "settings.group_text_send" = "文本投递";
 "settings.group_text_history" = "本机历史";
+
+"settings.page_general_hint" = "调整这台 Mac 上的 PeerJetty。";
+"settings.page_devices_hint" = "选择文件和文本的投递目标。";
+"settings.no_devices" = "暂无设备";
+"settings.device_state" = "%@ · %@";
+"settings.state_paired" = "已配对";
+"settings.state_unpaired" = "未配对";
+"settings.state_connected" = "已连接";
+"settings.state_disconnected" = "未连接";

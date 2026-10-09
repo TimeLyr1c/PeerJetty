@@ -66,3 +66,9 @@ SpringParameters + SpringMotion/CardSpringState in Motion.swift share physical t
 Settings now uses 13 pt form labels, hints and controls, 13 pt semibold group headings, a 720 × 580 pt resizable window (640 × 440 minimum), 32 pt horizontal/28 pt vertical insets, 28 pt group separation, 16 pt row spacing and 6 pt associated hint spacing. Switches align to the trailing edge; native separators divide groups. All callbacks and independent visibility preferences remain unchanged. Both demo entries, MotionPreviewWindow and dedicated animation demo delivery have been removed at the owner’s request. Scripts/preview-design.sh now compares settings only against 9574dde.
 
 设置统一字体与留白，保持五分类、原生控件、草稿和回调；两种预览及专用演示已删除。自动检查保留，不为此改动画或传输行为。
+
+## App-style settings prototype / App 风格设置样稿
+
+General and Devices are the first-stage review surfaces: 20 pt page heading, 13 pt help, 15 pt device/name text, quiet 10 pt rounded native-color sections with 18 pt insets and 20 pt separation. SettingsGroupSurface is local to Settings.swift and draws one static native background/edge without shadow, glass or animation. Device name/trust/connection summary uses existing DiscoveredPeer updates and selection, never another probe; local name drafts remain untouched. Transfers/Text/About deliberately retain the previous layout until owner visual approval. The settings-only comparison now uses f1c67f7 as Before at outputs/previews/settings-app/.
+
+通用／设备为第一阶段样稿；其余三页待确认后统一。顶部五分类、配置回调、动画、协议和身份均保留。

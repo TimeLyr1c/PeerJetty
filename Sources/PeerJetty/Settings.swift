@@ -54,6 +54,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     var onQuit: (() -> Void)?
     private let name = NSTextField()
     private let devices = NSPopUpButton()
+    private let peerName = NSTextField(wrappingLabelWithString: "")
+    private let peerState = NSTextField(wrappingLabelWithString: "")
     private let language = NSPopUpButton()
     private let folderLabel = NSTextField(wrappingLabelWithString: "")
     private let statusLabel = NSTextField(wrappingLabelWithString: L10n.text("settings.preparing_to_connect"))
@@ -142,8 +144,9 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             general += [group("settings.welcome_to_peerjetty", rows:[hint("settings.install_peerjetty_on_both_macs_and_pair_them")])]
         }
         name.widthAnchor.constraint(greaterThanOrEqualToConstant: 190).isActive = true
+        name.heightAnchor.constraint(equalToConstant:28).isActive = true
         general += [group("settings.group_identity", rows: [
-            setting("settings.device_name", row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]))]),
+            row([symbol("laptopcomputer", size:32), name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))])]),
             group("settings.language", rows: [setting("settings.language", language), hint("settings.language_restart")]),
             group("settings.group_presence", rows: [setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch),
                 hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login)]),
@@ -156,8 +159,21 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         connectionDisclosure.identifier = NSUserInterfaceItemIdentifier("connectionInfoToggle")
         connectionDisclosure.isBordered = false; connectionDisclosure.setButtonType(.pushOnPushOff)
         connectionDisclosure.image = NSImage(systemSymbolName:"chevron.right",accessibilityDescription:nil); connectionDisclosure.imagePosition = .imageLeading
-        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [hint("settings.devices_select_a_paired_device_as_your_default"),
-            row([devices, button(L10n.text("settings.connect_pair"), #selector(connect))]),
+        peerName.font = .systemFont(ofSize:15,weight:.semibold)
+        peerName.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
+        peerName.maximumNumberOfLines = 2; peerName.lineBreakMode = .byTruncatingTail
+        peerName.preferredMaxLayoutWidth = 360
+        peerName.setContentCompressionResistancePriority(.required,for:.vertical)
+        peerName.identifier = NSUserInterfaceItemIdentifier("selectedDeviceName")
+        peerState.font = .systemFont(ofSize:13); peerState.textColor = .secondaryLabelColor
+        peerState.setContentCompressionResistancePriority(.required,for:.vertical)
+        peerState.identifier = NSUserInterfaceItemIdentifier("selectedDeviceState")
+        let summary = NSStackView(views:[peerName,peerState]); summary.orientation = .vertical; summary.alignment = .leading; summary.spacing = 6
+        summary.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
+        peerName.widthAnchor.constraint(equalTo:summary.widthAnchor).isActive = true
+        peerState.widthAnchor.constraint(equalTo:summary.widthAnchor).isActive = true
+        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [row([symbol("desktopcomputer",size:32), summary, spacer(), button(L10n.text("settings.connect_pair"), #selector(connect))]),
+            devices, hint("settings.devices_select_a_paired_device_as_your_default"),
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))])]),
             group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
             group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
@@ -200,6 +216,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         for control in [name, devices, language, folderLabel, progressLabel, connectionLabel, version, latestTextButton, historyOpen, retention] as [NSControl] {
             control.font = .systemFont(ofSize:13)
         }
+        name.font = .systemFont(ofSize:15,weight:.semibold)
+        updatePeerSummary()
         let content = window.contentView!
         content.addSubview(pageHost); pageHost.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.textColor = .secondaryLabelColor; statusLabel.font = .systemFont(ofSize: 13)
@@ -266,8 +284,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true; scroll.drawsBackground = false
         scroll.identifier = NSUserInterfaceItemIdentifier("settingsPage." + section.rawValue)
         let document = SettingsDocumentView(); document.translatesAutoresizingMaskIntoConstraints = false
-        let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading
-        stack.spacing = 28; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
+        let styled = section == .general || section == .devices
+        let header = NSStackView(views:[pageTitle(section.title),hint(section == .general ? "settings.page_general_hint" : "settings.page_devices_hint")])
+        header.orientation = .vertical; header.alignment = .leading; header.spacing = 6
+        for view in header.arrangedSubviews { view.widthAnchor.constraint(equalTo:header.widthAnchor).isActive = true }
+        let contents = styled ? [header] + rows.map { SettingsGroupSurface(content:$0) as NSView } : rows
+        let stack = NSStackView(views: contents); stack.orientation = .vertical; stack.alignment = .leading
+        stack.spacing = styled ? 20 : 28; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
         stack.setHuggingPriority(.required, for: .vertical)
         scroll.documentView = document; document.addSubview(stack); pageHost.addSubview(scroll); pages[section] = scroll
         let height = document.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 56); height.priority = .fittingSizeCompression
@@ -277,8 +300,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             document.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor), document.heightAnchor.constraint(greaterThanOrEqualTo: scroll.contentView.heightAnchor), height,
             stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 32), stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -32),
             stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 28), stack.bottomAnchor.constraint(lessThanOrEqualTo: document.bottomAnchor, constant: -28)])
-        for view in rows { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        for view in rows.dropLast() {
+        for view in contents { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        for view in (styled ? [] : Array(rows.dropLast())) {
             let line = separator(); stack.insertArrangedSubview(line, at: stack.arrangedSubviews.firstIndex(of:view)! + 1)
             stack.setCustomSpacing(14,after:view); stack.setCustomSpacing(14,after:line)
         }
@@ -297,6 +320,17 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             }
         }
         return group
+    }
+    private func pageTitle(_ text:String) -> NSTextField {
+        let label = heading(text); label.font = .systemFont(ofSize:20,weight:.semibold); return label
+    }
+    private func symbol(_ name:String,size:CGFloat) -> NSImageView {
+        let image = NSImageView(); image.image = NSImage(systemSymbolName:name,accessibilityDescription:nil)
+        image.symbolConfiguration = NSImage.SymbolConfiguration(pointSize:size,weight:.regular)
+        image.contentTintColor = .secondaryLabelColor
+        image.widthAnchor.constraint(equalToConstant:size+8).isActive = true
+        image.heightAnchor.constraint(equalToConstant:size+8).isActive = true
+        return image
     }
     private func heading(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text); label.font = .systemFont(ofSize: 13, weight: .semibold); return label
@@ -337,6 +371,19 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         }
         if peers.isEmpty { devices.addItem(withTitle: L10n.text("settings.select_add_device_on_both_macs")) }
         if let id = selected ?? preferred, let index = peers.firstIndex(where: { $0.id == id }) { devices.selectItem(at: index) }
+        updatePeerSummary()
+    }
+    private func updatePeerSummary() {
+        guard let peer = selected else {
+            devices.toolTip = nil; peerName.toolTip = nil
+            peerName.stringValue = L10n.text("settings.no_devices")
+            peerState.stringValue = L10n.text("settings.select_add_device_on_both_macs")
+            return
+        }
+        devices.toolTip = peer.name
+        peerName.toolTip = peer.name
+        peerName.stringValue = peer.name
+        peerState.stringValue = L10n.text("settings.device_state", L10n.text(peer.paired ? "settings.state_paired" : "settings.state_unpaired"), L10n.text(peer.connected ? "settings.state_connected" : "settings.state_disconnected"))
     }
     private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
     func status(_ text: String) {
@@ -393,7 +440,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     @objc private func toggleAnimations() { onAnimations?(animations.state == .on) }
     @objc private func save() { onSave?(name.stringValue) }
-    @objc private func selectPeer() { if let selected, selected.paired { onSelect?(selected.id) } }
+    @objc private func selectPeer() { updatePeerSummary(); if let selected, selected.paired { onSelect?(selected.id) } }
     @objc private func connect() { if let selected { onConnect?(selected.id) } }
     @objc private func pair() { onPair?() }
     @objc private func forget() { if let selected, selected.paired { onForget?(selected.id) } }
@@ -427,4 +474,25 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
 
 private final class SettingsDocumentView: NSView {
     override var isFlipped: Bool { true }
+}
+
+/// A quiet native form surface; no vibrancy, shadow, or animated appearance.
+private final class SettingsGroupSurface: NSView {
+    init(content:NSView) {
+        super.init(frame:.zero); translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content); content.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo:leadingAnchor,constant:18),
+            content.trailingAnchor.constraint(equalTo:trailingAnchor,constant:-18),
+            content.topAnchor.constraint(equalTo:topAnchor,constant:18),
+            content.bottomAnchor.constraint(equalTo:bottomAnchor,constant:-18)])
+    }
+    required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
+    override func draw(_ dirtyRect:NSRect) {
+        super.draw(dirtyRect)
+        let path = NSBezierPath(roundedRect:bounds.insetBy(dx:0.5,dy:0.5),xRadius:10,yRadius:10)
+        (NSColor.controlBackgroundColor.blended(withFraction:0.035,of:.labelColor) ?? NSColor.controlBackgroundColor).setFill(); path.fill()
+        NSColor.separatorColor.withAlphaComponent(0.15).setStroke(); path.lineWidth = 1; path.stroke()
+    }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
 }

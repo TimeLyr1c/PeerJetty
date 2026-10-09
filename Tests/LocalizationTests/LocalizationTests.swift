@@ -169,11 +169,22 @@ struct LocalizationChecks {
         check(maintenance.isHidden, "Maintenance starts collapsed")
         disclosure.performClick(nil); check(!maintenance.isHidden, "Maintenance opens")
         disclosure.performClick(nil); check(maintenance.isHidden, "Maintenance closes")
-        let peer = DiscoveredPeer(id: "isolated-peer", name: "Office Mac — Shared workspace 中文 🧪", paired: true, connected: false)
+        let peer = DiscoveredPeer(id: "isolated-peer", name: "Office Mac — Shared workspace 中文 🧪 — Research and design workstation", paired: true, connected: false)
         settings.updatePeers([], preferred: nil)
         settings.updatePeers([peer], preferred: peer.id)
         check(control("devicePicker", as: NSPopUpButton.self).titleOfSelectedItem?.contains(peer.name) == true, "Offline trusted device remains visible")
         settings.folder("/isolated-test/Very long folder name/Design resources/Received files/中文目录")
+        let summaryName = control("selectedDeviceName",as:NSTextField.self)
+        let summaryState = control("selectedDeviceState",as:NSTextField.self)
+        check(summaryName.stringValue == peer.name && summaryName.toolTip == peer.name, "Summary preserves full literal device name")
+        check(summaryState.stringValue.contains(L10n.text("settings.state_paired")), "Summary exposes trust separately")
+        let connectedPeer = DiscoveredPeer(id:peer.id,name:peer.name,paired:true,connected:true)
+        settings.updatePeers([connectedPeer],preferred:peer.id)
+        check(summaryState.stringValue.contains(L10n.text("settings.state_connected")), "Summary tracks connection refresh")
+        settings.updatePeers([],preferred:nil)
+        check(summaryName.stringValue == L10n.text("settings.no_devices"), "Empty device summary")
+        settings.updatePeers([peer],preferred:peer.id)
+        check(draft.stringValue == "Unsaved name 中文 🧪", "Peer refresh preserves local draft")
         settings.connectionInfo("192.0.2.1 / 2001:db8::1 · 12345")
         settings.progress(TransferUpdate(id: UUID(), peerName: peer.name, receiving: false, completed: 50, total: 100, status: "Transferring", finished: false, succeeded: false))
         settings.status("Isolated UI check")
@@ -220,10 +231,15 @@ struct LocalizationChecks {
                     check(document.frame.width <= scroll.contentView.bounds.width + 1, "No horizontal scrolling")
                     check(abs(scroll.contentView.bounds.minY) <= 1, "Selected page starts at its top")
                     check(document.frame.height >= scroll.contentView.bounds.height - 1, "Short screens scroll vertically")
+                    if section == .devices {
+                        let nameFrame = summaryName.convert(summaryName.bounds,to:document)
+                        let stateFrame = summaryState.convert(summaryState.bounds,to:document)
+                        check(nameFrame.maxY <= stateFrame.minY + 1 && stateFrame.height >= 15, "Long name leaves readable separate connection state")
+                    }
                     for view in descendants(stack) where !view.isHiddenOrHasHiddenAncestor {
                         let frame = view.convert(view.bounds, to: document)
                         check(frame.minX >= -1 && frame.maxX <= document.bounds.maxX + 1, "Category control fits document: " + section.rawValue)
-                        if let button = view as? NSButton {
+                        if let button = view as? NSButton, !(button is NSPopUpButton) {
                             check(button.frame.width >= button.intrinsicContentSize.width - 1, "Translated button is not clipped: " + button.title)
                         }
                     }
