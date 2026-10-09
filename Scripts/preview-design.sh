@@ -3,7 +3,7 @@ set -euo pipefail
 PROJECT_ROOT="${0:A:h:h}"
 cd "$PROJECT_ROOT"
 # Freeze the previous native refinement source. Never switch or alter the live checkout.
-BASELINE_REF=c819c42
+BASELINE_REF=9574dde
 ./Scripts/swift.sh build --product PeerJetty -Xswiftc -enable-testing
 BIN_DIR="$(./Scripts/swift.sh build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-design-preview.XXXXXX)"
@@ -13,10 +13,10 @@ if [[ -f "$BIN_DIR/PeerCore.o" ]]; then
 else
   CORE_OBJECTS=("$BIN_DIR/PeerCore.build/"*.o(N))
 fi
-PREVIEW_ROOT="$PROJECT_ROOT/outputs/previews/design-build21"
+PREVIEW_ROOT="$PROJECT_ROOT/outputs/previews/settings-build22"
 for SIDE in Before After; do
   SOURCES=()
-  for FILE in Motion Settings AppVersion DropPresentation DropZone; do
+  for FILE in Motion Settings AppVersion; do
     if [[ "$SIDE" == Before ]]; then
       git show "$BASELINE_REF:Sources/PeerJetty/$FILE.swift" > "$TEST_ROOT/$FILE.swift"
       SOURCES+=("$TEST_ROOT/$FILE.swift")
@@ -40,7 +40,7 @@ for SIDE in Before After; do
 import plistlib,sys
 from pathlib import Path
 side=sys.argv[2]
-Path(sys.argv[1]).write_bytes(plistlib.dumps({'CFBundleExecutable':'Preview','CFBundleIdentifier':'app.peerjetty.design-preview.'+side.lower(),'CFBundleName':'PeerJetty Design '+side,'PJComparisonSide':side,'CFBundleShortVersionString':'0.4.0','CFBundleVersion':'20' if side == 'Before' else '21','LSMinimumSystemVersion':'15.0','NSHighResolutionCapable':True,'CFBundleIconFile':'AppIcon.png'}))
+Path(sys.argv[1]).write_bytes(plistlib.dumps({'CFBundleExecutable':'Preview','CFBundleIdentifier':'app.peerjetty.design-preview.'+side.lower(),'CFBundleName':'PeerJetty Design '+side,'PJComparisonSide':side,'CFBundleShortVersionString':'0.4.0','CFBundleVersion':'21' if side == 'Before' else '22','LSMinimumSystemVersion':'15.0','NSHighResolutionCapable':True,'CFBundleIconFile':'AppIcon.png'}))
 PY
   /usr/bin/codesign --force --sign - "$APP"
 done

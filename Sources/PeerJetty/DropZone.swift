@@ -457,10 +457,6 @@ final class DropPanelController {
         view.transfer(update)
         if update.finished, !update.succeeded { hide(after:5) }
     }
-    func preview() {
-        if !busy { view.idle() }
-        keepUntil = Date().addingTimeInterval(5); show(); hide(after: 5)
-    }
     var editingScreenID: NSNumber?
     func setEditingScreen(_ screen:NSScreen?) {
         editingScreenID = screen.flatMap { screenID($0) }
@@ -504,60 +500,4 @@ final class DropPanelController {
         timer?.invalidate()
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
     }
-}
-
-/// Isolated preview: simulated updates touch only this view, never the transfer engine.
-final class MotionPreviewWindow: NSWindowController, NSWindowDelegate {
-    private let policy = MotionPolicy()
-    private var card: DropZoneView!
-    private var host: DropCardHost!
-    private var generation = 0
-    private var observer: NSObjectProtocol?
-    private var hiding = false
-    init() {
-        let window = NSWindow(contentRect:NSRect(x:0,y:0,width:520,height:320),styleMask:[.titled,.closable],backing:.buffered,defer:false)
-        super.init(window:window); window.title = L10n.text("motion.preview_title"); window.isReleasedWhenClosed = false; window.delegate = self; window.center()
-        card = DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76),forceLegacyMaterial:false,policy:policy)
-        card.unregisterDraggedTypes()
-        card.targetName = "PeerJetty"
-        host = DropCardHost(card:card); host.frame.origin = NSPoint(x:68,y:105); window.contentView?.addSubview(host)
-        let hint = NSTextField(wrappingLabelWithString:L10n.text("motion.preview_hint")); hint.frame = NSRect(x:24,y:260,width:472,height:40); window.contentView?.addSubview(hint)
-        observer = NotificationCenter.default.addObserver(forName:MotionPolicy.changed, object:MotionPolicy.shared, queue:.main) { [weak self] _ in
-            guard let self else { return }
-            self.policy.enabled = MotionPolicy.shared.enabled
-            if !self.policy.allowed {
-                MotionEffects.clear(self.host)
-                NSAnimationContext.runAnimationGroup { context in context.duration = 0; self.host.animator().alphaValue = self.hiding ? 0 : 1 }
-            }
-        }
-        let replay = NSButton(title:L10n.text("motion.replay"),target:self,action:#selector(play)); replay.bezelStyle = .rounded; replay.frame = NSRect(x:376,y:40,width:120,height:28); window.contentView?.addSubview(replay)
-    }
-    required init?(coder:NSCoder) { fatalError("init(coder:) unavailable") }
-    func present() {
-        policy.enabled = MotionPolicy.shared.enabled
-        window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps:true); play()
-    }
-    @objc private func play() {
-        generation += 1; hiding = false; let token = generation, id = UUID()
-        MotionEffects.clear(host); host.alphaValue = 1; card.idle(); host.layoutSubtreeIfNeeded()
-        if policy.allowed { MotionEffects.cardAppear(host,duration:policy.profile.cardAppear) }
-        card.onSuccessFinished = { [weak self] _,hold in
-            guard let self, self.generation == token else { return }
-            DispatchQueue.main.asyncAfter(deadline:.now()+hold) { [weak self] in
-                guard let self, self.generation == token else { return }
-                self.hiding = true
-                NSAnimationContext.runAnimationGroup { context in context.duration = self.policy.allowed ? self.policy.profile.dismiss : 0; context.timingFunction = MotionEffects.exit; self.host.animator().alphaValue = 0 } completionHandler: { [weak self] in
-                    guard let self, self.generation == token else { return }; MotionEffects.clear(self.host)
-                }
-            }
-        }
-        for (delay,amount,finished) in [(0.6,Int64(15),false),(1.0,Int64(55),false),(1.4,Int64(100),false),(1.8,Int64(100),true)] {
-            DispatchQueue.main.asyncAfter(deadline:.now()+delay) { [weak self] in
-                guard let self, self.generation == token, self.window?.isVisible == true else { return }
-                self.card.transfer(TransferUpdate(id:id,peerName:"PeerJetty",receiving:false,completed:amount,total:100,status:L10n.text(finished ? "peerengine.saved_by_the_other_mac" : "peerengine.sending"),finished:finished,succeeded:finished))
-            }
-        }
-    }
-    func windowWillClose(_ notification:Notification) { generation += 1; card.progress.reset(); MotionEffects.clear(host) }
-    deinit { if let observer { NotificationCenter.default.removeObserver(observer) } }
 }

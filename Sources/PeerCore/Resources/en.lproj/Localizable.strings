@@ -172,7 +172,6 @@
 "settings.peer_entry" = "%1$@ · %2$@ · %3$@";
 "settings.peerjetty_file_handoff" = "PeerJetty · File handoff";
 "settings.preparing_to_connect" = "Preparing to connect…";
-"settings.preview_drop_card" = "Preview drop card";
 "settings.progress_percent" = "%1$@ · %2$@";
 "settings.quit" = "Quit";
 "settings.receive_folder" = "Receive folder";
@@ -314,10 +313,6 @@
 "settings.temporary_menu" = "The menu bar icon is temporarily visible for this run. Your saved choice remains off.";
 "settings.hide_temporary" = "Hide temporary icon";
 
-"settings.motion_preview" = "Preview animations…";
-"motion.preview_title" = "Animation preview";
-"motion.preview_hint" = "Simulated progress only. No files are sent and no devices are connected.";
-"motion.replay" = "Replay";
 "drop.waiting_confirmation" = "Waiting for confirmation";
 
 // Native settings groups

@@ -9,7 +9,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var store: ConfigurationStore?
     private var engine: PeerEngine?
     private var drop: DropPanelController?
-    private var motionPreview: MotionPreviewWindow?
     private var settings: SettingsController?
     private var latestText: UUID?
     private var composer: TextComposer?
@@ -172,7 +171,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         settings?.connectionInfo(text)
     }
     @objc private func addDevice() { showSettings(); settings?.selectSection(.devices); engine?.openPairing() }
-    @objc private func preview() { drop?.preview() }
     @objc private func checkUpdates() {
         if updateWindow == nil {
             updateWindow = UpdateWindow(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
@@ -201,7 +199,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onForget = { [weak self] id in self?.engine?.forget(id) }
             controller.onFolder = { [weak self] in self?.chooseFolder() }
             controller.onSend = { [weak self] in self?.chooseFiles() }
-            controller.onPreview = { [weak self] in self?.drop?.preview() }
             controller.onCancel = { [weak self] in if let id = self?.lastTransfer { self?.engine?.cancel(transferID: id) } }
             controller.onReveal = { [weak self] in self?.revealReceived() }
             controller.onManual = { [weak self] in self?.manualConnection() }
@@ -225,10 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             controller.onTextRetention = { [weak self] value in self?.setTextRetention(value) }
             controller.onUpdates = { [weak self] in self?.checkUpdates() }
             controller.onLanguage = { selection in LanguagePreferences().save(selection) }
-            controller.onMotionPreview = { [weak self] in
-                if self?.motionPreview == nil { self?.motionPreview = MotionPreviewWindow() }
-                self?.motionPreview?.present()
-            }
+
 
             controller.onAnimations = { [weak self] enabled in
                 do { try store.update { $0.animationsEnabled = enabled }; MotionPolicy.shared.enabled = enabled }

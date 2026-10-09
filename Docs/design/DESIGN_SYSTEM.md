@@ -22,7 +22,7 @@ Priority: information hierarchy → space/layout → typography/readability → 
 
 | Area / 项目 | Rule / 规则 |
 |---|---|
-| Typography / 字体 | System font, native control sizing. Existing body 14 pt, labels 13 pt, hints 12 pt, section heading 15 pt semibold. Drop card keeps its accepted 15/13 pt pair. Smaller text is secondary only. These are reuse baselines, not a forced global restyle. / 复用现有字号，重要内容不降级成小字。 |
+| Typography / 字体 | System font, native control sizing. Text bodies retain 14 pt. Settings forms use 13 pt labels, hints and controls with 13 pt semibold group headings. Other surfaces retain their existing role-specific typography. Drop card keeps its accepted 15/13 pt pair. Smaller text is secondary only. These are reuse baselines, not a forced global restyle. / 复用现有字号，重要内容不降级成小字。 |
 | Color / 颜色 | labelColor, secondaryLabelColor, textColor, textBackgroundColor, separatorColor, controlAccentColor; semantic success/warning/error plus icon and text. Resolve custom layer colors on appearance change. / 语义颜色，状态不只靠红绿。 |
 | Layout / 布局 | Auto Layout and native intrinsic sizes for ordinary windows; reuse 20 pt content inset, 12 pt section spacing, 10 pt row spacing where already established. Geometry-owned drop/placement code remains separate. / 普通窗口优先约束布局，投放几何不混入样式辅助类。 |
 | Surfaces / 材质 | Native window backgrounds; opaque readable text. Existing drop card alone uses one native glass/frosted layer and static shadow, without extra glow/borders. / 不把投放玻璃扩散到整个应用。 |
@@ -56,3 +56,5 @@ Decision: **no UI dependency and no MCP installation**. Codex can consult the of
 4. Record what was actually verified, update ownership docs, make a focused local commit. Package/release only at the agreed cadence.
 
 先复用、再小改；不为“统一”同时迁移所有窗口，也不把本轮规范配置当作需要发布的新版本。
+
+Settings-specific spacing: 32 pt horizontal/28 pt vertical insets, 28 pt between groups, 16 pt between rows, 6 pt before associated help. Do not spread these values to the geometry-owned drop card. / 设置留白不改变投放卡片几何。

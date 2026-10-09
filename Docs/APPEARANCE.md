@@ -22,9 +22,9 @@ The native card sits in a transparent host with 32-point padding on each side. A
 
 ## Motion / 运动
 
-Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 170ms overlap between final deceleration and check drawing.
+Animation timing is fixed. Only Enable interface animations remains; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 170ms overlap between final deceleration and check drawing.
 
-动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 170ms 开始画勾。
+动画节奏固定，仅保留总开关。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 170ms 开始画勾。
 
 | Stage / 阶段 | Fixed timing / 固定节奏 |
 |---|---:|
@@ -70,15 +70,11 @@ The check centerline is measured from the supplied screenshot: reference circle 
 
 对勾按用户截图测量圆心、中心线半径与三个顶点，折角约 72.35°；顶点至圆环的径向留白约为半径的 62.34%／60.59%／47.87%（未计圆头）。路径随圆心／半径缩放，线宽为半径的 17.5%，保持圆头与连续画勾。截图缩放与压缩会影响测量精度，最终比例仍需视觉确认。
 
-## Preview and checks / 预览与检查
+## Checks / 检查
 
-General → Preview animation opens an isolated native glass preview. Its Replay button simulates preparation, progress, confirmation and dismissal using fixed timing. It refuses real file drops and never connects devices, transfers files, opens history or accesses production identity. The animation toggle/Reduce Motion still applies. Close this window normally; the separate `outputs/GlassMotionPreview.app` test harness also provides ⌘Q.
+The animation and drop-card demo entries and standalone replay window have been retired. Existing automated motion tests remain in `Scripts/test-motion.sh`; the settings-only comparison uses `Scripts/preview-design.sh`, without an engine, identity or persisted settings. Old ignored installers/captures remain archival evidence, not current tools.
 
-通用 → 预览动画打开隔离原生玻璃预览；“重新播放”演示准备、进度、确认和收起，使用固定节奏。拒绝真实文件投放，不连接设备、传文件、打开历史或访问日常身份；总开关和减少动态效果仍生效。正常关闭即可；独立测试预览还支持 ⌘Q。
-
-`Scripts/test-motion.sh --deliver-preview` builds that standalone harness. `Scripts/test-motion.sh --compare` compares build16 at `52a3415` with the working tree; `PEERJETTY_MOTION_BASELINE_REF` overrides the reference. Short CPU/RSS samples exclude WindowServer/GPU and are not a full app benchmark. Native low-resolution replay captures live in ignored `outputs/previews/motion-build17/`; they supplement, rather than replace, full-resolution Air/mini acceptance. See [validation](VALIDATION.md).
-
-短时 CPU／内存采样仅覆盖独立 UI 进程，未包含 WindowServer／GPU。忽略的预览目录保存三档真实低分辨率截帧回放，不能替代 Air／mini 全分辨率实机验收；结果见验证记录。
+动画与投放演示入口及独立回放窗口已移除。自动动画检查保留；隔离设置对比不启动传输引擎、不访问身份、不保存配置。旧安装包与截图作为归档保留，不是当前测试入口。
 
 ## References / 参考
 
@@ -102,9 +98,9 @@ FileSuccessSequence captures fill/flip/pause/draw/settlement from the fixed prof
 
 完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈半、两个绿环、蓝绿转换、确认条件与停留规则。
 
-Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `606aa76`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+Run `Scripts/preview-design.sh` for the settings-only comparison at **outputs/previews/settings-build22/After.app** and **Before.app**. Before uses immutable build21 source `9574dde`; After uses the current working tree. These reuse SettingsController without an engine/store or identity access. Language/version switching restarts only the isolated process. Use ⌘Q to exit. Neither side offers an animation/drop-card demo.
 
-打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 606aa76 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
+设置隔离对比以 build21 源码 9574dde 为旧版，可切换中英文；不连接、不传文件、不访问身份、不保存日常设置。两侧均不提供动画或投放演示，⌘Q 退出。
 
 The owner approved the final appearance on 2026-10-08: 17.5%-radius stroke and 170ms overlapping check drawing. The real 0.4.0/build21 App and DMG were generated from clean source 39faeb2; physical Air/mini acceptance is pending.
 

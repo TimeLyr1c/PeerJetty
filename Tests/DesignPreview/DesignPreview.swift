@@ -5,7 +5,6 @@ import AppKit
 @main final class DesignPreview: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var controls: NSWindow!
     private var settings: SettingsController!
-    private var motion: MotionPreviewWindow!
     private let side = NSSegmentedControl(labels: [L10n.text("design.before"), L10n.text("design.after")], trackingMode: .selectOne, target: nil, action: nil)
     private let language = NSPopUpButton()
     static func main() {
@@ -24,9 +23,6 @@ import AppKit
         settings.updatePeers([DiscoveredPeer(id:"preview-peer",name:"Office Mac mini — Paired device 中文",paired:true,connected:true)],preferred:"preview-peer")
         settings.connectionInfo("192.0.2.1 · 12345")
         settings.status(L10n.text("design.isolated"))
-        motion = MotionPreviewWindow()
-        settings.onMotionPreview = { [weak self] in self?.showMotion() }
-        settings.onPreview = { [weak self] in self?.showMotion() }
         settings.onSave = { [weak self] _ in self?.settings.status(L10n.text("design.isolated")) }
         settings.onQuit = { NSApp.terminate(nil) }
         // Switches change only this isolated process, never production preferences.
@@ -43,8 +39,7 @@ import AppKit
         language.addItems(withTitles:["English","简体中文"]); language.selectItem(at:L10n.language == "zh-Hans" ? 1 : 0)
         language.target=self;language.action=#selector(switchVersion)
         let settingButton=NSButton(title:L10n.text("settings.window_title"),target:self,action:#selector(showSettings));settingButton.bezelStyle = .rounded
-        let motionButton=NSButton(title:L10n.text("settings.motion_preview"),target:self,action:#selector(showMotion));motionButton.bezelStyle = .rounded
-        let row=NSStackView(views:[side,language,settingButton,motionButton]);row.spacing=12
+        let row=NSStackView(views:[side,language,settingButton]);row.spacing=12
         let stack=NSStackView(views:[row,status]);stack.orientation = .vertical;stack.alignment = .leading;stack.spacing=12;stack.translatesAutoresizingMaskIntoConstraints=false
         content.addSubview(stack)
         NSLayoutConstraint.activate([stack.leadingAnchor.constraint(equalTo:content.leadingAnchor,constant:20),stack.trailingAnchor.constraint(equalTo:content.trailingAnchor,constant:-20),stack.topAnchor.constraint(equalTo:content.topAnchor,constant:16)])
@@ -57,7 +52,6 @@ import AppKit
         settings.showWindow(nil);settings.window?.makeKeyAndOrderFront(nil)
         if let controls { settings.window?.setFrameTopLeftPoint(NSPoint(x:controls.frame.minX,y:controls.frame.minY-14)) }
     }
-    @objc private func showMotion() { motion.present() }
     @objc private func switchVersion() {
         let destination=Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent(side.selectedSegment == 0 ? "Before.app" : "After.app")
         let config=NSWorkspace.OpenConfiguration(); config.createsNewApplicationInstance=true

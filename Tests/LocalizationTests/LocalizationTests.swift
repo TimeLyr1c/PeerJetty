@@ -68,7 +68,9 @@ struct LocalizationChecks {
         print("PASS: bounded bilingual diagnostics and legacy JSON compatibility")
 
         _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
-        let settings = SettingsController(configuration: Configuration(name: device, receivePath: "/isolated-test/Inbox"), displayLanguage: .english)
+        var configuration = Configuration(name: device, receivePath: "/isolated-test/Inbox")
+        configuration.onboardingComplete = CommandLine.arguments.contains("--snapshot")
+        let settings = SettingsController(configuration: configuration, displayLanguage: .english)
         guard let window = settings.window, let content = window.contentView else { fatalError("No settings view") }
         func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap { descendants($0) } }
         func page(_ section: SettingsSection) -> NSScrollView {
@@ -125,9 +127,10 @@ struct LocalizationChecks {
         check(changedAnimation == false, "Animation switch callback")
         settings.animationState(true); check(animationSwitch.state == .on, "Failed save can restore animation choice")
         check(!descendants(window.contentView!).contains { $0.identifier?.rawValue == "animationSpeed" }, "speed selector removed")
-        var previewRequested=false; settings.onMotionPreview = {previewRequested=true}
-        let previewButton = descendants(window.contentView!).compactMap {$0 as? NSButton}.first {$0.title == L10n.text("settings.motion_preview")}!
-        previewButton.performClick(nil); check(previewRequested,"motion preview callback")
+        check(window.styleMask.contains(.resizable), "Settings can resize")
+        check(window.contentMinSize == NSSize(width:640,height:440), "Readable minimum size")
+        let titles = descendants(window.contentView!).compactMap {($0 as? NSButton)?.title}
+        check(!titles.contains("Preview animations…") && !titles.contains("预览动画…") && !titles.contains("Preview drop card") && !titles.contains("预览投放区"), "No production preview entries")
         let menuSwitch = control("menuBarVisibility", as:NSSwitch.self)
         check(menuSwitch.state == .on, "Menu icon defaults visible")
         var visibilityChanged:Bool?
@@ -180,13 +183,13 @@ struct LocalizationChecks {
         settings.onConnect = { check($0 == peer.id, "Connect ID"); fired.insert("connect") }
         settings.onForget = { check($0 == peer.id, "Forget ID"); fired.insert("forget") }
         settings.onFolder = { fired.insert("folder") }; settings.onSend = { fired.insert("send") }
-        settings.onPreview = { fired.insert("preview") }; settings.onCancel = { fired.insert("cancel") }
+        settings.onCancel = { fired.insert("cancel") }
         settings.onReveal = { fired.insert("reveal") }; settings.onPermissions = { fired.insert("permissions") }
         settings.onTextHistory = { fired.insert("history") }; settings.onClearTextHistory = { fired.insert("clearHistory") }
         settings.onLatestText = { fired.insert("latestText") }; settings.onSendText = { fired.insert("sendText") }; settings.onUpdates = { fired.insert("updates") }
         settings.onReset = { fired.insert("reset") }; settings.onQuit = { fired.insert("quit") }
         let expected: [String: String] = ["save":"save", "pair":"pair", "manual":"manual", "connect":"connect", "forget":"forget",
-            "chooseFolder":"folder", "send":"send", "preview":"preview", "cancel":"cancel", "reveal":"reveal", "permissions":"permissions",
+            "chooseFolder":"folder", "send":"send", "cancel":"cancel", "reveal":"reveal", "permissions":"permissions",
             "openLatestText":"latestText", "openTextHistory":"history", "clearTextHistory":"clearHistory", "sendText":"sendText", "checkUpdates":"updates", "reset":"reset", "quit":"quit"]
         for button in descendants(content).compactMap({ $0 as? NSButton }) {
             if let action = button.action, expected[NSStringFromSelector(action)] != nil { NSApp.sendAction(action, to: button.target, from: button) }
@@ -202,8 +205,8 @@ struct LocalizationChecks {
         let snapshot = snapshotIndex.flatMap { CommandLine.arguments.count > $0 + 1 ? URL(fileURLWithPath: CommandLine.arguments[$0 + 1]) : nil }
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             window.appearance = NSAppearance(named: appearance)
-            for height: CGFloat in [520, 340] {
-                window.setContentSize(NSSize(width: 650, height: height))
+            for height: CGFloat in [580, 440] {
+                window.setContentSize(NSSize(width: height == 580 ? 720 : 640, height: height))
                 window.displayIfNeeded()
                 RunLoop.current.run(until: Date().addingTimeInterval(0.03))
                 check(abs(content.bounds.height - height) <= 1, "Window keeps requested content height")
@@ -231,7 +234,7 @@ struct LocalizationChecks {
                         let bitmap = frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds)!
                         frameView.cacheDisplay(in: frameView.bounds, to: bitmap)
                         let suffix = appearance == .aqua ? "light" : "dark"
-                        let filename = snapshot.deletingPathExtension().lastPathComponent + "-" + section.rawValue + "-" + suffix + (height == 340 ? "-short" : "") + ".png"
+                        let filename = snapshot.deletingPathExtension().lastPathComponent + "-" + section.rawValue + "-" + suffix + (height == 440 ? "-short" : "") + ".png"
                         try bitmap.representation(using: .png, properties: [:])!.write(to: snapshot.deletingLastPathComponent().appendingPathComponent(filename))
                     }
                 }

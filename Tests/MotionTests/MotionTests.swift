@@ -18,16 +18,10 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
 @main struct MotionTests {
     static func main() throws {
         _ = NSApplication.shared
-        let preview = Bundle.main.bundleIdentifier == "app.peerjetty.isolated-glass-preview"
-        NSApp.setActivationPolicy(preview ? .regular : .prohibited)
+        NSApp.setActivationPolicy(.prohibited)
         if CommandLine.arguments.contains("--benchmark") { benchmark(); return }
         #if !BASELINE
-        if preview {
-            let menu = NSMenu(), appItem = NSMenuItem(), appMenu = NSMenu()
-            appMenu.addItem(withTitle: "Quit Preview", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-            appItem.submenu = appMenu; menu.addItem(appItem); NSApp.mainMenu = menu
-            showPreview(); NSApp.run()
-        } else { try tests() }
+        try tests()
         #endif
     }
     static func benchmark() {
@@ -381,14 +375,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         panel.presentTransfer(TransferUpdate(id:second,peerName:"Two",receiving:false,completed:100,total:100,status:"Failed",finished:true,succeeded:false))
         check(panel.view.progress.isHidden && !panel.view.progress.isSuccess,"failure cannot draw check")
         panel.resetFeedback()
-        let preview = MotionPreviewWindow()
-        let previewCard = descendants(preview.window!.contentView!).compactMap {$0 as? DropZoneView}.first!
-        check(previewCard.registeredDraggedTypes.isEmpty,"isolated preview refuses actual file drops")
         print("PASS: fixed motion profile, migration/write failure, spring damping, monotonic ring, confirmation, deduplication, interruption, reduced motion, success hold and parallel transfer")
-    }
-    private static var retained: [AnyObject] = []
-    static func showPreview() {
-        let controller = MotionPreviewWindow(); retained.append(controller); controller.present()
     }
     #endif
 }

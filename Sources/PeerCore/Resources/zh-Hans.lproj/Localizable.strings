@@ -172,7 +172,6 @@
 "settings.peer_entry" = "%1$@ · %2$@ · %3$@";
 "settings.peerjetty_file_handoff" = "PeerJetty · 双向文件投放";
 "settings.preparing_to_connect" = "准备连接…";
-"settings.preview_drop_card" = "预览投放区";
 "settings.progress_percent" = "%1$@ · %2$@";
 "settings.quit" = "退出";
 "settings.receive_folder" = "接收目录";
@@ -314,10 +313,6 @@
 "settings.temporary_menu" = "本次运行临时显示菜单栏图标，保存的选择仍为关闭。";
 "settings.hide_temporary" = "隐藏临时图标";
 
-"settings.motion_preview" = "预览动画…";
-"motion.preview_title" = "动画预览";
-"motion.preview_hint" = "仅演示模拟进度，不传输文件或连接设备。";
-"motion.replay" = "重新播放";
 "drop.waiting_confirmation" = "等待确认";
 
 // Native settings groups

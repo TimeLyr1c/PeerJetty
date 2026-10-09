@@ -24,7 +24,7 @@ enum SettingsSection: String, CaseIterable {
     var identifier: NSToolbarItem.Identifier { NSToolbarItem.Identifier("settings." + rawValue) }
 }
 
-final class SettingsController: NSWindowController, NSToolbarDelegate {
+final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowDelegate {
     var onSave: ((String) -> Void)?
     var onSelect: ((String) -> Void)?
     var onPair: (() -> Void)?
@@ -32,7 +32,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onForget: ((String) -> Void)?
     var onFolder: (() -> Void)?
     var onSend: (() -> Void)?
-    var onPreview: (() -> Void)?
     var onCancel: (() -> Void)?
     var onReveal: (() -> Void)?
     var onManual: (() -> Void)?
@@ -49,7 +48,6 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     var onHideTemporary: (() -> Void)?
     var onLatestText: (() -> Void)?
     var onAnimations: ((Bool) -> Void)?
-    var onMotionPreview: (() -> Void)?
     var onAutoOpen: ((Bool) -> Void)?
     var onLogin: ((Bool) -> Void)?
     var onReset: (() -> Void)?
@@ -80,11 +78,12 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private(set) var selectedSection: SettingsSection = .general
 
     init(configuration: Configuration, displayLanguage: DisplayLanguage = LanguagePreferences().selection) {
-        let height = min(520, max(300, (NSScreen.main?.visibleFrame.height ?? 900) - 130))
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: height), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        let height = min(580, max(440, (NSScreen.main?.visibleFrame.height ?? 900) - 130))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: height), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = L10n.text("settings.window_title"); window.isReleasedWhenClosed = false
         window.toolbarStyle = .preference
         super.init(window: window)
+        window.delegate = self; window.contentMinSize = NSSize(width:640,height:440)
 
         let toolbar = NSToolbar(identifier: "PeerJetty.Settings")
         toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
@@ -119,7 +118,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         latestTextButton.title = L10n.text("text.latest"); latestTextButton.bezelStyle = .rounded
         latestTextButton.target = self; latestTextButton.action = #selector(openLatestText)
         latestTextButton.identifier = NSUserInterfaceItemIdentifier("latestTextEntry"); latestTextButton.isEnabled = false
-        connectionLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        connectionLabel.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
         connectionLabel.textColor = .secondaryLabelColor
         animations.state = configuration.animationsEnabled ? .on : .off
         animations.identifier = NSUserInterfaceItemIdentifier("interfaceAnimations")
@@ -140,16 +139,15 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
 
         var general: [NSView] = []
         if !configuration.onboardingComplete {
-            general += [heading(L10n.text("settings.welcome_to_peerjetty")), hint("settings.install_peerjetty_on_both_macs_and_pair_them")]
+            general += [group("settings.welcome_to_peerjetty", rows:[hint("settings.install_peerjetty_on_both_macs_and_pair_them")])]
         }
         name.widthAnchor.constraint(greaterThanOrEqualToConstant: 190).isActive = true
         general += [group("settings.group_identity", rows: [
-            row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))])]),
+            setting("settings.device_name", row([name, button(L10n.text(configuration.onboardingComplete ? "settings.save_name" : "settings.save_finish_setup"), #selector(save))]))]),
             group("settings.language", rows: [setting("settings.language", language), hint("settings.language_restart")]),
             group("settings.group_presence", rows: [setting("settings.menu_bar", menuBarSwitch), setting("settings.dock_icon", dockSwitch),
                 hint("settings.menu_bar_hint"), temporaryRow, setting("settings.start_at_login", login)]),
-            group("settings.group_motion", rows: [setting("settings.animations", animations), hint("settings.animations_hint"),
-                actions([button(L10n.text("settings.motion_preview"), #selector(motionPreview))])])]
+            group("settings.group_motion", rows: [setting("settings.animations", animations), hint("settings.animations_hint")])]
         connectionGroup.orientation = .vertical; connectionGroup.alignment = .leading; connectionGroup.isHidden = true
         connectionGroup.identifier = NSUserInterfaceItemIdentifier("connectionInfoGroup")
         connectionGroup.addArrangedSubview(connectionLabel)
@@ -166,7 +164,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         let transferRows: [NSView] = [group("settings.receive_folder", rows: [
             row([folderLabel, button(L10n.text("settings.choose_folder"), #selector(chooseFolder))]),
             setting("settings.open_after_receiving", autoOpen), hint("settings.when_enabled_saved_files_from_paired_devices_open")]),
-            group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send)), button(L10n.text("settings.preview_drop_card"), #selector(preview))])]),
+            group("settings.drop_heading", rows: [actions([button(L10n.text("settings.choose_files_to_send"), #selector(send))])]),
             group("settings.activity_heading", rows: [progressLabel,
                 actions([button(L10n.text("settings.cancel_transfer"), #selector(cancel)), button(L10n.text("settings.show_recent_files_in_finder"), #selector(reveal))])])]
         let textRows: [NSView] = [group("settings.group_text_send", rows: [actions([button(L10n.text("text.send_title"), #selector(sendText)), latestTextButton])]),
@@ -180,7 +178,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         appIcon.image = Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap { NSImage(contentsOf: $0) } ?? NSImage(named: NSImage.applicationIconName)
         appIcon.widthAnchor.constraint(equalToConstant: 56).isActive = true
         appIcon.heightAnchor.constraint(equalToConstant: 56).isActive = true
-        let branding = NSStackView(views: [heading("PeerJetty"), version])
+        let brand = heading("PeerJetty"); brand.font = .systemFont(ofSize:20,weight:.semibold)
+        let branding = NSStackView(views: [brand, version])
         branding.orientation = .vertical; branding.alignment = .leading; branding.spacing = 6
         maintenance.orientation = .vertical; maintenance.alignment = .leading; maintenance.spacing = 12
         maintenance.detachesHiddenViews = true; maintenance.isHidden = true
@@ -198,9 +197,12 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
             actions([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.license"), #selector(showLicense)), button(L10n.text("settings.diagnostics"), #selector(showDiagnostics))]),
             group("settings.maintenance", rows: [actions([disclosure]), maintenance]), actions([button(L10n.text("settings.quit"), #selector(quit))])]
 
+        for control in [name, devices, language, folderLabel, progressLabel, connectionLabel, version, latestTextButton, historyOpen, retention] as [NSControl] {
+            control.font = .systemFont(ofSize:13)
+        }
         let content = window.contentView!
         content.addSubview(pageHost); pageHost.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.textColor = .secondaryLabelColor; statusLabel.font = .systemFont(ofSize: 12)
+        statusLabel.textColor = .secondaryLabelColor; statusLabel.font = .systemFont(ofSize: 13)
         statusLabel.maximumNumberOfLines = 3; statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.identifier = NSUserInterfaceItemIdentifier("settingsStatus")
         statusLabel.setContentCompressionResistancePriority(.defaultLow, for:.horizontal)
@@ -214,13 +216,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
             pageHost.leadingAnchor.constraint(equalTo: content.leadingAnchor), pageHost.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             pageHost.topAnchor.constraint(equalTo: content.topAnchor), pageHost.bottomAnchor.constraint(equalTo: footerLine.topAnchor),
             footerLine.leadingAnchor.constraint(equalTo: content.leadingAnchor), footerLine.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            footer.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 24), footer.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -24),
+            footer.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 32), footer.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -32),
             footer.topAnchor.constraint(equalTo: footerLine.bottomAnchor, constant: 10), footer.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12),
             statusLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)])
         for (section, rows) in [(SettingsSection.general, general), (.devices, deviceRows), (.transfers, transferRows), (.text, textRows), (.about, aboutRows)] {
             addPage(section, rows: rows)
         }
-        window.setContentSize(NSSize(width: 650, height: height))
+        window.setContentSize(NSSize(width: 720, height: height))
         selectSection(.general); window.center()
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
@@ -265,33 +267,43 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         scroll.identifier = NSUserInterfaceItemIdentifier("settingsPage." + section.rawValue)
         let document = SettingsDocumentView(); document.translatesAutoresizingMaskIntoConstraints = false
         let stack = NSStackView(views: rows); stack.orientation = .vertical; stack.alignment = .leading
-        stack.spacing = 24; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.spacing = 28; stack.detachesHiddenViews = true; stack.translatesAutoresizingMaskIntoConstraints = false
         stack.setHuggingPriority(.required, for: .vertical)
         scroll.documentView = document; document.addSubview(stack); pageHost.addSubview(scroll); pages[section] = scroll
-        let height = document.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 48); height.priority = .fittingSizeCompression
+        let height = document.heightAnchor.constraint(equalTo: stack.heightAnchor, constant: 56); height.priority = .fittingSizeCompression
         NSLayoutConstraint.activate([
             scroll.leadingAnchor.constraint(equalTo: pageHost.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: pageHost.trailingAnchor),
             scroll.topAnchor.constraint(equalTo: pageHost.topAnchor), scroll.bottomAnchor.constraint(equalTo: pageHost.bottomAnchor),
             document.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor), document.heightAnchor.constraint(greaterThanOrEqualTo: scroll.contentView.heightAnchor), height,
-            stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 28), stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -28),
-            stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 24), stack.bottomAnchor.constraint(lessThanOrEqualTo: document.bottomAnchor, constant: -24)])
+            stack.leadingAnchor.constraint(equalTo: document.leadingAnchor, constant: 32), stack.trailingAnchor.constraint(equalTo: document.trailingAnchor, constant: -32),
+            stack.topAnchor.constraint(equalTo: document.topAnchor, constant: 28), stack.bottomAnchor.constraint(lessThanOrEqualTo: document.bottomAnchor, constant: -28)])
         for view in rows { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        for view in rows.dropLast() {
+            let line = separator(); stack.insertArrangedSubview(line, at: stack.arrangedSubviews.firstIndex(of:view)! + 1)
+            stack.setCustomSpacing(14,after:view); stack.setCustomSpacing(14,after:line)
+        }
+        for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo:stack.widthAnchor).isActive = true }
     }
     /// Native groups, without another background/card layer. Hidden disclosures collapse.
     private func group(_ key: String, rows: [NSView]) -> NSStackView {
         let group = NSStackView(views: [heading(L10n.text(key))] + rows)
         group.identifier = NSUserInterfaceItemIdentifier("settingsGroup." + key)
-        group.orientation = .vertical; group.alignment = .leading; group.spacing = 10
+        group.orientation = .vertical; group.alignment = .leading; group.spacing = 16
         group.detachesHiddenViews = true; group.setHuggingPriority(.required, for: .vertical)
-        for view in group.arrangedSubviews { view.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true }
+        for (index, view) in group.arrangedSubviews.enumerated() {
+            view.widthAnchor.constraint(equalTo: group.widthAnchor).isActive = true
+            if index > 0, let label = view as? NSTextField, label.textColor == .secondaryLabelColor {
+                group.setCustomSpacing(6, after: group.arrangedSubviews[index-1])
+            }
+        }
         return group
     }
     private func heading(_ text: String) -> NSTextField {
-        let label = NSTextField(labelWithString: text); label.font = .systemFont(ofSize: 15, weight: .semibold); return label
+        let label = NSTextField(labelWithString: text); label.font = .systemFont(ofSize: 13, weight: .semibold); return label
     }
     private func hint(_ key: String) -> NSTextField {
         let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.textColor = .secondaryLabelColor
-        label.font = .systemFont(ofSize: 12); label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal); return label
+        label.font = .systemFont(ofSize: 13); label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal); return label
     }
     private func row(_ views: [NSView]) -> NSStackView {
         let row = NSStackView(views: views); row.orientation = .horizontal; row.spacing = 10; row.alignment = .centerY
@@ -306,11 +318,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private func setting(_ key: String, _ control: NSView) -> NSStackView {
         control.setAccessibilityLabel(L10n.text(key))
         let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.font = .systemFont(ofSize: 13)
-        label.widthAnchor.constraint(equalToConstant: 190).isActive = true
+        label.widthAnchor.constraint(equalToConstant: 172).isActive = true
+        if control is NSSwitch { return row([label, spacer(), control]) }
+        control.widthAnchor.constraint(greaterThanOrEqualToConstant:240).isActive = true
         return row([label, control, spacer()])
     }
     private func button(_ title: String, _ action: Selector) -> NSButton {
-        let button = NSButton(title: title, target: self, action: action); button.bezelStyle = .rounded
+        let button = NSButton(title: title, target: self, action: action); button.bezelStyle = .rounded; button.font = .systemFont(ofSize:13)
         button.setContentCompressionResistancePriority(.required, for: .horizontal); return button
     }
     private func separator() -> NSView { let box = NSBox(); box.boxType = .separator; return box }
@@ -327,12 +341,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
     func status(_ text: String) {
         statusLabel.stringValue = text; statusLabel.toolTip = text
-        let available = max(100, (window?.contentView?.bounds.width ?? 650) - 48 - statusDetails.intrinsicContentSize.width - 10)
-        let font = statusLabel.font ?? .systemFont(ofSize:12)
+        let available = max(100, (window?.contentView?.bounds.width ?? 720) - 64 - statusDetails.intrinsicContentSize.width - 10)
+        let font = statusLabel.font ?? .systemFont(ofSize:13)
         let measured = (text as NSString).boundingRect(with:NSSize(width:available,height:100000), options:[.usesLineFragmentOrigin,.usesFontLeading], attributes:[.font:font]).height
         let lineHeight = NSLayoutManager().defaultLineHeight(for:font)
         statusDetails.isHidden = measured <= lineHeight * 3 + 1 && text.components(separatedBy:"\n").count <= 3
     }
+    func windowDidResize(_ notification: Notification) { status(statusLabel.stringValue) }
     func latestTextState(_ available:Bool) { latestTextButton.isEnabled = available }
     func iconState(menu:Bool, dock:Bool, temporary:Bool) {
         menuBarSwitch.state = menu ? .on : .off; dockSwitch.state = dock ? .on : .off
@@ -375,7 +390,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
         progressLabel.stringValue = update.finished ? detail : L10n.text("settings.progress_percent", detail, L10n.percent(percent))
     }
     func animationState(_ enabled: Bool) { animations.state = enabled ? .on : .off }
-    @objc private func motionPreview() { onMotionPreview?() }
+
     @objc private func toggleAnimations() { onAnimations?(animations.state == .on) }
     @objc private func save() { onSave?(name.stringValue) }
     @objc private func selectPeer() { if let selected, selected.paired { onSelect?(selected.id) } }
@@ -384,7 +399,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate {
     @objc private func forget() { if let selected, selected.paired { onForget?(selected.id) } }
     @objc private func chooseFolder() { onFolder?() }
     @objc private func send() { onSend?() }
-    @objc private func preview() { onPreview?() }
+
     @objc private func cancel() { onCancel?() }
     @objc private func reveal() { onReveal?() }
     @objc private func manual() { onManual?() }

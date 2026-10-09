@@ -15,19 +15,6 @@ fi
 SOURCES=(Sources/PeerJetty/Motion.swift Sources/PeerJetty/DropPresentation.swift Sources/PeerJetty/DropZone.swift Sources/PeerJetty/TextWindows.swift Tests/MotionTests/MotionTests.swift)
 /usr/bin/swiftc -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${SOURCES[@]}" -o "$TEST_ROOT/checks"
 "$TEST_ROOT/checks" "$@"
-if [[ "${1:-}" == --deliver-preview ]]; then
-  APP="$PROJECT_ROOT/outputs/GlassMotionPreview.app"
-  mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-  cp "$TEST_ROOT/checks" "$APP/Contents/MacOS/Preview"
-  /usr/bin/ditto Sources/PeerCore/Resources "$APP/Contents/Resources"
-  /usr/bin/python3 - "$APP/Contents/Info.plist" <<'PY'
-import plistlib,sys
-from pathlib import Path
-Path(sys.argv[1]).write_bytes(plistlib.dumps({'CFBundleExecutable':'Preview','CFBundleIdentifier':'app.peerjetty.isolated-glass-preview','CFBundleName':'PeerJetty UI Preview','LSMinimumSystemVersion':'15.0','NSHighResolutionCapable':True}))
-PY
-  /usr/bin/codesign --force --sign - "$APP"
-  print "$APP"
-fi
 if [[ "${1:-}" == --compare ]]; then
   # Read the pre-change card from HEAD into temporary files; never switch the live checkout.
   BASELINE_REF="${PEERJETTY_MOTION_BASELINE_REF:-52a341573cd2b317d34606a8edf674382e0982b2}"

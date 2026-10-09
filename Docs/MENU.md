@@ -6,9 +6,9 @@ The menu contains exactly Pair devices, Send Files, Send Text, Check for Updates
 
 菜单仅六项：配对、发送文件、发送文本、检查更新、设置、退出。配对打开设备页并开启两分钟配对窗口；发送文件沿用默认目标，没有目标时打开设备页提示；文本目标与草稿规则不变。
 
-Text history and latest received text are in Text settings; hiding history still does not stop recording, and latest received text remains available for the current run. Drop preview and recently received files are in Transfers. About and diagnostic details are in About settings.
+Text history and latest received text are in Text settings; hiding history still does not stop recording, and latest received text remains available for the current run. Recently received files are in Transfers; both demo entries have been removed. About and diagnostic details are in About settings.
 
-文本历史与最近收到的文本位于文本设置，隐藏历史不停止记录，本次运行最近文本仍可查看。投放预览和最近收到的文件位于传输设置；关于与诊断详情在关于页。
+文本历史与最近收到的文本位于文本设置，隐藏历史不停止记录，本次运行最近文本仍可查看。最近收到的文件位于传输设置；两种演示入口已移除；关于与诊断详情在关于页。
 
 ## Hide and restore / 隐藏与恢复
 
