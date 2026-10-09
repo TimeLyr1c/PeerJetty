@@ -27,6 +27,7 @@ final class FramedConnection {
     var onChunk: ((Data) -> Void)?
     var onFailure: ((Error) -> Void)?
     private var closed = false
+    private var ending = false
     init(_ connection: NWConnection) { self.connection = connection }
     func begin() { readHeader() }
     func close() { closed = true; connection.cancel() }
@@ -56,7 +57,7 @@ final class FramedConnection {
                     if data[0] == 0 { self.onMessage?(try JSONDecoder().decode(Message.self, from: data.dropFirst())) }
                     else if data[0] == 1, data.count <= 65537 { self.onChunk?(Data(data.dropFirst())) }
                     else { throw PeerError.localized("framing.invalid_message_type", []) }
-                    if !self.closed { self.readHeader() }
+                    if !self.closed && !self.ending { self.readHeader() }
                 } catch { self.fail(error) }
             }
         }
@@ -65,13 +66,18 @@ final class FramedConnection {
         guard !closed else { return }
         connection.receive(minimumIncompleteLength: 1, maximumLength: count - accumulated.count) { [weak self] data, _, isComplete, error in
             guard let self, !self.closed else { return }
-            if let error { self.fail(error); return }
-            var buffer = accumulated
-            if let data { buffer.append(data) }
-            if buffer.count == count { completion(buffer) }
-            else if isComplete { self.fail(PeerError.localized("framing.the_other_device_disconnected", [])) }
-            else { self.readExact(count, accumulated: buffer, completion: completion) }
+            self.acceptReadResult(data,isComplete:isComplete,error:error,count:count,accumulated:accumulated,completion:completion)
         }
+    }
+    // Also exercised directly by isolated EOF tests, without a real production connection.
+    func acceptReadResult(_ data:Data?,isComplete:Bool,error:Error?,count:Int,accumulated:Data,completion:@escaping(Data)->Void) {
+        guard !closed else { return }
+        var buffer=accumulated; if let data {buffer.append(data)}
+        let terminal = isComplete || error != nil
+        if terminal {ending=true}
+        if buffer.count == count { completion(buffer) }
+        if terminal {fail(error ?? PeerError.localized("framing.the_other_device_disconnected",[]))}
+        else if buffer.count < count {readExact(count,accumulated:buffer,completion:completion)}
     }
     private func fail(_ error: Error) { guard !closed else { return }; close(); onFailure?(error) }
 }

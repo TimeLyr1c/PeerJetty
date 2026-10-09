@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var notificationRequested = false
     private var pendingSettings = false
     private var bootError: String?
+    private var fileFeedback = FileSendFeedback()
     private var preparing = 0
     private var promiseBusy = false
 
@@ -96,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             guard let self, let peer = self.store?.snapshot.preferredPeer else {
                 cleanup?(); self?.showStatus(L10n.text("application.pair_and_select_a_destination_in_settings_first")); self?.showSettings(); return
             }
-            self.engine?.send(urls: urls, peerID: peer, cleanup: cleanup)
+            self.sendFiles(urls,peerID:peer,cleanup:cleanup)
         }
         drop.view.onReceivingPromise = { [weak self] in self?.promiseBusy = true; self?.drop?.resetFeedback(); self?.refreshBusy(); self?.drop?.show() }
         drop.view.onFailure = { [weak self] text in self?.promiseBusy = false; self?.refreshBusy(); self?.showStatus(text) }
@@ -108,15 +109,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             if let notice = self.trustFeedback, peers.contains(where:{$0.id == notice.id && $0.paired && $0.connected}) {
                 self.trustFeedback = nil; self.settings?.trustChanged(nil)
             }
-            if self.active.isEmpty { self.drop?.view.idle() }
+            if peers.contains(where:{$0.id == self.store?.snapshot.preferredPeer && $0.connected}) {self.fileFeedback.clearFailure()}
+            if self.active.isEmpty && self.fileFeedback.allowsIdle { self.drop?.view.idle() }
         }
         engine.onStatus = { [weak self] text in
-            guard let self else { return }; self.settings?.status(text)
-            if self.active.isEmpty, !self.promiseBusy, self.preparing == 0 { self.drop?.busy = false; self.drop?.hide(after: 5) }
+            guard let self else { return }
+            if self.fileFeedback.failedID == nil {self.lastStatus=text;self.settings?.status(text)}
+            if self.active.isEmpty, !self.promiseBusy, self.preparing == 0, self.fileFeedback.pendingIDs.isEmpty { self.refreshBusy(); self.drop?.hide(after: 5) }
         }
         engine.onPreparation = { [weak self] value in
             guard let self else { return }; self.preparing = max(0, self.preparing + (value ? 1 : -1)); self.refreshBusy()
-            if value { self.drop?.resetFeedback(); self.drop?.show(); self.drop?.view.show(title: L10n.text("application.preparing_files"), subtitle: self.drop?.view.targetName ?? "") }
+        }
+        engine.onFileSendEvent = { [weak self] event in
+            guard let self else {return}
+            let accepted=self.fileFeedback.accept(event);self.refreshBusy()
+            guard accepted else {return}
+            if event.phase == .failed {
+                let title=L10n.text(event.notConnected ? "file.not_connected" : "file.send_failed",event.peerName)
+                let hint=event.notConnected ? L10n.text("file.offline_help") : L10n.text("application.status_details_hint")
+                let detail=[title,hint,event.error?.localizedDescription ?? ""].joined(separator:"\n")
+                self.lastStatus=detail;self.settings?.status(detail)
+                if self.active.isEmpty {
+                    self.drop?.resetFeedback();self.drop?.show()
+                    self.drop?.view.show(title:title,subtitle:event.notConnected ? L10n.text("file.offline_card_help") : hint,symbol:"exclamationmark.triangle.fill",color:.systemOrange)
+                    self.drop?.hide(after:5)
+                }
+            } else if self.active.isEmpty && (event.phase == .preparing || event.phase == .connecting) {
+                self.drop?.resetFeedback();self.drop?.show()
+                self.drop?.view.show(title:event.phase == .connecting ? L10n.text("file.connecting",event.peerName) : L10n.text("application.preparing_files"),subtitle:event.peerName)
+            }
         }
         engine.onPairing = { [weak self] id, name, code in self?.showPairing(id: id, name: name, code: code) }
         engine.onPairingEnded = { [weak self] id in
@@ -139,7 +160,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             if update.finished {
                 self.active.remove(update.id); self.transferUpdates.removeValue(forKey:update.id)
                 self.transferOrder.removeAll {$0 == update.id}; self.completedTransfer = update
+                if !update.succeeded && self.active.isEmpty {self.fileFeedback.transferFailed(update.id);self.lastStatus=update.status}
             } else {
+                self.fileFeedback.transferStarted()
                 if !self.active.contains(update.id) { self.transferOrder.append(update.id) }
                 self.active.insert(update.id); self.transferUpdates[update.id] = update
             }
@@ -191,7 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         settings?.iconState(menu:icons.menu, dock:icons.dock, temporary:icons.temporary)
         if wasVisible { settings?.window?.makeKeyAndOrderFront(nil) }
     }
-    private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy }
+    private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy || !fileFeedback.pendingIDs.isEmpty }
     private func updateConnectionInfo() {
         settings?.connectionAddresses(LocalNetworkAddress.discover(),port:listeningPort)
     }
@@ -296,11 +319,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             settings?.folder(url.path); settings?.status(L10n.text("application.receive_folder_updated"))
         } catch { showError(error.localizedDescription) }
     }
+    private func sendFiles(_ urls:[URL],peerID:String,cleanup:(()->Void)?=nil) {
+        guard let engine else {cleanup?();return}
+        let id=engine.send(urls:urls,peerID:peerID,cleanup:cleanup)
+        fileFeedback.begin(id);refreshBusy()
+    }
     private func chooseFiles() {
         guard initialized else { showSettings(); return }
         guard let peer = store?.snapshot.preferredPeer else { showSettings(); settings?.selectSection(.devices); settings?.status(L10n.text("application.select_a_paired_device_as_your_default_destination")); return }
         let panel = NSOpenPanel(); panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true; panel.prompt = L10n.text("application.send")
-        if panel.runModal() == .OK { engine?.send(urls: panel.urls, peerID: peer) }
+        if panel.runModal() == .OK { sendFiles(panel.urls,peerID:peer) }
     }
     private func manualConnection() {
         let alert = NSAlert(); alert.messageText = L10n.text("application.connect_manually")

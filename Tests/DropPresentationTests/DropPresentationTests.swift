@@ -8,6 +8,21 @@ private func XCTAssertNil<T>(_ value: T?, file: StaticString = #file, line: UInt
 private func XCTAssertEqual<T: Equatable>(_ actual: T, _ expected: T, file: StaticString = #file, line: UInt = #line) { precondition(actual == expected, "Values differ: \(actual), \(expected)", file: file, line: line) }
 
 final class DropPresentationTests {
+    func testFileRequestFeedbackRejectsOldFailures() {
+        var feedback=FileSendFeedback()
+        let old=UUID(),current=UUID()
+        feedback.begin(old);feedback.begin(current)
+        XCTAssertFalse(feedback.accept(FileSendEvent(id:old,peerID:"peer",peerName:"Mac",phase:.failed)))
+        XCTAssertEqual(feedback.latestID,current);XCTAssertNil(feedback.failedID)
+        XCTAssertTrue(feedback.accept(FileSendEvent(id:current,peerID:"peer",peerName:"Mac",phase:.failed)))
+        XCTAssertTrue(feedback.pendingIDs.isEmpty);XCTAssertFalse(feedback.allowsIdle)
+        feedback.clearFailure();XCTAssertTrue(feedback.allowsIdle)
+        feedback.transferFailed(old);XCTAssertFalse(feedback.allowsIdle);feedback.clearFailure()
+        feedback.begin(current);feedback.transferStarted()
+        XCTAssertFalse(feedback.accept(FileSendEvent(id:current,peerID:"peer",peerName:"Mac",phase:.failed)))
+        XCTAssertNil(feedback.failedID);XCTAssertTrue(feedback.pendingIDs.isEmpty)
+        print("PASS: request-scoped feedback, stale failure rejection and terminal busy cleanup")
+    }
     func testDragTrackerRejectsStalePasteboardAndTextAndRequiresMovement() {
         var tracker = FileDragTracker(changeCount: 10)
         let origin = NSPoint(x: 500, y: 500), moved = NSPoint(x: 510, y: 500)
@@ -98,6 +113,7 @@ final class DropPresentationTests {
 struct RunDropPresentationTests {
     static func main() throws {
         let tests = DropPresentationTests()
+        tests.testFileRequestFeedbackRejectsOldFailures()
         tests.testDragTrackerRejectsStalePasteboardAndTextAndRequiresMovement()
         tests.testPlainScreenApproachTriggersBeforeCardWithoutEnteringSystemEdge()
         tests.testDifferentNotchWidthsAreMeasuredAndContentsStayBelowHousing()
@@ -201,6 +217,8 @@ struct RunDropPresentationTests {
         for language in ["en","zh-Hans"] {
             let catalog = TranslationCatalog(bundle:L10n.resources,preferences:[language])
             let cue = catalog.text("application.status_details_hint")
+            let offline = catalog.text("file.offline_card_help")
+            XCTAssertTrue((offline as NSString).size(withAttributes:[.font:NSFont.systemFont(ofSize:13,weight:.medium)]).width <= 255)
             XCTAssertTrue((cue as NSString).size(withAttributes:[.font:NSFont.systemFont(ofSize:13,weight:.medium)]).width <= 255)
         }
         print("PASS: bilingual card centering, text fit, long-name tooltips and controls across 24 layouts")

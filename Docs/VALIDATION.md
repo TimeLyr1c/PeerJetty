@@ -1,5 +1,17 @@
 # 0.2.0 验证记录
 
+## 2026-10-09: connection lifecycle and bounded file sending (build26)
+
+- PASS: new `Scripts/test-connections.sh` uses ephemeral TLS identities, in-memory trust and temporary directories. Complete final bytes precede EOF/error; partial/empty EOF fails. Discovery alone is disconnected, authorization can reconnect, two authorized connections survive one waiting failure, and the last waiting/closed session disconnects without deleting trust/default. No endpoint, preparation failure, stale endpoint and a real TLS/application-hello stall produce scoped failures; two pending requests fail exactly once at the five-second deadline. Restart never replays failed requests.
+- PASS: separate real child processes: graceful remote service shutdown, SIGKILL and shutdown during a 32 MiB transfer update the parent to disconnected and retain trust/default; active transfer fails and temporary receive state is cleaned. These are two local processes over loopback, not Air/mini physical-device acceptance. Production Keychain, config and history were not used.
+- PASS: request feedback rejects old failure callbacks, releases terminal pending IDs, protects task failures from discovery-idle reset; bilingual card help fits, cancel × is UUID-scoped and gone on terminal state. Existing drop geometry/pasteboard and 24 bilingual layout checks pass. No motion timings or hit regions changed.
+- PASS: nine core groups and nine TLS integration checks; unpair adversarial/timeout/persistence-failure/legacy checks and bidirectional cancellation follow-up; full text/native/SQLite/legacy/file-parallel/real30s receipt timeout regression. New protocol capability or heartbeat was not added.
+- PASS: English/Chinese localization/settings tests, including light/dark/default/minimum layouts, original actions/drafts/history/icon controls. Existing Command Line Tools linker search-path warnings are nonfatal.
+- Pending: install build26 on both Air and mini, verify real quit/force quit/restart, offline card and transfers, including same-LAN discovery expiration. Silent network black holes are not promised immediate disconnect; the connecting-stage deadline is bounded, not preparation or already-started transfer time.
+
+已完成退出／TLS／等待会话清理、真实末帧顺序、多连接判断及文件请求 UUID 与五秒连接期限。隔离真实子进程与原生界面回归通过；失败不重放、不删除配对，不新增心跳。Air／mini 实机退出与重开仍待用户验收，不把本机双进程测试描述为双机实测。
+
+
 ## 2026-10-09: receive-path vertical centering (build25)
 
 - Installed build24 verified; this was a layout defect, not an old installer. A single-line native path label replaces the wrapping label and has an explicit 18 pt height; the 44 pt path surface centers its content vertically with at least 8 pt padding. Folder symbol and native choose button share the center line. Middle truncation, tooltip and accessibility path remain intact.

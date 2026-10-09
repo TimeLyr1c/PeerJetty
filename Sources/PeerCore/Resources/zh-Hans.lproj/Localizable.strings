@@ -366,3 +366,10 @@
 "connection.port" = "监听端口：%@";
 
 "unpair.result_title" = "配对状态已变更";
+
+"file.connection_timeout" = "5 秒内未能建立连接。";
+"file.connecting" = "正在连接到 %@…";
+"file.not_connected" = "未连接到 %@";
+"file.send_failed" = "无法发送到 %@";
+"file.offline_help" = "请确认对方已打开 PeerJetty，并且两台 Mac 连接到同一局域网。重新投放文件即可重试。";
+"file.offline_card_help" = "请在同一局域网打开对方应用";

@@ -30,6 +30,8 @@ The current app is ad hoc signed and **not Apple-notarized**. macOS may block it
 
 To update, quit PeerJetty, replace the app in Applications, and reopen it. Normal updates retain pairing and settings. When upgrading from OpenOnMini, quit the old app first and avoid running both apps together.
 
+Development build26 retains pairing after app exit, displays disconnected state, and bounds file reconnection attempts to five seconds. If the destination app is closed, open it on the same LAN and send again; failed requests are not replayed later. This is a local test build, not a new public release.
+
 ## Pair and send
 
 1. Connect both Macs to the same local network and keep both apps running.

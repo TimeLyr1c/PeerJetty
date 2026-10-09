@@ -366,3 +366,10 @@
 "connection.port" = "Listening port: %@";
 
 "unpair.result_title" = "Pairing changed";
+
+"file.connection_timeout" = "Connection was not established within 5 seconds.";
+"file.connecting" = "Connecting to %@…";
+"file.not_connected" = "Not connected to %@";
+"file.send_failed" = "Could not send to %@";
+"file.offline_help" = "Make sure PeerJetty is open on the other Mac and both Macs are on the same local network. Drop the files again to retry.";
+"file.offline_card_help" = "Open PeerJetty on the same LAN";

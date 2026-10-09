@@ -2,8 +2,14 @@ import Foundation
 import Network
 import CryptoKit
 
+private struct PendingFile {
+    let id: UUID
+    let peerID: String
+    let peerName: String
+    let prepared: PreparedTransfer
+}
 private final class Outgoing {
-    let id = UUID()
+    let id: UUID
     let prepared: PreparedTransfer
     var file: FileHandle?
     var index = -1
@@ -11,7 +17,7 @@ private final class Outgoing {
     var completed: Int64 = 0
     var hash = SHA256()
     var waitingForReceipt = false
-    init(_ prepared: PreparedTransfer) { self.prepared = prepared }
+    init(_ pending: PendingFile) { self.id = pending.id; self.prepared = pending.prepared }
     deinit { try? file?.close() }
 }
 
@@ -42,7 +48,8 @@ private final class Session {
     // Cancelled incoming frames may already be in flight; drain until the next ordered offer.
     var cancelledTransfers: [UUID] = []
     var drainingCancelledIncoming = false
-    var pending: [PreparedTransfer] = []
+    var pending: [PendingFile] = []
+    var transportReady = false
     var lastActivity = Date()
     var uiUpdates: [UUID: TimeInterval] = [:]
     let created = Date()
@@ -66,6 +73,7 @@ public final class PeerEngine {
     public var onTextResult: ((TextPayload, Error?) -> Void)?
     public var onListening: ((UInt16) -> Void)?
     public var onRejectedConnection: ((String) -> Void)?
+    public var onFileSendEvent: ((FileSendEvent) -> Void)?
     public var onPreparation: ((Bool) -> Void)?
     // Internal capability override supports isolated legacy-compatibility tests.
     var advertisedCapabilities: [String]? = ["text-v1", "unpair-v1"]
@@ -79,6 +87,7 @@ public final class PeerEngine {
     private var receiveAccess: URL?
     private var pairingAttempts: [Date] = []
     private var pairingWasOpen = false
+    private var serviceGeneration = 0
 
     public init(identity: DeviceIdentity, store: ConfigurationStore) { self.identity = identity; self.store = store }
     private func emit(_ text: String) { DispatchQueue.main.async { self.onStatus?(text) } }
@@ -114,7 +123,7 @@ public final class PeerEngine {
     }
     public func stop() {
         queue.async {
-            self.gate.close(); self.browser?.cancel(); self.browser = nil; self.listener?.cancel(); self.listener = nil
+            self.serviceGeneration += 1; self.gate.close(); self.browser?.cancel(); self.browser = nil; self.listener?.cancel(); self.listener = nil
             self.timer?.cancel(); self.timer = nil
             for session in Array(self.sessions.values) { self.fail(session, PeerError.localized("peerengine.service_stopped", [])) }
             self.receiveAccess?.stopAccessingSecurityScopedResource(); self.receiveAccess = nil
@@ -166,9 +175,9 @@ public final class PeerEngine {
         let config = store.snapshot
         let ids = Set(endpoints.keys).union(config.peers.map(\.id)).union(sessions.values.filter(\.authorized).map(\.peerID))
         let peers = ids.map { id -> DiscoveredPeer in
-            let connected = sessions.values.contains { $0.peerID == id && $0.authorized && !$0.unpairing }
+            let connected = sessions.values.contains { $0.peerID == id && $0.authorized && $0.transportReady && !$0.unpairing }
             return DiscoveredPeer(id: id, name: config.peers.first { $0.id == id }?.name ?? endpoints[id]?.1 ?? "Mac",
-                                  paired: config.peers.contains { $0.id == id }, connected: connected, supportsText: sessions.values.first(where: { $0.peerID == id && $0.authorized && !$0.unpairing }).map { $0.supportsText })
+                                  paired: config.peers.contains { $0.id == id }, connected: connected, supportsText: sessions.values.first(where: { $0.peerID == id && $0.authorized && $0.transportReady && !$0.unpairing }).map { $0.supportsText })
         }.sorted { $0.name < $1.name }
         DispatchQueue.main.async { self.onPeers?(peers) }
     }
@@ -201,6 +210,8 @@ public final class PeerEngine {
                 guard let self, let session, self.sessions[session.id] != nil else { return }
                 switch state {
                 case .ready:
+                    guard !session.transportReady else { return }
+                    session.transportReady = true
                     do {
                         session.peerID = try TLS.peerFingerprint(connection); session.exporter = try TLS.exporter(connection)
                         if !self.store.snapshot.peers.contains(where: { $0.id == session.peerID }) {
@@ -216,7 +227,8 @@ public final class PeerEngine {
                         session.wire.send(hello); session.wire.begin()
                     } catch { self.fail(session, error) }
                 case .failed(let error): self.fail(session, error)
-                case .waiting(let error): self.emit(L10n.text("peerengine.waiting_to_connect", String(describing: error.localizedDescription)))
+                case .waiting(let error):
+                    self.transportWaiting(session,error:error)
                 case .cancelled: self.fail(session, PeerError.localized("peerengine.connection_closed", []))
                 default: break
                 }
@@ -224,6 +236,19 @@ public final class PeerEngine {
             connection.start(queue: queue)
         } catch { connection.cancel(); emit(error.localizedDescription) }
     }
+    private func transportWaiting(_ session:Session,error:Error) {
+        if session.transportReady { fail(session,error) }
+        else { emit(L10n.text("peerengine.waiting_to_connect",error.localizedDescription)); publishPeers() }
+    }
+    #if DEBUG
+    // Deterministic isolated discovery/path tests; never available in release apps.
+    func testingEndpoint(peerID:String,port:UInt16) {
+        queue.async {self.endpoints[peerID] = (.hostPort(host:"127.0.0.1",port:NWEndpoint.Port(rawValue:port)!),"Fixture");self.publishPeers()}
+    }
+    func testingWaiting(peerID:String) {
+        queue.async {if let session=self.sessions.values.first(where:{$0.peerID == peerID && $0.authorized}) {self.transportWaiting(session,error:NWError.posix(.ENETDOWN))}}
+    }
+    #endif
     public func confirm(sessionID: UUID, approved: Bool) {
         queue.async {
             guard let session = self.sessions[sessionID], session.remoteNonce != nil, !session.authorized else { return }
@@ -340,7 +365,7 @@ public final class PeerEngine {
     public func sendText(_ text: String, peerID: String) -> UUID {
         let id = UUID()
         queue.async {
-            let session = self.sessions.values.first { $0.peerID == peerID && $0.authorized && !$0.unpairing }
+            let session = self.sessions.values.first { $0.peerID == peerID && $0.authorized && $0.transportReady && !$0.unpairing }
             let payload = TextPayload(id: id, peerID: peerID, peerName: session?.name ?? "Mac", text: text)
             do {
                 try TextRules.validate(text)
@@ -354,7 +379,7 @@ public final class PeerEngine {
     }
     private func textResult(_ payload: TextPayload, _ error: Error?) { DispatchQueue.main.async { self.onTextResult?(payload, error) } }
     private func sendNextText(_ session: Session) {
-        guard session.authorized, !session.unpairing, session.textOutgoing == nil, !session.textPending.isEmpty else { return }
+        guard session.authorized, session.transportReady, !session.unpairing, session.textOutgoing == nil, !session.textPending.isEmpty else { return }
         let payload = session.textPending.removeFirst(); session.textOutgoing = (payload, Date())
         var message = Message("text"); message.transfer = payload.id; message.text = payload.text
         session.wire.send(message)
@@ -387,28 +412,70 @@ public final class PeerEngine {
             }
         }
     }
-    public func send(urls: [URL], peerID: String, cleanup: (() -> Void)? = nil) {
-        DispatchQueue.main.async { self.onPreparation?(true) }
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                let prepared = try PreparedTransfer(urls: urls, cleanup: cleanup)
-                self.queue.async {
-                    DispatchQueue.main.async { self.onPreparation?(false) }
-                    guard self.store.snapshot.peers.contains(where: { $0.id == peerID }) else { self.emit(L10n.text("peerengine.pair_with_the_destination_first")); return }
-                    if let session = self.sessions.values.first(where: { $0.peerID == peerID || $0.expectedID == peerID }) {
-                        guard session.pending.count < 20 else { self.emit(L10n.text("peerengine.the_send_queue_is_full")); return }
-                        session.pending.append(prepared); self.sendNext(session)
-                    } else if let endpoint = self.endpoints[peerID]?.0 {
-                        let before = Set(self.sessions.keys); self.dial(endpoint, expected: peerID)
-                        if let session = self.sessions.values.first(where: { !before.contains($0.id) }) { session.pending.append(prepared) }
-                    } else { self.emit(L10n.text("peerengine.destination_offline_retry_when_it_is_available")) }
+    @discardableResult
+    public func send(urls: [URL], peerID: String, cleanup: (() -> Void)? = nil) -> UUID {
+        let id = UUID()
+        queue.async {
+            let name = self.store.snapshot.peers.first {$0.id == peerID}?.name ?? "Mac"
+            let generation = self.serviceGeneration
+            self.fileEvent(id,peerID:peerID,name:name,phase:.preparing)
+            DispatchQueue.main.async { self.onPreparation?(true) }
+            DispatchQueue.global(qos:.userInitiated).async {
+                do {
+                    let prepared = try PreparedTransfer(urls:urls,cleanup:cleanup)
+                    self.queue.async { [self] in
+                        DispatchQueue.main.async { self.onPreparation?(false) }
+                        guard generation == self.serviceGeneration else {
+                            self.fileEvent(id,peerID:peerID,name:name,phase:.failed,error:PeerError.localized("peerengine.service_stopped",[])); return
+                        }
+                        guard self.store.snapshot.peers.contains(where:{$0.id == peerID}) else {
+                            self.fileEvent(id,peerID:peerID,name:name,phase:.failed,error:PeerError.localized("peerengine.pair_with_the_destination_first",[])); return
+                        }
+                        let pending = PendingFile(id:id,peerID:peerID,peerName:name,prepared:prepared)
+                        var session = self.sessions.values.first {$0.peerID == peerID && $0.authorized && $0.transportReady && !$0.unpairing}
+                        if session == nil { session = self.sessions.values.first {($0.peerID == peerID || $0.expectedID == peerID) && !$0.unpairing} }
+                        if session == nil, let endpoint = self.endpoints[peerID]?.0 {
+                            let before = Set(self.sessions.keys); self.dial(endpoint,expected:peerID)
+                            session = self.sessions.values.first {!before.contains($0.id)}
+                        }
+                        guard let session else {
+                            self.fileEvent(id,peerID:peerID,name:name,phase:.failed,error:PeerError.localized("peerengine.destination_offline_retry_when_it_is_available",[]),notConnected:true); return
+                        }
+                        guard session.pending.count < 20 else {
+                            self.fileEvent(id,peerID:peerID,name:name,phase:.failed,error:PeerError.localized("peerengine.the_send_queue_is_full",[])); return
+                        }
+                        session.pending.append(pending)
+                        if session.authorized && session.transportReady {
+                            self.fileEvent(id,peerID:peerID,name:name,phase:.queued); self.sendNext(session)
+                        } else {
+                            self.fileEvent(id,peerID:peerID,name:name,phase:.connecting)
+                            self.queue.asyncAfter(deadline:.now()+5) { [weak self,weak session] in
+                                guard let self,let session,self.sessions[session.id] != nil,
+                                      !(session.authorized && session.transportReady), session.pending.contains(where:{$0.id == id}) else { return }
+                                self.fail(session,PeerError.localized("file.connection_timeout",[]))
+                            }
+                        }
+                    }
+                } catch {
+                    cleanup?()
+                    self.queue.async { [self] in
+                        DispatchQueue.main.async { self.onPreparation?(false) }
+                        self.fileEvent(id,peerID:peerID,name:name,phase:.failed,error:error)
+                    }
                 }
-            } catch { cleanup?(); DispatchQueue.main.async { self.onPreparation?(false) }; self.emit(error.localizedDescription) }
+            }
         }
+        return id
+    }
+    private func fileEvent(_ id:UUID,peerID:String,name:String,phase:FileSendPhase,error:Error?=nil,notConnected:Bool=false) {
+        let event=FileSendEvent(id:id,peerID:peerID,peerName:name,phase:phase,error:error,notConnected:notConnected)
+        DispatchQueue.main.async { self.onFileSendEvent?(event) }
     }
     private func sendNext(_ session: Session) {
-        guard session.authorized, !session.unpairing, session.outgoing == nil, !session.pending.isEmpty else { return }
-        let outgoing = Outgoing(session.pending.removeFirst()); session.outgoing = outgoing
+        guard session.authorized, session.transportReady, !session.unpairing, session.outgoing == nil, !session.pending.isEmpty else { return }
+        let pending = session.pending.removeFirst()
+        let outgoing = Outgoing(pending); session.outgoing = outgoing
+        fileEvent(pending.id,peerID:pending.peerID,name:pending.peerName,phase:.started)
         var offer = Message("offer"); offer.transfer = outgoing.id; offer.manifest = outgoing.prepared.manifest
         session.lastActivity = Date(); session.wire.send(offer); update(session, outgoing: outgoing, status: L10n.text("peerengine.waiting_for_the_receiver"))
     }
@@ -577,7 +644,9 @@ public final class PeerEngine {
             let count = session.incoming?.committed.count ?? 0
             updateIncoming(session, status: count > 0 ? L10n.text("receive.partial_error", count, error.localizedDescription) : error.localizedDescription, finished: true)
         }
-        if !session.pending.isEmpty { emit(L10n.text("peerengine.queued_transfers_were_not_sent_drop_them_again", String(describing: session.pending.count))) }
+        for pending in session.pending {
+            fileEvent(pending.id,peerID:pending.peerID,name:pending.peerName,phase:.failed,error:error,notConnected:true)
+        }
         session.incoming?.cancel(); session.incoming = nil; session.outgoing = nil; session.pending.removeAll()
     }
     private func tick() {

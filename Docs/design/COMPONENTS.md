@@ -81,3 +81,10 @@ General and Devices are the first-stage review surfaces: 20 pt page heading, 13 
 接收路径使用小型边框容器，活动任务按 UUID 维护；解除结果和重新配对入口复用设备分组及原生结果 sheet。设置不再提供取消，叉号在实际卡片上对应当前 UUID。设置不新增动画；隐藏 Dock 时离开前台只隐藏窗口，系统弹窗期间不隐藏。网络地址依据系统接口信息与网络变化事件刷新，不增加持续轮询。
 
 Path labels use an explicit 18 pt single-line height inside the 44 pt centered SettingsPathSurface; wrapping labels must not replace them. / 路径标签为固定 18 点单行，44 点容器居中；不要改回多行说明标签。
+
+
+### File request feedback (build26)
+
+`FileSendFeedback` in DropPresentation.swift owns the latest request ID, unstarted request IDs and failed-card state. Application consumes `PeerCore.FileSendEvent`; all file entry points use one send helper. Terminal events release busy state even when their presentation is stale. Only the latest request may present a failure, and active transfer events supersede request feedback. Peer discovery refreshes must not silently reset a pending/failed card. Keep original diagnostics in settings and concise bilingual help on the card. No animation or hit-target change.
+
+文件请求反馈独立于实际传输，使用 UUID 过滤旧回调；准备与连接期间没有无效取消操作，失败提示不被发现刷新覆盖。复用现有卡片样式与设置错误详情。

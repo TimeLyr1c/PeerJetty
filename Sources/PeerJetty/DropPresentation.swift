@@ -1,4 +1,5 @@
 import AppKit
+import PeerCore
 
 /// All rectangles are in AppKit's global screen coordinates, in points.
 struct DropScreenMetrics {
@@ -79,4 +80,24 @@ struct FileDragTracker {
         pressedBefore = pressed
         return active
     }
+}
+
+
+/// Main-thread feedback ownership for preparation/connection failures, independent of animation.
+struct FileSendFeedback {
+    private(set) var latestID:UUID?
+    private(set) var pendingIDs=Set<UUID>()
+    private(set) var failedID:UUID?
+    var allowsIdle:Bool {pendingIDs.isEmpty && latestID == nil && failedID == nil}
+    mutating func begin(_ id:UUID) {latestID=id;pendingIDs.insert(id);failedID=nil}
+    mutating func accept(_ event:FileSendEvent) -> Bool {
+        if event.phase == .started || event.phase == .failed {pendingIDs.remove(event.id)}
+        guard latestID == event.id else {return false}
+        if event.phase == .started {latestID=nil;failedID=nil}
+        if event.phase == .failed {latestID=nil;failedID=event.id}
+        return true
+    }
+    mutating func transferStarted() {latestID=nil;failedID=nil}
+    mutating func transferFailed(_ id:UUID) {if latestID == nil {failedID=id}}
+    mutating func clearFailure() {failedID=nil}
 }

@@ -61,3 +61,10 @@ Devices separates paired/unpaired from connected/disconnected; discovery alone i
 A successful remote unpair event or local unpair outcome opens Devices and an app-owned result sheet, independently of system notification permission. The sheet offers OK and Re-pair; it never automatically approves pairing. Existing sheets/modal interactions finish first; the pending result is then shown. A certificate rejection by itself is still a connection failure, not proof of remote revocation. Both endpoints need build23 or newer for bilateral unpairing; use the same build for acceptance.
 
 收到已认证的解除事件或本机解除结果后，打开设备页并展示应用自己的结果 sheet，不依赖系统通知权限；可确认或主动重新配对，不自动批准。已有 sheet／模态交互结束后再展示。证书错误不能证明远端撤销。双端同步需 build23 及以上，验收建议使用同一构建。
+
+
+## Disconnected file destinations / 未连接的文件目标 (build26)
+
+Dragging, menu Send Files and settings Send Files use the same request-scoped flow. While connecting, the card names the destination. Failure shows “Not connected to [device]” and a same-LAN/open-app cue; full original diagnostics and retry guidance remain in settings. A preparation failure has its own sending-failed title. A request cannot overwrite a newer request or active transfer; no cancel × appears before a task starts, and terminal tasks remove it. Restarting the other app allows a fresh explicit send to reconnect without pairing again.
+
+拖拽、菜单和设置发送文件共用同一流程；连接中显示目标名称，失败明确提示未连接及同局域网打开对方应用，设置保留完整错误。请求按 UUID 跟踪，旧错误不能覆盖新任务；任务开始前不显示取消叉号，结束后清除。对方重开后重新投放即可尝试连接，无需重新配对。

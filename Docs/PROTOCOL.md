@@ -65,3 +65,12 @@ The initiator persists its local trust deletion before requesting remote deletio
 Discovery, stored trust and active authorized TLS connections are separate states. Ordinary disconnection, sleep or app exit updates connection state only; it never deletes stored trust. Re-pairing requires both devices to explicitly open Add Device and confirm a new SAS. Notifications contain only a generic unpairing cue; the device page retains the readable result and a re-pair action.
 
 新版通过已认证连接、可选 `unpair-v1` 能力及匹配请求 ID 同步解除配对；收到端保存成功后才确认。本机先保存撤销，再等待最多五秒。旧版、离线、超时或远端保存失败仅说明本机已解除、对方未确认，不宣称双方同步。普通断线不删除信任；重新配对仍需两端主动开启并核对验证码。
+
+
+## Connection lifecycle and file request failures (build26)
+
+Discovery and trust do not imply an active transport. A peer is connected only while at least one session is transport-ready, authorized and not unpairing. Established TLS waiting, failure, cancellation or receive EOF removes that session, ends its active/pending work and publishes a fresh peer snapshot. Complete final data is dispatched before terminal receive failure. Normal exit/disconnection retains trust and the default target; it is not an unpair event. No heartbeat was added: a silent network black hole need not be detected immediately.
+
+All file entry points share an ephemeral UUID request; the same UUID becomes the transfer ID when started. Preparation, connecting, queued, started and failed events include peer identity/name; failures include the original error. An authorized ready session sends immediately. Otherwise an existing connection or discovered endpoint may be tried for five seconds from entering connecting. Deadline/connection failure removes unstarted requests and their temporary preparations; there is no durable offline queue, automatic later replay or retry. The deadline applies to connection/authorization, not file hashing or a transfer already started. Multiple pending requests on a failed session each receive one terminal failure.
+
+发现和信任不代表连接可用。已认证 TLS 会话进入不可用等待、失败或结束后，清理该连接任务并刷新设备；最后一段完整数据先交付再处理结束。普通退出不解除信任或默认目标。文件请求带 UUID，进入连接阶段后最多等待五秒；失败任务不离线保存或自动重发。没有新增心跳，静默断网不承诺立即识别。
