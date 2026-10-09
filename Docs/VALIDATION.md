@@ -2,6 +2,8 @@
 
 ## 2026-10-09: build24 cancellation and explicit unpair result
 
+- DELIVERED: clean source `43c46a2`, 0.4.0/build24 arm64 App and DMG; strict ad hoc signature and DMG verification passed. build23 archive hashes still match. DMG SHA-256: `70069e2106a7a649ab89e17af3fb838d2b63af99d7eb659594ca8a5409cd7d9a`. No installation or publication.
+
 - Observed locally: the running process path is /Applications/PeerJetty.app/Contents/MacOS/PeerJetty; installed metadata is 0.4.0/build22 while the previous output is build23. The owner reports the other Mac is build23. This mixed pair cannot synchronize unpairing on the old endpoint, and build22 still conflates discovery with connection. Do not describe the reported certificate error (-9825) as proof of an authenticated unpair event.
 - PASS: settings Cancel action removed. English/Chinese isolated settings checks (40 light/dark/default/minimum layouts), drafts and original callbacks pass. App-owned unpair result sheet appears after an existing sheet finishes, independently of notification permission; explicit re-pair action does not auto-approve trust.
 - PASS: drop-card × uses localized tooltip/accessibility name and 28 pt target; active UUID dispatched, hidden/no-op after completion. Bilingual layout/geometry checks pass. Card controller ignores older task progress when selecting the visible active task; finishing switches to remaining active task, all finished clears cancellation UUID.
