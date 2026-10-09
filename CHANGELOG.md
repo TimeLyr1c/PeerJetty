@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — slightly heavier completion stroke, planned build21
+
+Ring and check stroke width increases by two percentage points, from 16.5% to 18.5% of radius. Check timing, geometry, and motion remain unchanged. Preview only.
+
+圆环与对勾线宽增加 2 个百分点，从半径的 16.5% 调到 18.5%；时序、路径与动画保持不变，先更新预览。
+
 ## Unreleased — earlier check and slightly thicker stroke, planned build21
 
 Moves check start 20ms earlier, to 170ms before ring rotation ends. Stroke increases from 15.5% to 16.5% of radius (~6.5%). Other timing and geometry stay fixed. Preview only.

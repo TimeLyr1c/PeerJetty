@@ -73,7 +73,7 @@ final class TransferGlyph: NSView {
         let path = CGMutablePath(); path.addArc(center:NSPoint(x:bounds.midX,y:bounds.midY), radius:max(0,min(bounds.width,bounds.height)/2-3),startAngle:-.pi/2,endAngle:3 * .pi/2,clockwise:false)
         track.path = path; arc.path = path; for trail in trails { trail.path = path }
         let radius = max(0,min(bounds.width,bounds.height)/2-3)
-        for shape in [track,arc,tick] + trails { shape.lineWidth = radius * 0.165 }
+        for shape in [track,arc,tick] + trails { shape.lineWidth = radius * 0.185 }
         let points = Self.checkPoints.map { CGPoint(x:bounds.midX+radius*$0.x,y:bounds.midY+radius*$0.y) }
         let check = CGMutablePath(); check.move(to:points[0]); check.addLine(to:points[1]); check.addLine(to:points[2]); tick.path = check
     }
