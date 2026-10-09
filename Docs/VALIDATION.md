@@ -1,5 +1,15 @@
 # 0.2.0 验证记录
 
+## 2026-10-09: build23 local installer delivered
+
+- PASS: release App and DMG built from clean source `9963beb`; metadata is 0.4.0/build23, arm64, Bundle ID `app.openonmini.desktop`, ad hoc signed. Strict signature and disk-image integrity verification passed.
+- PASS: actual packaged resources tested from a relocated isolated checks bundle; English settings and runtime English/Chinese resources/native permission descriptions passed. Both build22 and build23 archive hashes verified, with build22 retained unchanged.
+- App: `outputs/PeerJetty.app`. DMG: `outputs/releases/0.4.0-build23/PeerJetty-0.4.0-build23-arm64.dmg`.
+- DMG SHA-256: `dfdde14dcf9c85e4690d79538b47985c39e167fd11b27e9a8238c863cf211b30`.
+- No auto-install, push or public release. The preceding real-device checks remain pending; bilateral unpairing requires both endpoints to support `unpair-v1`.
+
+build23 App 与 DMG 已生成并校验，build22 保持原样；双端同步解除配对需两端升级。尚未安装、推送或公开发布，双机与 Stage Manager 实机验收仍待完成。
+
 ## 2026-10-09: build23 state, unpairing and settings fixes
 
 - PASS: core integrity/path/no-overwrite checks (9 groups) and loopback TLS harness (9 checks), including bilateral revocation and explicit mutual-SAS re-pairing.
