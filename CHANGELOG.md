@@ -1,5 +1,11 @@
 # Changes
 
+## 0.4.0/build21 — approved native refinement, local candidate
+
+Includes the owner-approved grouped settings and physical card spring, fixed animation timing, two tilted green rings, and the reference-shaped check. Final stroke is 17.5% of ring radius; check begins 170ms before rotation ends. Air/mini real-transfer acceptance remains pending.
+
+纳入用户确认的原生分组设置、物理弹簧投放卡片与固定节奏，以及双绿环和参考图对勾；最终线宽为半径的 17.5%，画勾提前 170ms。双机实际传输验收待完成。
+
 ## Unreleased — refined completion stroke, planned build21
 
 Ring and check stroke width reduces by one percentage point, from 18.5% to 17.5% of radius. The 170ms overlap and all motion timing remain unchanged. Preview only.

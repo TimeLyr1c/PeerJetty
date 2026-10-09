@@ -1,5 +1,13 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: approved refinement prepared for real build21
+
+- Owner approved the final preview and requested integration into the real app.
+- PASS: final native motion regression suite with 17.5%-radius stroke, 170ms check overlap, fixed pacing, two tilted green rings, spring interruption, progress/confirmation, task cancellation/parallelism and accessibility.
+- Info.plist prepared as 0.4.0/build21; build20 and earlier archives retained. Actual Air/mini file/text acceptance remains pending. Packaging does not install or publish the app.
+
+最终效果已获用户确认并通过原生动画回归，准备正式运行的 build21 测试包；双机实际传输验收仍待完成。
+
 ## 2026-10-08: 17.5% stroke, build21 preview
 
 - Candidate reduces ring and check stroke from 18.5% to 17.5% of radius; check still begins 170ms before the ring ends.
