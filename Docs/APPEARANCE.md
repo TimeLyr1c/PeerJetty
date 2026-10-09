@@ -22,9 +22,9 @@ The native card sits in a transparent host with 32-point padding on each side. A
 
 ## Motion / 运动
 
-Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 90ms overlap between final deceleration and check drawing.
+Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 150ms overlap between final deceleration and check drawing.
 
-动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 90ms 开始画勾。
+动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 150ms 开始画勾。
 
 | Stage / 阶段 | Fixed timing / 固定节奏 |
 |---|---:|
@@ -34,7 +34,7 @@ Animation timing is fixed. Only Enable interface animations and Preview animatio
 | Ring flip, 1.5 turns / 圆环翻转一圈半 | 720 ms |
 | Pause before check / 画勾前暂停 | 0 ms |
 | Check drawing / 对勾绘制 | 600 ms |
-| Check overlap / 画勾提前重叠 | 90 ms |
+| Check overlap / 画勾提前重叠 | 150 ms |
 | File success minimum / 成功反馈最短时长 | 1710 ms |
 | Maximum ring speed / 圆环最大视觉速度 | 150%/s |
 | Hold after check / 完成后停留 | 1.8 s |
@@ -58,9 +58,9 @@ Full bytes without receiver confirmation still show Waiting for confirmation. On
 
 ### Experimental ring flip / 试验性圆环翻转
 
-After confirmation, the ring fills and turns green. During the 720ms flip there are exactly two visible green rings: the main ring and one finite companion at 65% peak opacity. Both turn one-and-a-half times in opposite directions, with different X tilts (+0.45 / -0.85 radians at peak) and opposite Z-plane twist (±0.70 radians). Tilt/twist use a smooth sine envelope over ninth-order rotation progress, converging to the same circle at rest. The companion uses eased opacity at entry/exit and fades out as rotation ends; the check starts 90ms before rotation ends and draws over 600ms. These are transform keyframes, not frame callbacks or optical motion blur. The reference screenshot provides geometry, not an exact Apple animation trajectory.
+After confirmation, the ring fills and turns green. During the 720ms flip there are exactly two visible green rings: the main ring and one finite companion at 65% peak opacity. Both turn one-and-a-half times in opposite directions, with different X tilts (+0.45 / -0.85 radians at peak) and opposite Z-plane twist (±0.70 radians). Tilt/twist use a smooth sine envelope over ninth-order rotation progress, converging to the same circle at rest. The companion uses eased opacity at entry/exit and fades out as rotation ends; the check starts 150ms before rotation ends and draws over 600ms. These are transform keyframes, not frame callbacks or optical motion blur. The reference screenshot provides geometry, not an exact Apple animation trajectory.
 
-确认后圆环补齐并变绿；720ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.45／−0.85 弧度，平面扭转为 ±0.70 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环平滑显现／淡出，在翻转结束时淡出，最后 90ms 已开始用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
+确认后圆环补齐并变绿；720ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.45／−0.85 弧度，平面扭转为 ±0.70 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环平滑显现／淡出，在翻转结束时淡出，最后 150ms 已开始用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
 
 Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the fixed hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
 

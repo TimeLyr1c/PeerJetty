@@ -1,5 +1,12 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: increased check overlap, build21 preview
+
+- Candidate now starts check drawing 150ms before the 720ms flip ends (previously 90ms), making the overlap 60ms longer. Check drawing, ring geometry and remaining cadence stay fixed.
+- The native preview is rebuilt and opened for owner review. No automated test suite was run for this small timing adjustment. No install, DMG, push or release.
+
+对勾比上一候选再提前 60ms，在圆环结束前 150ms 开始；更新预览供检查，尚未重跑自动测试。
+
 ## 2026-10-08: check overlaps final deceleration, build21 preview
 
 - PASS: final production build and native motion suite. Shared timeline starts check drawing 90ms before ring rotation ends; settlement cannot begin before either stage finishes. Native presentation 50ms before rotation ends shows nonzero check stroke with the ring animation still active.

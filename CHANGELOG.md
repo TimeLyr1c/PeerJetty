@@ -2,9 +2,9 @@
 
 ## Unreleased — overlapping ring/check handoff, planned build21
 
-Starts the check 90ms before the 720ms ring flip ends, overlapping its final deceleration. Check drawing remains 600ms; success hold still begins after drawing and settlement finish. Geometry and other pacing unchanged. Preview only.
+Starts the check 150ms before the 720ms ring flip ends, overlapping its final deceleration. Check drawing remains 600ms; success hold still begins after drawing and settlement finish. Geometry and other pacing unchanged. Preview only.
 
-对勾提前到转圈最后 90ms 开始绘制，与减速尾段重叠；画勾仍为 600ms，完成停留从绘制与收稳结束后计时，其他样式不变。
+对勾提前到转圈最后 150ms 开始绘制，与减速尾段重叠；画勾仍为 600ms，完成停留从绘制与收稳结束后计时，其他样式不变。
 
 ## Unreleased — gap-free check transition, planned build21
 
