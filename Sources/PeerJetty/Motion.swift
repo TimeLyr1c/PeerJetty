@@ -28,7 +28,7 @@ struct MotionProfile {
     let appear: Double, status: Double, success: Double, hold: Double, dismiss: Double
     init() {
         cardAppear = 1.22
-        ringFlip = 0.72; checkPause = 0.17; progressRate = 1.5
+        ringFlip = 0.72; checkPause = 0; progressRate = 1.5
         (appear,status,success,hold,dismiss) = (0.34,0.18,1.20,1.8,0.24)
     }
 }

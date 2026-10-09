@@ -1,5 +1,13 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: slightly thicker stroke, zero pre-check gap, build21 preview
+
+- PASS: final production build and native motion suite. Stroke is 15.5% of radius, roughly 7% thicker; reference check geometry/spacing remains stable across square and rectangular sizes.
+- PASS: check start equals rotation end (zero pause). Native presentation 40ms after rotation shows the front-facing green ring and an already drawing check, with the companion gone. Existing 720ms flip / 600ms check, true progress, confirmation, cancellation, interruption and accessibility passed.
+- PASS: isolated 6ed2854/current previews rebuilt, strict signatures verified, and candidate opened/played through CUA; no product metadata bump, production identity/configuration, installation, DMG, push or release. Owner Air/mini visual review pending. Existing nonfatal CLT warnings remain.
+
+稍粗线条与零停顿衔接已通过原生检查，供用户比较实际效果。
+
 ## 2026-10-08: subtle ring angle/stroke/pacing refinement, build21 preview
 
 - PASS: final production build and native motion suite. Ring X tilts +0.45/-0.85 radians, opposing Z twist ±0.70; stroke increases from 12.5% to 14.5% of radius while check centerline geometry and spacing remain stable across square/rectangular sizes.

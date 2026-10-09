@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — gap-free check transition, planned build21
+
+Strokes increase from 14.5% to 15.5% of the radius (~7% thicker). Removes the 170ms pre-check pause: the check starts as rotation ends. Geometry, two-ring angles, 720ms flip and 600ms drawing remain unchanged. Preview only.
+
+线条再加粗约 7%，取消 170ms 中间停顿，翻转结束立即画勾；其余样式与时长保持，先预览。
+
 ## Unreleased — subtle ring refinements, planned build21
 
 Widens the ring tilt difference, thickens strokes 16%, and slows the finite flip from 620ms to 720ms with eased companion visibility. Pause before the unchanged check reduces from 200ms to 170ms. Reference geometry, card reveal and fixed settings remain unchanged. Preview only.

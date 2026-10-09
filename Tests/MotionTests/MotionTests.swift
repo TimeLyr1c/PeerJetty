@@ -190,7 +190,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let a=CGPoint(x:left.x-corner.x,y:left.y-corner.y), b=CGPoint(x:right.x-corner.x,y:right.y-corner.y)
         let angle=acos((a.x*b.x+a.y*b.y)/(hypot(a.x,a.y)*hypot(b.x,b.y))) * 180 / .pi
         check(angle > 72 && angle < 75,"compact check has sharper comfortable elbow")
-        for point in points { check(12-hypot(point.x*12,point.y*12)-1.74 > 2.5,"stroked check keeps breathing room inside the ring") }
+        for point in points { check(12-hypot(point.x*12,point.y*12)-1.86 > 2.5,"stroked check keeps breathing room inside the ring") }
         check(TransferGlyph.shortStrokeFraction > 0.33 && TransferGlyph.shortStrokeFraction < 0.34,"two stroke timing uses actual segment-length boundary")
         let referenceGaps=[0.623396,0.605876,0.478658]
         let referenceGlyph=TransferGlyph(policy:MotionPolicy(reduceMotion:{false}))
@@ -202,7 +202,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             tick.path!.applyWithBlock { element in
                 if element.pointee.type == .moveToPoint || element.pointee.type == .addLineToPoint { actual.append(element.pointee.points[0]) }
             }
-            check(actual.count==3 && abs(tick.lineWidth/radius-0.145)<1e-9,"reference check scales with circular stroke width")
+            check(actual.count==3 && abs(tick.lineWidth/radius-0.155)<1e-9,"reference check scales with circular stroke width")
             for (index,point) in actual.enumerated() {
                 let gap=1-hypot(point.x-size.width/2,point.y-size.height/2)/radius
                 check(abs(gap-referenceGaps[index])<0.00001,"reference endpoint spacing survives resizing and rectangular bounds")
@@ -295,15 +295,15 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check((strokes.fromValue as! Double) == 0 && (strokes.toValue as! Double) == 1 && strokes.timingFunction != nil,"one continuous easing crosses the elbow without segment restart")
 
         check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime+color.duration-rotation.beginTime)<0.01,"blue-to-green transition completes before the two green rings rotate")
-        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause)<0.01,"check starts after explicit captured pause")
+        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause)<0.01,"check starts exactly when rotation ends, without a gap")
         reducedTransparency=true; policy.notify()
         check(ghosts.allSatisfy {($0.animationKeys() ?? []).isEmpty && $0.opacity == 0} && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"reduce transparency removes ghosts without disrupting success")
-        wait(max(0,rotation.beginTime+rotation.duration+policy.profile.checkPause*0.5-CACurrentMediaTime()))
-        check(abs(ring.presentation()!.transform.m11-1)<0.01 && abs((layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.presentation()! as! CAShapeLayer).strokeEnd)<0.01,"during pause green ring faces front and check stays hidden")
-        check(ghosts.allSatisfy {($0.presentation()?.opacity ?? 0)<0.01},"trails vanish before pause")
+        wait(max(0,rotation.beginTime+rotation.duration+0.04-CACurrentMediaTime()))
+        check(abs(ring.presentation()!.transform.m11-1)<0.01 && (layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.presentation()! as! CAShapeLayer).strokeEnd>0,"after rotation the ring is front-facing and the check is already drawing")
+        check(ghosts.allSatisfy {($0.presentation()?.opacity ?? 0)<0.01},"companion vanishes before the check draws")
         let green=NSColor(cgColor:(ring.presentation()! as! CAShapeLayer).strokeColor!)!.usingColorSpace(.deviceRGB)!
         let expectedGreen=NSColor(cgColor:(ring as! CAShapeLayer).strokeColor!)!.usingColorSpace(.deviceRGB)!
-        check(abs(green.redComponent-expectedGreen.redComponent)<0.01 && abs(green.greenComponent-expectedGreen.greenComponent)<0.01 && abs(green.blueComponent-expectedGreen.blueComponent)<0.01,"pause shows final green rather than an unfinished color transition")
+        check(abs(green.redComponent-expectedGreen.redComponent)<0.01 && abs(green.greenComponent-expectedGreen.greenComponent)<0.01 && abs(green.blueComponent-expectedGreen.blueComponent)<0.01,"check draws inside the final green ring")
         check(customAnimations(glyph) <= 14,"fixed small number of shape effects")
         policy.enabled=false
         check(finished == 1 && customAnimations(glyph) == 0,"reduce motion/disable settles one and a half turns and clears every trail")
@@ -335,7 +335,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         for profile in [MotionProfile()] {
             let expected: [Double] = [0.34,0.18,1.20,1.8,0.24]
             check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
-            check(profile.cardAppear == 1.22 && profile.ringFlip == 0.72 && profile.checkPause == 0.17,"fixed relaxed reveal and natural completion timing")
+            check(profile.cardAppear == 1.22 && profile.ringFlip == 0.72 && profile.checkPause == 0,"fixed relaxed reveal and natural completion timing")
             let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
             check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"native feedback damping ratio")
             let policy = MotionPolicy(reduceMotion:{false})
