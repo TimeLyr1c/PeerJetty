@@ -66,9 +66,9 @@ Reduce Transparency or Increase Contrast suppresses trails, including during an 
 
 减少透明度／增强对比度禁用拖影，途中修改也会即时移除；减少动态效果／关闭动画直接展示最终圆环与对勾。重置、取消和新任务清除所有相关效果，旧完成回调不干扰新传输。总时长包含补齐、翻转、绘制和收稳，之后才开始原有停留。本次仅文件圆环试验，借鉴支付式完成反馈，不声称精确复刻 Apple 动画；文本成功效果不变。
 
-The check centerline is measured from the supplied screenshot: reference circle center (470,479), centerline radius 144; points (416,484), (456,534), (526,429). Store points relative to the circle center/radius so rectangular bounds do not distort the ~72.35° elbow or endpoint spacing. Radial clearances are 62.34% / 60.59% / 47.87% of the radius before stroke caps; stroke width is 18.5% of radius, with round caps/joins. Raster scaling/compression limits exactness; owner visual comparison remains required. The same continuous strokeEnd curve crosses the elbow without restarting.
+The check centerline is measured from the supplied screenshot: reference circle center (470,479), centerline radius 144; points (416,484), (456,534), (526,429). Store points relative to the circle center/radius so rectangular bounds do not distort the ~72.35° elbow or endpoint spacing. Radial clearances are 62.34% / 60.59% / 47.87% of the radius before stroke caps; stroke width is 17.5% of radius, with round caps/joins. Raster scaling/compression limits exactness; owner visual comparison remains required. The same continuous strokeEnd curve crosses the elbow without restarting.
 
-对勾按用户截图测量圆心、中心线半径与三个顶点，折角约 72.35°；顶点至圆环的径向留白约为半径的 62.34%／60.59%／47.87%（未计圆头）。路径随圆心／半径缩放，线宽为半径的 18.5%，保持圆头与连续画勾。截图缩放与压缩会影响测量精度，最终比例仍需视觉确认。
+对勾按用户截图测量圆心、中心线半径与三个顶点，折角约 72.35°；顶点至圆环的径向留白约为半径的 62.34%／60.59%／47.87%（未计圆头）。路径随圆心／半径缩放，线宽为半径的 17.5%，保持圆头与连续画勾。截图缩放与压缩会影响测量精度，最终比例仍需视觉确认。
 
 ## Preview and checks / 预览与检查
 

@@ -1,5 +1,12 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: 17.5% stroke, build21 preview
+
+- Candidate reduces ring and check stroke from 18.5% to 17.5% of radius; check still begins 170ms before the ring ends.
+- Isolated preview rebuilt and opened for owner review. No automated tests were run for this visual adjustment; no installation, DMG, push or release.
+
+线宽细回 1 个百分点至 17.5%，预览已更新；本轮未运行自动测试。
+
 ## 2026-10-08: 18.5% stroke, build21 preview
 
 - Candidate changes the ring and check stroke from 16.5% to 18.5% of radius; check still begins 170ms before the ring ends.

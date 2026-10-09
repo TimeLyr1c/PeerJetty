@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — refined completion stroke, planned build21
+
+Ring and check stroke width reduces by one percentage point, from 18.5% to 17.5% of radius. The 170ms overlap and all motion timing remain unchanged. Preview only.
+
+圆环与对勾线宽减少 1 个百分点，从半径的 18.5% 调到 17.5%；170ms 重叠和其他动画节奏不变，先更新预览。
+
 ## Unreleased — slightly heavier completion stroke, planned build21
 
 Ring and check stroke width increases by two percentage points, from 16.5% to 18.5% of radius. Check timing, geometry, and motion remain unchanged. Preview only.
