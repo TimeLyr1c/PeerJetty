@@ -268,7 +268,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check((TransferGlyph.flipRadians-TransferGlyph.flipAngle(at:1-epsilon))/epsilon < 0.1, "flip ends with no abrupt velocity cutoff")
         for profile in [MotionProfile()] {
             let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
-            check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip+sequence.pause && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
+            check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip+sequence.pause-sequence.overlap && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
         }
         let fixed=MotionProfile()
         check(TransferGlyph.flipAngle(at:0.1/fixed.ringFlip)<TransferGlyph.flipAngle(at:0.1/0.62),"rotation starts gentler than the previous 620ms candidate")
@@ -295,12 +295,15 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         check((strokes.fromValue as! Double) == 0 && (strokes.toValue as! Double) == 1 && strokes.timingFunction != nil,"one continuous easing crosses the elbow without segment restart")
 
         check(abs(rotation.duration-policy.profile.ringFlip)<1e-9 && abs(color.beginTime+color.duration-rotation.beginTime)<0.01,"blue-to-green transition completes before the two green rings rotate")
-        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause)<0.01,"check starts exactly when rotation ends, without a gap")
+        check(abs(tick.beginTime-rotation.beginTime-rotation.duration-policy.profile.checkPause+0.09)<0.01,"check starts 90ms before rotation ends")
         reducedTransparency=true; policy.notify()
         check(ghosts.allSatisfy {($0.animationKeys() ?? []).isEmpty && $0.opacity == 0} && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"reduce transparency removes ghosts without disrupting success")
+        wait(max(0,rotation.beginTime+rotation.duration-0.05-CACurrentMediaTime()))
+        let overlapStroke=(layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.presentation()! as! CAShapeLayer).strokeEnd
+        check(overlapStroke>0 && ring.animation(forKey:"PeerJetty.ringFlip") != nil,"native check is already drawing during the final deceleration")
         wait(max(0,rotation.beginTime+rotation.duration+0.04-CACurrentMediaTime()))
         check(abs(ring.presentation()!.transform.m11-1)<0.01 && (layers.first {$0.animation(forKey:"PeerJetty.check") != nil}!.presentation()! as! CAShapeLayer).strokeEnd>0,"after rotation the ring is front-facing and the check is already drawing")
-        check(ghosts.allSatisfy {($0.presentation()?.opacity ?? 0)<0.01},"companion vanishes before the check draws")
+        check(ghosts.allSatisfy {($0.presentation()?.opacity ?? 0)<0.01},"companion is gone once rotation has ended")
         let green=NSColor(cgColor:(ring.presentation()! as! CAShapeLayer).strokeColor!)!.usingColorSpace(.deviceRGB)!
         let expectedGreen=NSColor(cgColor:(ring as! CAShapeLayer).strokeColor!)!.usingColorSpace(.deviceRGB)!
         check(abs(green.redComponent-expectedGreen.redComponent)<0.01 && abs(green.greenComponent-expectedGreen.greenComponent)<0.01 && abs(green.blueComponent-expectedGreen.blueComponent)<0.01,"check draws inside the final green ring")

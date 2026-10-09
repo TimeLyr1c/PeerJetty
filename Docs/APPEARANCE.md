@@ -22,9 +22,9 @@ The native card sits in a transparent host with 32-point padding on each side. A
 
 ## Motion / 运动
 
-Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with no pre-check pause.
+Animation timing is fixed. Only Enable interface animations and Preview animation remain; the legacy animationSpeed field is ignored and omitted on the next configuration save. Card reveal uses the former Relaxed tuning; completion and text use Natural timing, with a 90ms overlap between final deceleration and check drawing.
 
-动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，画勾前无暂停。
+动画节奏固定，保留总开关和预览。旧 animationSpeed 字段忽略并在下次保存时移除；卡片弹出沿用舒缓标定，完成与文本采用自然节奏，转圈最后 90ms 开始画勾。
 
 | Stage / 阶段 | Fixed timing / 固定节奏 |
 |---|---:|
@@ -34,7 +34,8 @@ Animation timing is fixed. Only Enable interface animations and Preview animatio
 | Ring flip, 1.5 turns / 圆环翻转一圈半 | 720 ms |
 | Pause before check / 画勾前暂停 | 0 ms |
 | Check drawing / 对勾绘制 | 600 ms |
-| File success minimum / 成功反馈最短时长 | 1800 ms |
+| Check overlap / 画勾提前重叠 | 90 ms |
+| File success minimum / 成功反馈最短时长 | 1710 ms |
 | Maximum ring speed / 圆环最大视觉速度 | 150%/s |
 | Hold after check / 完成后停留 | 1.8 s |
 | Dismiss / 收起 | 240 ms |
@@ -51,15 +52,15 @@ The ring follows real byte targets through a rate-limited visual trajectory. It 
 
 圆环依据真实字节目标，以限速曲线平滑追赶；视觉上可以略落后，但不会超前或倒退，设置／辅助功能仍保留真实进度。准备或总量未知不造百分比。新进度沿用当前数学位置和速度，以单调三次曲线衔接；时长下限和端点约束保证瞬间大跳、微小更新与频繁更新都不超过所选速率。仅替换一个有限 Core Animation 效果，不增加轮询或逐帧任务。关闭动画／减少动态效果立即显示真实目标。
 
-Full bytes without receiver confirmation still show Waiting for confirmation. Only real success starts the green-ring completion followed by the two-stroke check and settlement. The visual finish also respects the cap: when far behind, it extends the sequence before the check, never delays actual transfer or acknowledgement, and never invents progress. The default minimum file success sequence is now 1.80 s, including the new flip stage; a ring starting near zero can take about 2.50 s. Hold starts only after this actual sequence finishes, not at a fixed nominal deadline. Failure/cancellation/unconfirmed events do not draw a check. Text keeps its confirmed-success icon feedback at the fixed natural success duration.
+Full bytes without receiver confirmation still show Waiting for confirmation. Only real success starts the green-ring completion followed by the two-stroke check and settlement. The visual finish also respects the cap: when far behind, it extends the sequence before the check, never delays actual transfer or acknowledgement, and never invents progress. The default minimum file success sequence is now 1.71 s, including the new flip stage; a ring starting near zero can take about 2.41 s. Hold starts only after this actual sequence finishes, not at a fixed nominal deadline. Failure/cancellation/unconfirmed events do not draw a check. Text keeps its confirmed-success icon feedback at the fixed natural success duration.
 
-字节传完但未获接收确认仍显示“等待确认”；真实成功才补齐绿色圆环，再画两笔对勾并收稳。视觉补齐同样限速，落后较多时先延长圆环过程，不延迟传输或确认、不补演假进度。固定节奏包含新翻转阶段的文件成功变换最短 1.80 秒；从近零追赶时约 2.50 秒，实际整段完成后才开始停留计时。失败、取消、未确认不画对勾；文本成功图标也使用固定自然成功时长。
+字节传完但未获接收确认仍显示“等待确认”；真实成功才补齐绿色圆环，再画两笔对勾并收稳。视觉补齐同样限速，落后较多时先延长圆环过程，不延迟传输或确认、不补演假进度。固定节奏包含新翻转阶段的文件成功变换最短 1.71 秒；从近零追赶时约 2.41 秒，实际整段完成后才开始停留计时。失败、取消、未确认不画对勾；文本成功图标也使用固定自然成功时长。
 
 ### Experimental ring flip / 试验性圆环翻转
 
-After confirmation, the ring fills and turns green. During the 720ms flip there are exactly two visible green rings: the main ring and one finite companion at 65% peak opacity. Both turn one-and-a-half times in opposite directions, with different X tilts (+0.45 / -0.85 radians at peak) and opposite Z-plane twist (±0.70 radians). Tilt/twist use a smooth sine envelope over ninth-order rotation progress, converging to the same circle at rest. The companion uses eased opacity at entry/exit and fades out as rotation ends; the check immediately draws over 600ms. These are transform keyframes, not frame callbacks or optical motion blur. The reference screenshot provides geometry, not an exact Apple animation trajectory.
+After confirmation, the ring fills and turns green. During the 720ms flip there are exactly two visible green rings: the main ring and one finite companion at 65% peak opacity. Both turn one-and-a-half times in opposite directions, with different X tilts (+0.45 / -0.85 radians at peak) and opposite Z-plane twist (±0.70 radians). Tilt/twist use a smooth sine envelope over ninth-order rotation progress, converging to the same circle at rest. The companion uses eased opacity at entry/exit and fades out as rotation ends; the check starts 90ms before rotation ends and draws over 600ms. These are transform keyframes, not frame callbacks or optical motion blur. The reference screenshot provides geometry, not an exact Apple animation trajectory.
 
-确认后圆环补齐并变绿；720ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.45／−0.85 弧度，平面扭转为 ±0.70 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环平滑显现／淡出，在翻转结束时淡出，随即用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
+确认后圆环补齐并变绿；720ms 翻转期间仅显示两个绿环（主环＋一个伴随环，峰值不透明度 65%），反向翻转一圈半，同时沿不同倾角旋转。X 倾角峰值为 +0.45／−0.85 弧度，平面扭转为 ±0.70 弧度；倾角使用平滑包络，停稳时回到同一圆形。伴随环平滑显现／淡出，在翻转结束时淡出，最后 90ms 已开始用 600ms 画勾。只用有限原生关键帧，无逐帧回调；静态参考图不提供 Apple 原始运动轨迹。
 
 Reduce Transparency or Increase Contrast suppresses trails, including during an active effect; Reduce Motion/animations off settle the ring and check immediately. Reset, cancellation and new progress remove every flip/color/trail key, preventing old completion from affecting a new transfer. The captured total completion time includes fill, flip, drawing and settlement, then the fixed hold begins. The file-only flip is an original visual experiment inspired by payment-style completion; it does not claim to reproduce Apple's exact animation. Text retains its existing success effect.
 
@@ -101,9 +102,9 @@ FileSuccessSequence captures fill/flip/pause/draw/settlement from the fixed prof
 
 完成序列集中计算补齐、翻转、暂停、绘制和收稳；各图层共用开始时刻，卡片显现和形变同样共用时刻。保留一圈半、两个绿环、蓝绿转换、确认条件与停留规则。
 
-Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `6ed2854`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
+Run `Scripts/preview-design.sh` to create **outputs/previews/design-build21/After.app** and **Before.app**. Before is compiled from immutable previous physical-spring source at `d894e53`; After from the working tree. Both reuse production SettingsController and MotionPreviewWindow without constructing an engine/store or touching identity. Switch Before/After and language in the comparison window; the other side restarts only the isolated preview process. Close settings/animation to return to controls, or use ⌘Q to quit. Preview switches affect only the process; unconnected callbacks perform no real operations.
 
-打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 6ed2854 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
+打开 After.app，顶部对比窗口可切换旧／新版、中英文，并打开设置或动画。关闭设置／动画窗口可回到控制窗口，⌘Q 退出。旧版使用上一轮物理弹簧提交 d894e53 的源码，新版使用当前代码；仅模拟设备，不连接、不传文件、不访问身份、不保存日常设置。动画窗口使用固定节奏；对比启动器不进入正式 App。
 
 This is a preview-first candidate: build21 App/DMG generation waits for owner confirmation. Existing version metadata and build20 packages are retained; no automatic installation, push or release.
 

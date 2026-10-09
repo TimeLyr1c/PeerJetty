@@ -127,14 +127,15 @@ struct CardSpringState {
 
 /// A captured, finite completion timeline shared by production and native previews.
 struct FileSuccessSequence {
-    let fill: Double, flip: Double, pause: Double, draw: Double, settle: Double
-    var checkStart: Double { fill + flip + pause }
-    var settleStart: Double { checkStart + draw }
+    let fill: Double, flip: Double, pause: Double, overlap: Double, draw: Double, settle: Double
+    var checkStart: Double { fill + flip + pause - overlap }
+    var settleStart: Double { max(fill + flip, checkStart + draw) }
     var duration: Double { settleStart + settle }
     init(profile: MotionProfile, progressDuration: Double) {
         fill = max(progressDuration, profile.success * 0.25)
         flip = profile.ringFlip
         pause = profile.checkPause
+        overlap = min(0.09, flip * 0.15)
         draw = profile.success * 0.50
         settle = MotionEffects.spring(duration:profile.success * 0.15,from:0.985).duration
     }

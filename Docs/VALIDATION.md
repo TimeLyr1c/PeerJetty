@@ -1,5 +1,13 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: check overlaps final deceleration, build21 preview
+
+- PASS: final production build and native motion suite. Shared timeline starts check drawing 90ms before ring rotation ends; settlement cannot begin before either stage finishes. Native presentation 50ms before rotation ends shows nonzero check stroke with the ring animation still active.
+- PASS: post-rotation green ring, companion cleanup, complete success hold, task interruption, cancellation, parallel/new tasks, true progress/acknowledgement and accessibility regressions. Ring geometry, stroke, 720ms flip and 600ms check unchanged.
+- PASS: isolated d894e53/current previews rebuilt and strict signatures verified; CUA opened and played the candidate. No production identity/configuration, metadata bump, installation, DMG, push or release. Owner Air/mini visual acceptance remains pending; existing nonfatal CLT warnings remain.
+
+画勾提前 90ms，与圆环减速尾段重叠，原生检查确认两阶段确实同时运行，停留计时仍覆盖整段完成动画。
+
 ## 2026-10-08: slightly thicker stroke, zero pre-check gap, build21 preview
 
 - PASS: final production build and native motion suite. Stroke is 15.5% of radius, roughly 7% thicker; reference check geometry/spacing remains stable across square and rectangular sizes.
