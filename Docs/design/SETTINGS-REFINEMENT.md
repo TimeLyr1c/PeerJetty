@@ -23,3 +23,9 @@ Checks: bilingual resource coverage and native callback/draft/layout checks cove
 The owner approved the prototype. General, Devices, Transfers, Text and About now share the page-header and quiet grouped-surface layout. Transfers adds a folder symbol; native callbacks, identity, history semantics and animations are unchanged. Build22 is the next local installer, not a public release. No automatic install or remote push.
 
 用户确认样稿后统一五页；本地构建号为 22，产品版本保持 0.4.0。双机实际观感与双向传输仍需 Air／mini 验收。
+
+## Build22 delivery / 测试包交付
+
+Generated 0.4.0/build22 arm64 App and DMG from clean source e926d02. Native layout/callback checks passed in English and Chinese; packaged resource/permission checks passed after correcting the first-run welcome-group count in the test (no production binary change). Ad hoc signature, disk-image integrity and archive hashes verified. Build21 archive retained. No automatic installation, push or public Release; Air/mini acceptance pending.
+
+App: outputs/PeerJetty.app. Installer: outputs/releases/0.4.0-build22/PeerJetty-0.4.0-build22-arm64.dmg.

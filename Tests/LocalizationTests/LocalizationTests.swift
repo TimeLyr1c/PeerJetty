@@ -79,7 +79,7 @@ struct LocalizationChecks {
         func control<T: NSView>(_ identifier: String, as type: T.Type) -> T {
             descendants(content).first { $0.identifier?.rawValue == identifier } as! T
         }
-        let expectedGroups: [SettingsSection:Int] = [.general:4,.devices:3,.transfers:3,.text:3,.about:1]
+        let expectedGroups: [SettingsSection:Int] = [.general:configuration.onboardingComplete ? 4 : 5,.devices:3,.transfers:3,.text:3,.about:1]
         for section in SettingsSection.allCases {
             let groups = descendants(page(section)).filter { $0.identifier?.rawValue.hasPrefix("settingsGroup.") == true }
             check(groups.count == expectedGroups[section], "Settings pages retain intentional native groups")
