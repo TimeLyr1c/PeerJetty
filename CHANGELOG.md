@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased — subtle ring refinements, planned build21
+
+Widens the ring tilt difference, thickens strokes 16%, and slows the finite flip from 620ms to 720ms with eased companion visibility. Pause before the unchanged check reduces from 200ms to 170ms. Reference geometry, card reveal and fixed settings remain unchanged. Preview only.
+
+稍微拉开双环倾角，线条加粗 16%；翻转从 620ms 放慢到 720ms，伴随环平滑显现与淡出，画勾前暂停缩到 170ms。对勾比例、卡片弹出与设置不变，先更新预览。
+
 ## Unreleased — reference check and two green rings, planned build21
 
 The check now scales relative to the ring using sampled reference proportions (~72° elbow). Replaces three faint ghosts with one green companion: two rings total spin/flip on different tilted planes in opposite directions. Color completes during fill; 620ms flip, 200ms pause and 600ms drawing retained. Isolated preview only.

@@ -190,7 +190,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         let a=CGPoint(x:left.x-corner.x,y:left.y-corner.y), b=CGPoint(x:right.x-corner.x,y:right.y-corner.y)
         let angle=acos((a.x*b.x+a.y*b.y)/(hypot(a.x,a.y)*hypot(b.x,b.y))) * 180 / .pi
         check(angle > 72 && angle < 75,"compact check has sharper comfortable elbow")
-        for point in points { check(12-hypot(point.x*12,point.y*12)-1.5 > 2.5,"stroked check keeps breathing room inside the ring") }
+        for point in points { check(12-hypot(point.x*12,point.y*12)-1.74 > 2.5,"stroked check keeps breathing room inside the ring") }
         check(TransferGlyph.shortStrokeFraction > 0.33 && TransferGlyph.shortStrokeFraction < 0.34,"two stroke timing uses actual segment-length boundary")
         let referenceGaps=[0.623396,0.605876,0.478658]
         let referenceGlyph=TransferGlyph(policy:MotionPolicy(reduceMotion:{false}))
@@ -202,7 +202,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             tick.path!.applyWithBlock { element in
                 if element.pointee.type == .moveToPoint || element.pointee.type == .addLineToPoint { actual.append(element.pointee.points[0]) }
             }
-            check(actual.count==3 && abs(tick.lineWidth/radius-0.125)<1e-9,"reference check scales with circular stroke width")
+            check(actual.count==3 && abs(tick.lineWidth/radius-0.145)<1e-9,"reference check scales with circular stroke width")
             for (index,point) in actual.enumerated() {
                 let gap=1-hypot(point.x-size.width/2,point.y-size.height/2)/radius
                 check(abs(gap-referenceGaps[index])<0.00001,"reference endpoint spacing survives resizing and rectangular bounds")
@@ -270,6 +270,9 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
             let sequence = FileSuccessSequence(profile:profile,progressDuration:2)
             check(sequence.fill == 2 && sequence.checkStart == sequence.fill+sequence.flip+sequence.pause && sequence.duration == sequence.settleStart+sequence.settle, "one captured timeline includes visual catch-up and all completion stages")
         }
+        let fixed=MotionProfile()
+        check(TransferGlyph.flipAngle(at:0.1/fixed.ringFlip)<TransferGlyph.flipAngle(at:0.1/0.62),"rotation starts gentler than the previous 620ms candidate")
+        check(TransferGlyph.flipRadians-TransferGlyph.flipAngle(at:1-0.1/fixed.ringFlip)<TransferGlyph.flipRadians-TransferGlyph.flipAngle(at:1-0.1/0.62),"rotation settles gentler than the previous candidate")
         let primary=TransferGlyph.ringTransform(at:0.35,companion:false)
         let secondary=TransferGlyph.ringTransform(at:0.35,companion:true)
         check(abs(primary.m12-secondary.m12)>0.05 && abs(primary.m23-secondary.m23)>0.05,"two rings spin and flip on distinct tilted planes")
@@ -332,7 +335,7 @@ private func cpu() -> Double { var usage = rusage(); getrusage(RUSAGE_SELF, &usa
         for profile in [MotionProfile()] {
             let expected: [Double] = [0.34,0.18,1.20,1.8,0.24]
             check([profile.appear,profile.status,profile.success,profile.hold,profile.dismiss] == expected,"exact profile")
-            check(profile.cardAppear == 1.22 && profile.ringFlip == 0.62 && profile.checkPause == 0.20,"fixed relaxed reveal and natural completion timing")
+            check(profile.cardAppear == 1.22 && profile.ringFlip == 0.72 && profile.checkPause == 0.17,"fixed relaxed reveal and natural completion timing")
             let spring = MotionEffects.spring(duration:profile.appear,from:0.97)
             check(abs(spring.damping/(2*sqrt(spring.stiffness*spring.mass))-0.72) < 0.00001,"native feedback damping ratio")
             let policy = MotionPolicy(reduceMotion:{false})

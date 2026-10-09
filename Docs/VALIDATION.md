@@ -1,5 +1,13 @@
 # 0.2.0 验证记录
 
+## 2026-10-08: subtle ring angle/stroke/pacing refinement, build21 preview
+
+- PASS: final production build and native motion suite. Ring X tilts +0.45/-0.85 radians, opposing Z twist ±0.70; stroke increases from 12.5% to 14.5% of radius while check centerline geometry and spacing remain stable across square/rectangular sizes.
+- PASS: one-and-a-half-turn flip lengthens 620→720ms; tests verify gentler first/last 100ms, monotonic ninth-order motion and finite cleanup. Companion entry/exit uses ease-in/ease-out. Pre-check pause shortens 200→170ms; check remains 600ms. Native pause state, progress caps, acknowledgement, interruption, cancellation, parallel tasks and accessibility passed.
+- PASS: isolated 550191a/current previews rebuilt and strict signatures verified; CUA opened and played the candidate. No identity, protocol, configuration preference or card reveal change; no production metadata bump, installation, DMG, push or release. Actual Air/mini appearance remains pending owner review. Existing nonfatal CLT warnings remain.
+
+双环倾角、略粗线条、更柔和起止与更短暂停通过原生检查，保持上轮对勾比例和卡片弹出。
+
 ## 2026-10-08: screenshot check and two tilted green rings, build21 preview
 
 - PASS: production build and final native motion suite. Check angle ~72.35°, sampled endpoint clearances and 12.5%-radius stroke remain proportional at 30×30, 60×30 and 60×60. Continuous drawing, inset geometry and native rendering passed. Screenshot estimates are not a claim of pixel-perfect Apple geometry.

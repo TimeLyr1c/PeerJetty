@@ -34,8 +34,8 @@ final class TransferGlyph: NSView {
         let envelope = sin(.pi*progress)
         let direction: Double = companion ? -1 : 1
         var transform = CATransform3DIdentity
-        transform = CATransform3DRotate(transform, direction * 0.60 * envelope, 0, 0, 1)
-        transform = CATransform3DRotate(transform, (companion ? -0.70 : 0.35) * envelope, 1, 0, 0)
+        transform = CATransform3DRotate(transform, direction * 0.70 * envelope, 0, 0, 1)
+        transform = CATransform3DRotate(transform, (companion ? -0.85 : 0.45) * envelope, 1, 0, 0)
         return CATransform3DRotate(transform, direction * flipRadians * progress, 0, 1, 0)
     }
     private func hideTrails() {
@@ -73,7 +73,7 @@ final class TransferGlyph: NSView {
         let path = CGMutablePath(); path.addArc(center:NSPoint(x:bounds.midX,y:bounds.midY), radius:max(0,min(bounds.width,bounds.height)/2-3),startAngle:-.pi/2,endAngle:3 * .pi/2,clockwise:false)
         track.path = path; arc.path = path; for trail in trails { trail.path = path }
         let radius = max(0,min(bounds.width,bounds.height)/2-3)
-        for shape in [track,arc,tick] + trails { shape.lineWidth = radius * 0.125 }
+        for shape in [track,arc,tick] + trails { shape.lineWidth = radius * 0.145 }
         let points = Self.checkPoints.map { CGPoint(x:bounds.midX+radius*$0.x,y:bounds.midY+radius*$0.y) }
         let check = CGMutablePath(); check.move(to:points[0]); check.addLine(to:points[1]); check.addLine(to:points[2]); tick.path = check
     }
@@ -140,6 +140,7 @@ final class TransferGlyph: NSView {
                 let fade = CAKeyframeAnimation(keyPath:"opacity")
                 fade.values = [0,0.65,0.65,0]; fade.keyTimes = [0,0.18,0.68,1]
                 fade.duration = profile.ringFlip
+                fade.timingFunctions = [CAMediaTimingFunction(name:.easeInEaseOut), CAMediaTimingFunction(name:.linear), CAMediaTimingFunction(name:.easeInEaseOut)]
                 MotionEffects.add(fade,to:trail,key:"PeerJetty.trailFade",delay:fillDuration,startTime:now)
             }
         }
