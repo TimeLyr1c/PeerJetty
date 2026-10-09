@@ -2,6 +2,8 @@
 
 ## 2026-10-09: startup connection to last trusted peer
 
+- DELIVERED: clean source `6319676`, 0.4.0/build27 arm64 App + DMG; strict ad hoc signature, DMG integrity and relocated packaged resources passed. DMG SHA-256 `0d3445a199de4ab0262c8b0f7e0cc600f56a4dad487cb39a07b5dd28edb222ba`. build26 retained and its checksum verified unchanged. No installation, push or public release.
+
 - PASS: `Scripts/test-connections.sh` adds real ephemeral TLS startup connection, persistent last-successful peer, independent unchanged default destination, old configuration defaults (enabled, no invented last peer), disabling without disconnecting established transport, enabling live, unpair clearing and remembered-but-untrusted rejection. Automatic connection sends neither files nor text. A real stalled TLS/application hello closes after five seconds quietly; unchanged discovery does not retry, reappearance allows a second bounded attempt, later reappearance cannot exceed the startup budget.
 - PASS: all prior EOF/normal-process-exit/SIGKILL/in-transfer-exit, pending-file five-second timeout and stale-error checks. Existing core/file integration and adversarial unpair/cancellation regressions passed. English/Chinese settings action/restoration and 40 light/dark/default/minimum layouts passed; 359 bilingual entries agree.
 - Changes are local configuration and native General switch only; TLS, protocol v1, Keychain/Bundle identity, transfer and animation rules unchanged. No new dependency, heartbeat, background retry timer, file/text replay or production identity access. Existing CLT linker search-path warnings remain nonfatal.
