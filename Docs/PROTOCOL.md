@@ -81,3 +81,14 @@ All file entry points share an ephemeral UUID request; the same UUID becomes the
 `autoConnectLastPeer` (missing = true) and `lastConnectedPeer` (missing = nil) are local configuration only. A successful authorized TLS handshake atomically records the peer ID alongside existing trust maintenance; it does not override a nonempty preferred destination. Startup recovery uses the existing discovery and expected-certificate validation; it never opens the pairing gate or adds protocol messages/capabilities. Only a currently trusted remembered identity is eligible. The startup budget is two discovery-triggered attempts, each bounded to five seconds; unchanged discovery cannot poll/retry. Successful authorization or explicit file/manual connection takes precedence and ends startup recovery. Revocation/reset clears the record. No queued content is sent by recovery.
 
 新增两个本机配置字段，成功认证后保存上次连接身份，与默认目标分离。只向仍信任的发现设备使用原有 TLS 身份校验，不新增协议、配对批准或心跳；不发送旧请求。每次启动最多两次发现触发的五秒尝试，普通退出保留记录，解除与重置清除。
+
+
+## Receiver disk-space failures / 接收端磁盘空间不足
+
+Before accepting an offer, the receiver checks the destination volume's free space against the manifest size plus the existing 16 MiB reserve. This is a preflight check, not a space reservation: other transfers or applications can consume space afterwards. POSIX `ENOSPC`, Cocoa write-out-of-space errors and their underlying errors are mapped to app-owned diagnostics at creation, write, synchronization and final commit. Permission and missing-directory errors retain their separate handling.
+
+A disk-full error ends only the matching incoming transfer. The receiver sends the existing `reject` (transfer UUID, allowlisted error key/arguments and English legacy fallback), cancels its staging transaction and drains already ordered cancelled frames until the next offer. The sender stops that UUID's outgoing pump and may start its next queued transfer. No new message, capability, protocol version or identity change is involved. An independent reverse transfer remains active. Invalid protocol input still closes the session.
+
+Both ends receive one terminal failed update, removing the task's cancel control and suppressing success/auto-open. Roots already exclusively committed remain intact; the diagnostic reports their count. Uncommitted staging is removed. A partially saved transfer sends no success receipt or successful-receive callback. Free space must be restored before retrying. PeerJetty uses the existing card/settings surfaces; concurrent active tasks retain their card priority, while the failure reason is also delivered to the settings status/details area.
+
+接收前继续保留 16 MiB 余量；检查不代表预留空间。创建、写入、同步或提交时磁盘满，只终止对应 UUID 的接收任务，通过现有 reject 通知发送端，并排空旧任务的在途帧，不中断同连接的反向任务。两端得到失败结果，不显示成功、不开启部分文件。已经完整提交的顶层项目保留并显示数量，其余临时内容清理；配对、TLS 和协议版本不变。并行时卡片继续优先显示活动任务，设置状态及详情仍接收完整失败原因。

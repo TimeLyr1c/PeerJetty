@@ -284,6 +284,8 @@ public final class PeerEngine {
         else { if !session.automatic {emit(L10n.text("peerengine.waiting_to_connect",error.localizedDescription))}; publishPeers() }
     }
     #if DEBUG
+    private var testingReceiveIO: ReceiveStorageIO?
+    func testingStorage(_ io: ReceiveStorageIO?) { queue.async { self.testingReceiveIO = io } }
     // Deterministic isolated discovery/path tests; never available in release apps.
     func testingEndpoint(peerID:String,port:UInt16) {
         queue.async {self.endpoints[peerID] = (.hostPort(host:"127.0.0.1",port:NWEndpoint.Port(rawValue:port)!),"Fixture");self.considerStartupConnection();self.publishPeers()}
@@ -407,7 +409,11 @@ public final class PeerEngine {
                 if message.kind == "text" || message.kind == "textReceipt" { try handleText(message, session: session) }
                 else { try handleTransfer(message, session: session) }
             }
-        } catch { fail(session, error) }
+        } catch {
+            if message.transfer == session.incomingID, ReceiveStorageError.isFull(error), session.incoming != nil {
+                rejectIncoming(session, error: error)
+            } else { fail(session, error) }
+        }
     }
     @discardableResult
     public func sendText(_ text: String, peerID: String) -> UUID {
@@ -539,17 +545,20 @@ public final class PeerEngine {
             guard session.incoming == nil, let manifest = message.manifest,
                   sessions.values.filter({ $0.incoming != nil }).count < 4 else { throw PeerError.localized("peerengine.receiver_busy_or_invalid_manifest", []) }
             do {
-                session.incoming = try ReceiveTransaction(manifest: manifest, destination: URL(fileURLWithPath: store.snapshot.receivePath))
+                let destination = URL(fileURLWithPath: store.snapshot.receivePath)
+                #if DEBUG
+                session.incoming = try ReceiveTransaction(manifest: manifest, destination: destination, io: testingReceiveIO ?? ReceiveStorageIO())
+                #else
+                session.incoming = try ReceiveTransaction(manifest: manifest, destination: destination)
+                #endif
                 session.incomingID = transferID
                 var accept = Message("accept"); accept.transfer = transferID; session.wire.send(accept)
                 updateIncoming(session, status: L10n.text("peerengine.receiving"))
             } catch {
-                var reject = Message("reject"); reject.transfer = transferID
-                if let peerError = error as? PeerError, case .localized(let key, let arguments) = peerError {
-                    reject.errorKey = key; reject.errorArguments = arguments
-                    reject.text = TranslationCatalog(preferences: ["en"]).format(key, arguments: arguments.map { $0 as CVarArg })
-                } else { reject.text = error.localizedDescription }
-                session.wire.send(reject)
+                sendRejection(error, id: transferID, session: session)
+                let update = TransferUpdate(id: transferID, peerName: session.name, receiving: true, completed: 0,
+                                            total: manifest.byteCount, status: error.localizedDescription, finished: true, succeeded: false)
+                DispatchQueue.main.async { self.onTransfer?(update) }
                 emit(error.localizedDescription)
             }
         case "accept":
@@ -575,7 +584,10 @@ public final class PeerEngine {
             session.outgoing = nil; sendNext(session)
         case "reject":
             guard let outgoing = session.outgoing, outgoing.id == transferID else { throw PeerError.localized("peerengine.invalid_rejection_message", []) }
-            update(session, outgoing: outgoing, status: L10n.remoteError(key: message.errorKey, arguments: message.errorArguments, fallback: message.text ?? L10n.text("peerengine.the_other_device_could_not_receive_the_files")), finished: true)
+            let reason = L10n.remoteError(key: message.errorKey, arguments: message.errorArguments, fallback: message.text ?? L10n.text("peerengine.the_other_device_could_not_receive_the_files"))
+            update(session, outgoing: outgoing, status: reason, finished: true)
+            emit(reason)
+            retireCancelled(transferID, session: session)
             session.outgoing = nil; sendNext(session)
         case "cancel":
             retireCancelled(transferID,session:session)
@@ -634,7 +646,28 @@ public final class PeerEngine {
             if session.incoming == nil, session.drainingCancelledIncoming { return }
             guard session.authorized, !session.unpairing, let incoming = session.incoming else { throw PeerError.localized("peerengine.invalid_file_data", []) }
             try incoming.append(data); session.lastActivity = Date(); updateIncoming(session, status: L10n.text("peerengine.receiving"))
-        } catch { fail(session, error) }
+        } catch {
+            if session.incoming != nil, ReceiveStorageError.isFull(error) { rejectIncoming(session, error: error) }
+            else { fail(session, error) }
+        }
+    }
+    private func sendRejection(_ error: Error, id: UUID, session: Session) {
+        var reject = Message("reject"); reject.transfer = id
+        if let peerError = error as? PeerError, case .localized(let key, let arguments) = peerError {
+            reject.errorKey = key; reject.errorArguments = arguments
+            reject.text = TranslationCatalog(preferences: ["en"]).format(key, arguments: arguments.map { $0 as CVarArg })
+        } else { reject.text = error.localizedDescription }
+        session.wire.send(reject)
+    }
+    private func rejectIncoming(_ session: Session, error: Error) {
+        guard let incoming = session.incoming, let id = session.incomingID else { return }
+        let failure = ReceiveStorageError.normalize(error, saved: incoming.committed.count)
+        updateIncoming(session, status: failure.localizedDescription, finished: true)
+        incoming.cancel(); session.incoming = nil; session.incomingID = nil
+        retireCancelled(id, session: session)
+        // Ordered old frames are drained until the next offer, without touching reverse traffic.
+        session.drainingCancelledIncoming = true
+        sendRejection(failure, id: id, session: session); emit(failure.localizedDescription)
     }
     private func retireCancelled(_ id:UUID,session:Session) {
         if !session.cancelledTransfers.contains(id) { session.cancelledTransfers.append(id) }

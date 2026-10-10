@@ -66,7 +66,7 @@
 "filestore.the_file_was_not_received_completely" = "The file was not received completely";
 "filestore.the_receive_folder_does_not_exist_choose_it" = "The receive folder does not exist. Choose it again in Settings";
 "filestore.the_receive_folder_is_not_writable" = "The receive folder is not writable";
-"filestore.the_receiving_device_has_insufficient_disk_space" = "The receiving device has insufficient disk space";
+"filestore.the_receiving_device_has_insufficient_disk_space" = "Not enough disk space on receiver";
 "filestore.the_source_file_no_longer_exists" = "The source file no longer exists";
 "filestore.the_transfer_is_not_complete" = "The transfer is not complete";
 "filestore.unsupported_file_type" = "Unsupported file type: %1$@";
@@ -109,7 +109,7 @@
 "peerengine.device_already_connected_or_pairing" = "Device already connected or pairing";
 "peerengine.device_identity_or_protocol_does_not_match" = "Device identity or protocol does not match";
 "peerengine.device_offline_or_not_discovered" = "Device offline or not discovered";
-"peerengine.device_trust_removed" = "Device trust removed";
+"peerengine.device_trust_removed" = "This Mac unpaired the device";
 "peerengine.discovery_failed" = "Discovery failed: %1$@";
 "peerengine.discovery_is_unavailable_check_local_network_access_and" = "Discovery is unavailable: %1$@. Check local network access and network isolation";
 "peerengine.duplicate_or_premature_pairing_confirmation" = "Duplicate or premature pairing confirmation";
@@ -215,19 +215,19 @@
 "text.close" = "Close (Esc)";
 "text.empty" = "Enter some text first.";
 "text.too_large" = "Text must be no larger than 256 KiB in UTF-8.";
-"text.offline" = "The selected device is offline. Try again when it is online.";
+"text.offline" = "The selected device is not connected. Connect to it before sending text.";
 "text.busy" = "The text queue is full. Wait for pending messages to finish.";
 "text.upgrade" = "This device does not support text. Upgrade PeerJetty on that device.";
-"text.invalid_message" = "Invalid text message or receipt. The connection was closed.";
+"text.invalid_message" = "Invalid message or confirmation. The connection was closed.";
 "text.unconfirmed" = "Receipt not confirmed. The other device may have received this text. It was not resent.";
 "text.no_target" = "Pair a device before sending text.";
-"text.offline_short" = "offline";
+"text.offline_short" = "not connected";
 "text.old_peer" = "upgrade required";
-"text.online" = "online";
+"text.online" = "connected";
 "text.target" = "%1$@ · %2$@";
 "text.connect" = "Connect";
 "text.connecting" = "Connecting… Send again once the device is ready.";
-"text.waiting" = "Waiting for receipt…";
+"text.waiting" = "Waiting for confirmation…";
 "text.confirmed" = "Receipt confirmed. Text sent.";
 "text.record_hint" = "Enter: new line · ⌘Enter: send · Successful sends and receipts are saved locally.";
 "text.reader_title" = "Text · %1$@";
@@ -348,7 +348,7 @@
 "settings.page_about_hint" = "PeerJetty, built for your paired Macs.";
 
 "unpair.repair" = "Pair again…";
-"unpair.confirm" = "Unpair with %@? Transfers will stop. Both Macs must add the device again to reconnect. If the other Mac is offline or uses an older version, only this Mac can be updated now.";
+"unpair.confirm" = "Unpair with %@? Transfers will stop. Both Macs must add the device again to pair again. If the other Mac is offline or uses an older version, only this Mac can be updated now.";
 "unpair.remote" = "%@ unpaired this Mac. Add the device on both Macs to pair again.";
 "unpair.confirmed" = "Both Macs have unpaired from %@. Add the device on both Macs to pair again.";
 "unpair.unconfirmed" = "This Mac unpaired from %@; the other Mac has not confirmed. Add the device on both Macs to pair again.";
@@ -376,3 +376,5 @@
 
 "settings.auto_connect" = "Connect to last device at startup";
 "settings.auto_connect_hint" = "Automatically connect to your last successfully connected paired device. No files are sent.";
+
+"filestore.disk_full_partial" = "Not enough disk space on receiver. Fully saved items: %1$@. Remaining items were not saved.";

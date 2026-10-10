@@ -94,6 +94,7 @@ private let RemoteErrorFields: [String: Int] = [
     "filestore.the_receive_folder_does_not_exist_choose_it": 0,
     "filestore.the_receive_folder_is_not_writable": 0,
     "filestore.the_receiving_device_has_insufficient_disk_space": 0,
+    "filestore.disk_full_partial": 1,
     "filestore.the_source_file_no_longer_exists": 0,
     "filestore.the_transfer_is_not_complete": 0,
     "filestore.unsupported_file_type": 1,

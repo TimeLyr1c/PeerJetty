@@ -109,7 +109,7 @@
 "peerengine.device_already_connected_or_pairing" = "设备已连接或正在配对";
 "peerengine.device_identity_or_protocol_does_not_match" = "设备身份或协议不匹配";
 "peerengine.device_offline_or_not_discovered" = "设备离线或未被发现";
-"peerengine.device_trust_removed" = "设备授权已撤销";
+"peerengine.device_trust_removed" = "本机已解除配对";
 "peerengine.discovery_failed" = "设备发现失败：%1$@";
 "peerengine.discovery_is_unavailable_check_local_network_access_and" = "设备发现暂不可用：%1$@。请检查局域网权限和网络隔离。";
 "peerengine.duplicate_or_premature_pairing_confirmation" = "重复或过早的配对确认";
@@ -215,19 +215,19 @@
 "text.close" = "关闭（Esc）";
 "text.empty" = "请先输入文本。";
 "text.too_large" = "文本的 UTF-8 大小不能超过 256 KiB。";
-"text.offline" = "所选设备离线，请在它上线后重试。";
+"text.offline" = "尚未连接到所选设备，请先连接再发送文本。";
 "text.busy" = "文本队列已满，请等待正在发送的消息完成。";
 "text.upgrade" = "对方设备不支持文本，请先升级它的 PeerJetty。";
-"text.invalid_message" = "文本消息或确认无效，连接已关闭。";
+"text.invalid_message" = "消息或确认无效，连接已关闭。";
 "text.unconfirmed" = "未确认收到。对方可能已收到这段文本，没有自动重发。";
 "text.no_target" = "请先配对一台设备，再发送文本。";
-"text.offline_short" = "离线";
+"text.offline_short" = "未连接";
 "text.old_peer" = "需要升级";
-"text.online" = "在线";
+"text.online" = "已连接";
 "text.target" = "%1$@ · %2$@";
 "text.connect" = "连接";
 "text.connecting" = "正在连接…设备就绪后请再次点击发送。";
-"text.waiting" = "正在等待收到确认…";
+"text.waiting" = "等待对方确认收到…";
 "text.confirmed" = "对方已确认收到，文本发送成功。";
 "text.record_hint" = "Enter 换行 · ⌘Enter 发送 · 成功收发的文本会保存在本机。";
 "text.reader_title" = "文本 · %1$@";
@@ -348,7 +348,7 @@
 "settings.page_about_hint" = "了解 PeerJetty 与本机应用信息。";
 
 "unpair.repair" = "重新配对…";
-"unpair.confirm" = "解除与 %@ 的配对？相关传输将停止，重新连接需在两台 Mac 上添加设备。如果对方离线或版本较旧，目前只能更新本机。";
+"unpair.confirm" = "解除与 %@ 的配对？相关传输将停止，再次使用需在两台 Mac 上重新添加设备并配对。如果对方离线或版本较旧，目前只能更新本机。";
 "unpair.remote" = "%@ 已解除与本机的配对。请在两台 Mac 上添加设备以重新配对。";
 "unpair.confirmed" = "已确认与 %@ 双方解除配对。请在两台 Mac 上添加设备以重新配对。";
 "unpair.unconfirmed" = "本机已解除与 %@ 的配对，对方尚未确认。请在两台 Mac 上添加设备以重新配对。";
@@ -376,3 +376,5 @@
 
 "settings.auto_connect" = "启动时自动连接上次设备";
 "settings.auto_connect_hint" = "自动连接上次成功连接的已配对设备，不会自动发送文件。";
+
+"filestore.disk_full_partial" = "接收设备磁盘空间不足。已完整保存 %1$@ 个顶层项目，其余项目未保存。";

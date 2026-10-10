@@ -1,4 +1,17 @@
-# 0.2.0 验证记录
+# 验证记录 / Validation
+
+## 2026-10-09: disk-space failures and bilingual interface audit
+
+- PASS: new `Scripts/test-disk-space.sh` under English and Simplified Chinese. POSIX ENOSPC, Cocoa out-of-space and nested errors map to owned diagnostics; permission/missing-path/I/O errors stay distinct. Capacity boundary retains the 16 MiB reserve. Injected directory/file creation, write, sync and commit errors clean staging. Injection is per transaction; the engine test setter exists only in DEBUG. No real volume was filled.
+- PASS: seven real loopback TLS cases per language: preflight, directory creation, file creation, write, sync, commit and second-root commit. Both endpoints receive one matching UUID failure and a settings status reason, with no success receipt/callback; a 16 MiB reverse transfer survives on the same connection. Already committed roots are byte-identical and retained, partial staging is removed, trust/connection survives, and the same connection accepts the next retry. Legacy reject decoding and allowlisted field counts passed.
+- PASS: 360 aligned bilingual resource keys, placeholder/plural rules and source coverage. Reviewed menu, five settings pages, pairing/unpairing, card, compose/reader/history, notification text and update messages. Changes clarify connected vs discovered/online, confirmation vs receipt wording, local unpairing vs bilateral confirmation, and disk-full partial counts. User names, paths and text remain literal; system/provider dialogs remain controlled by macOS. Corrected outdated localization documentation about text-history dates.
+- PASS: native localization suite in both languages: 20 light/dark/default/short-window settings layouts per language, long names/paths, full error details, focus, drafts, controls, icon/history switches. Text suite in both languages passed focus/plain Unicode/shortcuts/copy, minimum layouts, drafts, history, notification privacy, real 30-second receipt timeout, authority/duplicates/boundary/legacy checks and parallel files. Menu visibility and update result/layout checks passed in both languages. Drop suite passed 24 bilingual layouts, fixed drag geometry, cancellation, stale feedback and new disk-failure states at zero/all bytes received: cancel is absent and the success ring never appears.
+- PASS: nine core and nine file/TLS integration groups; unpair adversarial/timeout/persistence-failure checks and both cancellation directions preserve reverse/follow-up transfers. Final debug and production SwiftPM builds passed. Existing CLT search-path warnings remain nonfatal. A restricted loopback test hit its deadline; the permitted isolated network rerun and final bilingual runs passed, without changing test assertions.
+- Pending: Air/mini actual bidirectional disk-failure cards/settings and OS notification appearance, including real permission dialogs and third-party filesystem behavior. Isolated native assertions are not two-machine visual acceptance. Concurrent ongoing tasks retain existing card priority; complete failure details are sent to settings on both ends. Temporary cleanup uses the existing best-effort deletion behavior; OS errors preventing removal cannot be guaranteed away.
+- Delivery: local source/docs only. Version/build metadata and existing App/DMG archives unchanged; no packaging, installation, push or release. README/Tutorial work, icons/rename and final full privacy review remain separate subsequent work.
+
+已完成磁盘不足的双端失败反馈、按 UUID 终止与排空、部分已保存项目保留和反向任务隔离；两种语言的存储模拟、真实隔离 TLS、原生界面及正式构建通过。全程未填满真实磁盘，未访问生产配对身份／配置。Air／mini 的卡片、通知与真实文件系统表现仍待实机验收；本轮只保存源码和文档，不更新现有安装包。
+
 
 ## 2026-10-09: startup connection to last trusted peer
 

@@ -158,6 +158,19 @@ struct RunDropPresentationTests {
         view.transfer(TransferUpdate(id:activeID,peerName:"Test",receiving:false,completed:1,total:100,status:"Cancelled",finished:true,succeeded:false))
         XCTAssertNil(view.cancellableTransferID);XCTAssertTrue(cancel.isHidden)
         cancelledID=nil;NSApp.sendAction(cancel.action!,to:cancel.target,from:cancel);XCTAssertNil(cancelledID)
+        for language in ["en", "zh-Hans"] {
+            let catalog = TranslationCatalog(preferences:[language])
+            for receiving in [false,true] {
+                for completed: Int64 in [0,100] {
+                    let reason = catalog.remoteError(key:"filestore.disk_full_partial",arguments:["1"],fallback:"")
+                    view.transfer(TransferUpdate(id:UUID(),peerName:"Test",receiving:receiving,completed:completed,total:100,status:reason,finished:true,succeeded:false))
+                    XCTAssertNil(view.cancellableTransferID); XCTAssertTrue(cancel.isHidden)
+                    XCTAssertTrue(progress.isHidden); XCTAssertEqual(title.stringValue,reason)
+                    XCTAssertEqual(title.toolTip,reason)
+                }
+            }
+        }
+        print("PASS: bilingual disk failure, including fully received but uncommitted data, has no cancel or success ring")
         view.idle()
 
         let icon = descendants(view).compactMap { $0 as? NSImageView }.first!

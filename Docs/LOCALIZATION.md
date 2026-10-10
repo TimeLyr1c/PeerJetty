@@ -1,8 +1,8 @@
 # Localization / 国际化
 
-PeerJetty 0.3.0 adds English (`en`) and Simplified Chinese (`zh-Hans`). i18n means internationalization: separating interface text from code so the same application can support different languages. The public 0.2.4 installer predates this feature.
+PeerJetty supports English (`en`) and Simplified Chinese (`zh-Hans`). i18n means internationalization: separating interface text from code so the same application can support different languages.
 
-PeerJetty 0.3.0 支持英文和简体中文。i18n 是 internationalization（国际化）的缩写，指把界面文字与程序逻辑分开，让同一个 App 使用不同语言。公开的 0.2.4 安装包尚无此功能。
+PeerJetty 支持英文和简体中文。i18n 是 internationalization（国际化）的缩写，指把界面文字与程序逻辑分开，让同一个 App 使用不同语言。
 
 ## Selecting a language / 选择语言
 
@@ -36,9 +36,9 @@ Keep keys stable when editing wording. Translate whole sentences rather than joi
 
 修改文案时保留 key；翻译完整句子，不拼接句子片段。保留 `%1$@` 等参数占位符及类型，允许按语序调整位置。设备名称和文件名是用户数据，不进行翻译，也不能当成格式模板。
 
-For plural entries, preserve `NSStringLocalizedFormatKey`, variable names and `NSStringFormatValueTypeKey`. English needs `one` and `other`; Simplified Chinese uses `other`. Use integer arguments at call sites. Percentages use the system's regional formatting. Dates and file-size labels are not currently displayed; add native formatters when introducing them.
+For plural entries, preserve `NSStringLocalizedFormatKey`, variable names and `NSStringFormatValueTypeKey`. English needs `one` and `other`; Simplified Chinese uses `other`. Use integer arguments at call sites. Percentages use the system's regional formatting. Text history dates use DateFormatter with the selected app language. Use native formatters when adding other dates or file-size labels.
 
-数量句子使用原生单复数规则，英文区分单数和复数，中文使用 `other`；保留变量名与类型，调用时传整数。百分比按系统地区格式显示。目前没有日期或文件大小界面字段，后续增加时再采用对应格式化工具。
+数量句子使用原生单复数规则，英文区分单数和复数，中文使用 `other`；保留变量名与类型，调用时传整数。百分比按系统地区格式显示。文本历史时间使用 DateFormatter，跟随应用所选语言；其他日期或文件大小字段新增时也应使用原生格式化器。
 
 New languages require a matching resource folder, Package/Info language declarations, the supported-language list in `TranslationCatalog`, `DisplayLanguage`/the picker, and expanded checks. Add both current translations when introducing a new key. Check layout with long labels, narrow windows, and system text sizes.
 
