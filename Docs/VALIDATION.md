@@ -1,5 +1,7 @@
 # 1.0.0 release gate — 2026-10-09
 
+Packaging inspection caught compiler debug symbols containing a personal source path in the unpublished build28 candidate. Release packaging now strips those symbols before signing and runs a fail-closed App pattern check. Synthetic privacy regression covers paths, keys, tokens, runtime databases and preserved compatibility identifiers. Build28 remains local and is not uploaded; final release uses build29.
+
 All isolated suites passed: release archive safety (6), core/integration, connection EOF/exit/reconnect, authenticated unpair and failures, disk-full at every receive stage with reverse traffic/partial cleanup, text/SQLite/legacy clients, native motion, drop layout, English/Chinese settings and updates, menu/Dock persistence. Linker emitted missing Command Line Tools search-path warnings; builds and executable checks succeeded.
 
 User reports recent Air/mini bidirectional file/text, exit/reconnection and unpair/re-pair checks normal. This is user-reported physical coverage, not a new agent-run two-Mac test. New disk-full refinements were validated with isolated fault injection, never by filling the real disk. Older hardware/system-specific pending checks retain their original scope.

@@ -13,6 +13,11 @@ APP="$STAGING_ROOT/PeerJetty.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$STAGING_ROOT/icons"
 cp "$PROJECT_ROOT/Info.plist" "$APP/Contents/Info.plist"
 cp "$BIN_DIR/PeerJetty" "$APP/Contents/MacOS/PeerJetty"
+# Strip local compiler/debug paths before signing the distributed executable.
+# SwiftPM retains its separate dSYM for local diagnostics.
+if [[ "$CONFIGURATION" == release ]]; then
+  /usr/bin/strip -S -x "$APP/Contents/MacOS/PeerJetty"
+fi
 for entry in 'ic11:32' 'ic12:64' 'ic07:128' 'ic13:256' 'ic08:256' 'ic14:512' 'ic09:512' 'ic10:1024'; do
   kind="${entry%%:*}"; size="${entry##*:}"
   /usr/bin/sips -z "$size" "$size" "$PROJECT_ROOT/Assets/AppIcon.png" --out "$STAGING_ROOT/icons/$kind.png" >/dev/null
@@ -26,6 +31,9 @@ cp "$PROJECT_ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
 for localization in "$PROJECT_ROOT/Sources/PeerCore/Resources/"*.lproj; do
   /usr/bin/ditto "$localization" "$APP/Contents/Resources/${localization:t}"
 done
+if [[ "$CONFIGURATION" == release ]]; then
+  /usr/bin/python3 "$PROJECT_ROOT/Scripts/check_app_privacy.py" "$APP"
+fi
 /usr/bin/xattr -cr "$APP"
 SIGNING_IDENTITY="${PEERJETTY_SIGNING_IDENTITY:-${OPENONMINI_SIGNING_IDENTITY:-}}"
 if [[ -n "$SIGNING_IDENTITY" ]]; then

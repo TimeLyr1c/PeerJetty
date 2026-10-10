@@ -1,6 +1,6 @@
 # Release workflow / 发布流程
 
-Repository: https://github.com/TimeLyr1c/PeerJetty. License: MIT; attribution and artwork terms are in LICENSE-NOTES.md. Private vulnerability reporting is enabled. Current release preparation: 1.0.0/build28, Apple Silicon, macOS 15+, ad hoc signed and not notarized.
+Repository: https://github.com/TimeLyr1c/PeerJetty. License: MIT; attribution and artwork terms are in LICENSE-NOTES.md. Private vulnerability reporting is enabled. Current release preparation: 1.0.0/build29, Apple Silicon, macOS 15+, ad hoc signed and not notarized.
 
 1. Review source, resources, reachable Git history and public documentation for credentials and personal data. Preserve compatibility identifiers and source attribution.
 2. Run relevant isolated regression checks and record real-device coverage honestly in VALIDATION.md. Source and user-reported physical tests are distinct evidence.
