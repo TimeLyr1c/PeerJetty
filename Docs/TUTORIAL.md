@@ -2,7 +2,7 @@
 
 **English** · [简体中文](TUTORIAL.zh-CN.md) · [Project home](../README.md)
 
-This guide describes the **0.4.0 development source**. The currently published DMG is **0.3.2**. File installation/pairing basics apply to both; five-page settings, text/history, independent icon switches, startup reconnection and newer failure handling described here are 0.4.0 features. Use a matching current build on both Macs for testing. A local installer may not include later source-only fixes; check [validation records](VALIDATION.md).
+This guide describes **PeerJetty 1.0.0**. Use the latest release on both Macs for all features. Older clients without text or unpair capabilities can still exchange files, but should be upgraded for the complete experience.
 
 ## Install
 
@@ -16,7 +16,7 @@ You need two awake Apple Silicon Macs running macOS 15 or later, on the same loc
 
 The current distributed builds are ad hoc signed, without Apple notarization. If macOS cannot verify the developer or check the app, first verify that the download came from this repository. If you trust the source and macOS offers it, try opening once, then use **System Settings → Privacy & Security → Open Anyway**. An alert about detected malware or a damaged app needs separate investigation. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
-If both icons have been hidden in 0.4.0, reopen PeerJetty from Applications or Spotlight to open Settings and temporarily recover its menu icon. See [icon preferences](#icon-preferences).
+If both icons have been hidden, reopen PeerJetty from Applications or Spotlight to open Settings and temporarily recover its menu icon. See [icon preferences](#icon-preferences).
 
 ## Pair the two Macs
 
@@ -26,9 +26,9 @@ If both icons have been hidden in 0.4.0, reopen PeerJetty from Applications or S
 4. Compare the six-digit code on both screens. Confirm on both only if the codes match. If they differ, cancel.
 5. Select the paired device as your default file destination. Each Mac has its own destination choice.
 
-Pairing stores trust so you do not need to repeat the code every time. It does not mean the other app is currently running. In 0.4.0, **Paired · Connected** means a usable authenticated connection; **Paired · Not connected** means trust remains but there is no usable connection.
+Pairing stores trust so you do not need to repeat the code every time. It does not mean the other app is currently running. **Paired · Connected** means a usable authenticated connection; **Paired · Not connected** means trust remains but there is no usable connection.
 
-**Connect to last device at startup** in General defaults on in 0.4.0. After a successful connection, startup discovery may reconnect to that trusted device. This is separate from the default file destination, does not wake the other Mac and does not send any content automatically. The first upgrade needs a successful connection to establish the remembered device.
+**Connect to last device at startup** in General defaults on. After a successful connection, startup discovery may reconnect to that trusted device. This is separate from the default file destination, does not wake the other Mac and does not send any content automatically. The first upgrade needs a successful connection to establish the remembered device.
 
 ## Send and receive files
 
@@ -39,7 +39,7 @@ Pairing stores trust so you do not need to repeat the code every time. It does n
 3. When the card appears, drag inside it and release. Do not drag to the very top edge: macOS may open Mission Control there.
 4. Watch the target name and transfer state. **Saved by the other Mac** means the receiver has checked and saved the files, not just received the bytes.
 
-The same gesture works on a display without a notch. In 0.4.0, you can click the card's **×** while a task is active to cancel that task. The × disappears when the task ends. With overlapping tasks, the card prioritizes the most recently started active task.
+The same gesture works on a display without a notch. you can click the card's **×** while a task is active to cancel that task. The × disappears when the task ends. With overlapping tasks, the card prioritizes the most recently started active task.
 
 ### Use the file picker
 
@@ -53,13 +53,11 @@ You can send in both directions at the same time. Multiple requests are supporte
 
 ### A disconnected destination or insufficient space
 
-In the current 0.4.0 source, a discovered but disconnected target gets up to five seconds to connect. If it cannot connect, the card and Settings explain the failure. Open the other app on the same LAN, then send again. These failed requests are not sent later without your action.
+a discovered but disconnected target gets up to five seconds to connect. If it cannot connect, the card and Settings explain the failure. Open the other app on the same LAN, then send again. These failed requests are not sent later without your action.
 
 If the receiver lacks space, both ends get a failure reason. Free space on the **receiving** Mac and retry. A multi-item task can leave some fully saved items if final saving fails later; the message reports how many were saved. Those items remain, unfinished temporary contents are cleaned up, and retrying may create suffixed copies. A separate reverse transfer is not cancelled by one receiving task's disk-full failure.
 
-This disk-space refinement is currently source-only relative to build27. See [validation records](VALIDATION.md) before expecting it in a local installer.
-
-## Send plain text — 0.4.0
+## Send plain text
 
 1. Confirm both Macs run a text-capable version and the target is paired **and connected**. If disconnected, use **Settings → Devices → Connect / Pair** first.
 2. Choose **Send Text…** from the menu bar.
@@ -72,7 +70,7 @@ The submitted draft stays while awaiting confirmation. A confirmed receipt clear
 
 The receiver's notification identifies the sender without showing the text body. Click it, then choose **Copy Text**. If notifications are unavailable, use **Settings → Text → View Latest Received Text…**. Text never automatically replaces the clipboard, executes commands or opens links. File auto-open does not affect it, and no `.txt` file is created.
 
-## Text history and privacy — 0.4.0
+## Text history and privacy
 
 **Successful sends and receipts are always recorded on each Mac.** There is no “stop recording” switch. **Show Text History** only shows or hides the history entry.
 
@@ -87,7 +85,7 @@ History is local, not a shared or encrypted archive. Deleting here does not dele
 
 If saving history fails, available text is retained in memory for the current run and can still be copied; the app warns that history was not saved. Copy important content before quitting. See [text details](TEXT.md).
 
-## Everyday settings — 0.4.0
+## Everyday settings
 
 | Page | What to use it for |
 |---|---|
@@ -123,7 +121,7 @@ For a replacement Mac, install normally and pair it as a new device; unpair the 
 
 ## Update and troubleshoot
 
-Choose **Check for updates…** to look for a newer stable GitHub release. The check is manual and ignores local build-number-only changes. A 0.4.0 development build may report being ahead of the public 0.3.2 release; that is expected, not a recommendation to downgrade.
+Choose **Check for updates…** to look for a newer stable GitHub release. The check is manual and ignores local build-number-only changes. Local development builds ahead of the public version are not offered a downgrade.
 
 For an update, finish transfers, choose **Quit**, replace the installed App using the new DMG, then reopen. Normal updates retain settings and pairing. Exit OpenOnMini before migrating and avoid running both old and new apps together. See [update details](UPDATES.md).
 
@@ -131,7 +129,7 @@ For an update, finish transfers, choose **Quit**, replace the installed App usin
 |---|---|
 | No device appears | Both apps open and Macs awake; same LAN; local-network permission; guest Wi-Fi/client isolation; then try manual connection |
 | Paired but not connected | Open the peer app, connect in Devices, or retry file sending; pairing itself need not be reset |
-| Text unsupported | Both Macs need text support; the public 0.3.2 DMG does not include it |
+| Text unsupported | Both Macs need text support; older 0.3.2 clients do not include it; upgrade both Macs |
 | No notification | Check notification permission; look in the receive folder or Text's latest-received entry |
 | Cannot save / insufficient space | Check the receiver's folder permissions and free space; open Settings' full error details |
 | Unexpected Keychain prompt | Verify the app source and stable Applications path; rebuilds/signature changes can cause authorization prompts. Do not remove the identity as the first fix |

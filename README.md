@@ -26,17 +26,9 @@ AirDrop is a good option for occasional nearby sharing; LocalSend and similar to
 - **Protect the transfer:** direct TLS 1.3, file integrity checks and collision-safe saving without overwriting existing files.
 - **Stay native:** Swift and AppKit, English and Simplified Chinese, with an in-app language choice.
 
-### Release and development versions
+### Current release: 1.0.0
 
-| | Public release: 0.3.2 | Current source: 0.4.0 development |
-|---|---|---|
-| Paired LAN file/folder transfers | Available | Available |
-| English / Simplified Chinese; manual update checking | Available | Available |
-| Plain-text transfer and local history | Not included | Implemented |
-| Five-page settings; independent Dock/menu icons | Not included | Implemented |
-| Startup reconnection; refined connection and disk-space feedback | Not included as described in the new guide | Implemented |
-
-**The 0.4.0 source is not a published release.** The [user guide](Docs/TUTORIAL.md) describes this development version and labels its added features. Downloading the current public DMG does not include all features on the source branch. Local test installers can also lag the source; see [validation records](Docs/VALIDATION.md).
+Includes plain-text transfer and local history, five-page settings, independent Dock/menu icons, startup reconnection, and explicit connection and disk-space feedback. See the [user guide](Docs/TUTORIAL.md).
 
 ## Install and start
 
@@ -56,7 +48,7 @@ Distributed builds currently use ad hoc signing and are **not Apple-notarized**.
 
 - Mac-to-Mac, LAN only. No transfer account, cloud relay or SSH. Windows, cross-network transfer, offline delivery and resume are not implemented.
 - Files, names, folder structure and basic permissions transfer; Finder tags, ACLs, extended attributes and resource forks do not. This is not a backup or continuous-sync tool. Save files before sending; archive metadata-sensitive content appropriately.
-- In 0.4.0, successful text sends and receipts are **always recorded locally**. Hiding history does not stop recording. Text is never automatically pasted, executed or opened as a link. See [text privacy](Docs/TEXT.md#history-and-privacy--历史与隐私).
+- Successful text sends and receipts are **always recorded locally**. Hiding history does not stop recording. Text is never automatically pasted, executed or opened as a link. See [text privacy](Docs/TEXT.md#history-and-privacy--历史与隐私).
 - Configuration lives under `~/Library/Application Support/PeerJetty/`; private device identity lives in the local Keychain. Do not sync device identities, trust/configuration or text history through Git or Dropbox. The local text database is not encrypted by the app.
 - Update checking contacts GitHub only when requested; installation is manual. The pairing protocol has not had an independent security audit. See [protocol and limitations](Docs/PROTOCOL.md) and [security reporting](SECURITY.md).
 
@@ -74,7 +66,7 @@ Output: `outputs/PeerJetty.app`. Building does not install or publish it. The sc
 
 ## Help and contribute
 
-For a bug report, include app version/build (About → Diagnostic details in 0.4.0), macOS version, reproduction steps and expected/actual behavior. Remove private paths, filenames, identifiers and text from attachments. Use [Issues](https://github.com/TimeLyr1c/PeerJetty/issues) for ordinary bugs and ideas; follow [SECURITY.md](SECURITY.md) for security concerns.
+For a bug report, include app version/build (About → Diagnostic details), macOS version, reproduction steps and expected/actual behavior. Remove private paths, filenames, identifiers and text from attachments. Use [Issues](https://github.com/TimeLyr1c/PeerJetty/issues) for ordinary bugs and ideas; follow [SECURITY.md](SECURITY.md) for security concerns.
 
 [User guide](Docs/TUTORIAL.md) · [中文教程](Docs/TUTORIAL.zh-CN.md) · [Contribution guide](CONTRIBUTING.md) · [Localization](Docs/LOCALIZATION.md) · [Design rules](Docs/design/DESIGN_SYSTEM.md) · [Changelog](CHANGELOG.md)
 

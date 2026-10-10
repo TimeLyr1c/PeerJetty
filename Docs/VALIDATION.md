@@ -1,3 +1,11 @@
+# 1.0.0 release gate — 2026-10-09
+
+All isolated suites passed: release archive safety (6), core/integration, connection EOF/exit/reconnect, authenticated unpair and failures, disk-full at every receive stage with reverse traffic/partial cleanup, text/SQLite/legacy clients, native motion, drop layout, English/Chinese settings and updates, menu/Dock persistence. Linker emitted missing Command Line Tools search-path warnings; builds and executable checks succeeded.
+
+User reports recent Air/mini bidirectional file/text, exit/reconnection and unpair/re-pair checks normal. This is user-reported physical coverage, not a new agent-run two-Mac test. New disk-full refinements were validated with isolated fault injection, never by filling the real disk. Older hardware/system-specific pending checks retain their original scope.
+
+All 719 reachable history blobs scanned with limited private-key/token/credential/path patterns: no matches; IPv4 and email-like strings reviewed as loopback fixtures, placeholders, SF Symbol/icon naming and test metadata. No tracked runtime identities/databases or build outputs. Author metadata uses GitHub noreply and a legacy codex@localhost placeholder. These checks are not an independent security audit. Private vulnerability reporting verified enabled. Final installer verification is recorded alongside its ignored local archive.
+
 # 验证记录 / Validation
 
 ## 2026-10-09: public README and bilingual user guides

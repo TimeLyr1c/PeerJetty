@@ -1,5 +1,11 @@
 # Changes
 
+## 1.0.0 — 2026-10-09
+
+The first 1.0 release combines paired, bidirectional LAN file/folder transfers with plain-text sending and local history. Includes native grouped settings, independent app icons, startup reconnection, authenticated bilateral unpairing, clear offline and disk-full feedback, and refined finite card animations. English and Simplified Chinese guides are aligned. Apple Silicon/macOS 15+; ad hoc signed, not notarized. Earlier candidate entries below are historical development records.
+
+首个 1.0 版本整合已配对设备间的双向局域网文件／文件夹传输、纯文本发送与本机历史。包括原生分组设置、独立图标开关、启动重连、认证后的双方解除配对、明确的离线与磁盘不足反馈，以及已确认的投放动画。中英文教程同步。安装包支持 Apple Silicon／macOS 15+，采用 ad hoc 签名，未公证；以下候选记录保留为开发历史。
+
 ## 0.4.0/build21 — approved native refinement, local candidate
 
 Includes the owner-approved grouped settings and physical card spring, fixed animation timing, two tilted green rings, and the reference-shaped check. Final stroke is 17.5% of ring radius; check begins 170ms before rotation ends. Air/mini real-transfer acceptance remains pending.

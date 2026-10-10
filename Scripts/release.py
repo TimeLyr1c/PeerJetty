@@ -158,7 +158,10 @@ def disk_image(archive):
             'macOS 15+. See the architecture in this installer filename.\n'
             'This build is ad hoc signed, not notarized.\n'
             'This is a menu bar app; open Settings from its menu bar icon.\n'
-            'Source and instructions: https://github.com/TimeLyr1c/PeerJetty\n')
+            'Source and instructions: https://github.com/TimeLyr1c/PeerJetty\n\n'
+            '安装：退出旧版，将 PeerJetty.app 拖入 Applications 后推出镜像，再从应用程序打开。\n'
+            '支持 macOS 15+，架构见安装包名称。采用 ad hoc 签名，尚未经过 Apple 公证。\n'
+            '默认在菜单栏运行，从菜单打开设置。\n')
         staged = scratch / image.name
         subprocess.run(['/usr/bin/hdiutil', 'create', '-volname', 'PeerJetty', '-fs', 'HFS+',
                         '-srcfolder', str(content), '-format', 'UDZO', str(staged)], check=True)

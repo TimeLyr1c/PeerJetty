@@ -26,17 +26,9 @@ AirDrop 适合偶尔的附近分享，LocalSend 等工具覆盖更广的跨平�
 - **保护传输：** 直接使用 TLS 1.3，保存前校验文件完整性，同名文件改名保存，不覆盖已有文件。
 - **原生体验：** Swift 和 AppKit 实现，支持中英文，应用内可单独选择语言。
 
-### 正式版与开发版
+### 当前正式版：1.0.0
 
-| | 公开正式版：0.3.2 | 当前源码：0.4.0 开发版 |
-|---|---|---|
-| 配对后的局域网文件／文件夹传输 | 已提供 | 已提供 |
-| 中英文与手动检查更新 | 已提供 | 已提供 |
-| 纯文本传输与本机历史 | 不包含 | 已实现 |
-| 五页设置、独立 Dock／菜单栏开关 | 不包含 | 已实现 |
-| 启动重连、改进的连接状态和磁盘不足反馈 | 不包含新教程描述的改进 | 已实现 |
-
-**0.4.0 源码尚未公开发布为正式 Release。**[使用教程](Docs/TUTORIAL.zh-CN.md)以此开发版为准，并标注新增功能。下载当前公开 DMG，并不包含源码分支的所有功能；本地测试安装包也可能落后于源码，详见[验证记录](Docs/VALIDATION.md)。
+包含纯文本传输与本机历史、五页设置、独立 Dock／菜单栏开关、启动重连，以及明确的连接失败和磁盘不足反馈。详见[使用教程](Docs/TUTORIAL.zh-CN.md)。
 
 ## 安装与开始使用
 
@@ -56,7 +48,7 @@ AirDrop 适合偶尔的附近分享，LocalSend 等工具覆盖更广的跨平�
 
 - 仅 Mac 之间的局域网传输，无传输账号、云端中转或 SSH。尚不支持 Windows、跨网络、离线投递或断点续传。
 - 传输文件内容、名称、目录结构和基本权限，不保留 Finder 标签、ACL、扩展属性或资源分支。它不是备份或持续同步工具。发送前先保存文件；需要保留特殊元数据时，应先使用合适的归档方式。
-- 0.4.0 中成功收发的文本**始终在本机记录**，隐藏历史不会停止记录。不自动粘贴、执行正文或打开链接，详见[文本隐私说明](Docs/TEXT.md#history-and-privacy--历史与隐私)。
+- 成功收发的文本**始终在本机记录**，隐藏历史不会停止记录。不自动粘贴、执行正文或打开链接，详见[文本隐私说明](Docs/TEXT.md#history-and-privacy--历史与隐私)。
 - 配置在 `~/Library/Application Support/PeerJetty/`，私有设备身份在本机钥匙串。不要通过 Git 或 Dropbox 同步身份、信任配置或文本历史；文本数据库未由应用加密。
 - 手动检查更新时才访问 GitHub，安装仍需手动完成。配对协议尚未经过独立安全审计，详见[协议与限制](Docs/PROTOCOL.md)及[安全反馈](SECURITY.md)。
 
@@ -74,7 +66,7 @@ cd PeerJetty
 
 ## 反馈与参与
 
-反馈问题时提供应用版本／构建号（0.4.0：关于 → 诊断详情）、macOS 版本、复现步骤、预期与实际结果。附件先移除私人路径、文件名、设备标识和文本。普通问题与建议可提交到 [Issues](https://github.com/TimeLyr1c/PeerJetty/issues)，安全问题请按 [SECURITY.md](SECURITY.md)处理。
+反馈问题时提供应用版本／构建号（关于 → 诊断详情）、macOS 版本、复现步骤、预期与实际结果。附件先移除私人路径、文件名、设备标识和文本。普通问题与建议可提交到 [Issues](https://github.com/TimeLyr1c/PeerJetty/issues)，安全问题请按 [SECURITY.md](SECURITY.md)处理。
 
 [中文教程](Docs/TUTORIAL.zh-CN.md) · [English guide](Docs/TUTORIAL.md) · [贡献指南](CONTRIBUTING.md) · [国际化](Docs/LOCALIZATION.md) · [设计规范](Docs/design/DESIGN_SYSTEM.md) · [变更记录](CHANGELOG.md)
 

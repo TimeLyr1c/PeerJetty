@@ -1,78 +1,15 @@
-# GitHub 发布准备
+# Release workflow / 发布流程
 
-更新：2026-10-05；当前没有远程仓库和公开 Release。
+Repository: https://github.com/TimeLyr1c/PeerJetty. License: MIT; attribution and artwork terms are in LICENSE-NOTES.md. Private vulnerability reporting is enabled. Current release preparation: 1.0.0/build28, Apple Silicon, macOS 15+, ad hoc signed and not notarized.
 
-## 已确定的许可证
+1. Review source, resources, reachable Git history and public documentation for credentials and personal data. Preserve compatibility identifiers and source attribution.
+2. Run relevant isolated regression checks and record real-device coverage honestly in VALIDATION.md. Source and user-reported physical tests are distinct evidence.
+3. Set version/build with `python3 Scripts/release.py set VERSION --build NUMBER`; commit verified changes.
+4. Package a clean commit with `python3 Scripts/release.py package`. Never overwrite an existing archive. Verify signature, disk image, contents and embedded source metadata.
+5. Tag the exact clean source commit embedded in the App. Push only the intended branch and release tag, never all private refs/backups.
+6. Publish bilingual release notes with **only the DMG** as an uploaded asset. ZIP, checksums and build/signature records remain in ignored local archives. GitHub supplies source archives automatically.
+7. Verify the remote tag, stable Latest release, asset list and downloaded DMG checksum. Updates remain manual; no automatic installation.
 
-用户已确认与 Starter 作者约定采用 MIT；根目录已添加完整 LICENSE，版权署名为 PeerJetty contributors。来源说明见 LICENSE-NOTES.md。许可证决定不等于已完成公开发布。
+发布前完成隐私、回归和安装包核查；记录用户实机结果，不冒充开发者直接实测。版本标签必须指向 App 内记录的干净源码提交，后续文档提交不改变已发布标签或二进制。公开附件只放 DMG；已有归档及 Release 不覆盖。发布不代表自动安装到任何设备。
 
-## 尚待完成
-
-- 已选 PeerJetty 并完成产品改名；拟用 peerjetty 仓库名，GitHub 账号待提供。
-- 当前图标已替换为用户提供的 PeerJetty PNG；公开前仍需排除 Original 和历史里的旧图标或核实其授权，代码的 MIT 约定已记录。
-- 双方的署名、GitHub 用户名、贡献角色与提交身份。
-
-仓库放在某个账号下不等于取得其他贡献者的版权，也不自动确定许可证。
-保留原始来源；改名不移除署名。不要仅在新提交删除私人信息后就公开推送全部旧历史。
-
-## 本地准备
-
-- 已有 README、协议、验证、开发工作流和后续计划。
-- 已有版本显示、构建来源和不可覆盖的归档工具。
-- 0.2.0 的源码 ZIP 与原实现提交匹配；安装包校验一致。
-- 对当时受 Git 管理文件的明显私钥和常见令牌模式做过初步扫描，没有发现匹配；另外对已有历史的 36 个不同文件内容进行了同样的模式扫描，也未匹配；这些有限模式仍不保证所有凭据或全部个人信息已排除。
-- 本机专属工作流路径改为 ~；Original 不改写，仍需来源/许可检查。
-- 公开前还要核查全部历史、文档、资源和第三方条款，确认安装包对应源码并补齐许可声明。
-
-## 首次上传和维护
-
-1. 保留已添加的 MIT LICENSE 和来源说明，完成图标素材核实、公开署名及贡献规则。
-2. 确认待上传内容和历史，再建立远程仓库、上传分支与标签。
-3. 发布说明如实写支持平台、最低系统、局域网范围、签名/公证状态与已知限制。
-4. Issue 收集可复现步骤、App 版本/构建号和系统版本；不要要求用户公开密钥、配对记录或私人文件。
-5. 功能在工作分支开发，通过验证后合并；公开 Release 只引用明确的提交和安装包。
-6. 后续加入构建检查和贡献流程，不为了仓库外观预先建立大量空文档。
-
-## 2026-10-05 首次上传的本地准备
-
-- 用户反馈 0.2.2 / build4 双机试用正常；范围见 VALIDATION.md。
-- 已加入 CONTRIBUTING.md、SECURITY.md 和问题反馈模板；远程仓库尚未创建，私密漏洞报告入口尚未启用。
-- 当前全部本地历史包含 85 个不同文件内容；有限模式扫描未匹配私钥或常见令牌，当前 Markdown 未匹配实际绝对用户路径。旧 WORKFLOW 历史有本机路径，测试中的 IPv4 是测试用途；仍需人工审查素材、来源和未被模式涵盖的信息。
-- 保留现有真实 Git 历史；公开前不把旧 Codex 提交伪造成双方提交。未来身份采用各自 GitHub 关联邮箱。
-- 已验证的 0.2.2 安装包对应提交 `8562e330ecee5e7443c1cd73986b88808a040c9d`，后续路线图和发布准备只改文档。若发布此包，版本标签应指向该源码提交；不要把包说成从最新文档提交重新编译。
-- 首次推荐上传 main；不使用全量镜像推送或自动推送所有历史标签。首次 Release 推荐标为预发布并如实标注 ad hoc 签名、未公证、arm64 和 macOS 15+。
-- 创建远程空仓库时，不另生成 README、.gitignore 或 LICENSE。图标来源若未确认，先以私有仓库进行双方审查，公开前解决素材授权。
-- 后续需在 GitHub 设置中开启私密漏洞报告或提供实际私下联系方式；室友账号确认后再邀请协作者。
-
-## First source upload preparation, 2026-10-05
-
-The owner approved the 0.2.3 icon and authorized upload to https://github.com/TimeLyr1c/PeerJetty. The remote has been verified empty. All progress is on main. Legacy icon artwork is excluded from public history and the original history is preserved in a verified local Git bundle; see HISTORY.md for source-ID mapping. Prior sections describe historical preparation states. Actual upload success must be verified against the remote branch.
-
-Still pending: roommate public username/invitation, GitHub private vulnerability reporting settings, and a prerelease installer. This upload contains source only.
-
-2026-10-05 GitHub CLI 浏览器授权完成，已核验账号 TimeLyr1c 并接入 Git 凭据。未来本项目提交使用该用户名及 GitHub noreply 隐私邮箱，保留旧提交作者信息。0.2.4/build6 加入用户要求的可选收件打开；自动检查通过，实机验收仍待进行。首次上传只推送 main，不发布测试安装包或备份。
-
-## 已发布：0.2.4 / build6
-
-2026-10-05 首个 GitHub 预发布版已创建：
-https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.2.4
-
-标签 v0.2.4 指向安装包的源码提交 ef49e674889298a1dd8d9a75f118e89abcb5b85f。附件为 arm64 App ZIP、SHA256SUMS.txt、build-info.json、signature.txt；MIT 包含在 App 中。保持原包不覆盖，不把发布记录后续提交当作该包的构建来源。此版本供朋友试用，ad hoc 签名、未公证，支持 macOS 15+。尚未发送任何消息给室友；由用户转发链接。
-
-2026-10-05 为同一 v0.2.4 Release 增加 DMG 与 SHA256SUMS-DMG.txt，保留已发布 ZIP 及原校验文件。首页 README 与 Release 正文提供直接下载链接，无需展开 Assets。DMG 不改变版本标签或 App 源码来源。
-
-## 当前公开发行约定（2026-10-05）
-
-0.2.4/build6 已转为正式版并设为 Latest，原标签与 DMG 内容保持不变。以上预发布、源码待上传及首页直接下载入口的描述属于历史记录，以本节为当前约定。
-
-公开上传的 Release 附件只保留 DMG；ZIP、JSON、签名记录和校验文件保留在本地 outputs/releases 归档中，用于追溯，不作为用户下载附件。GitHub 自动生成的 Source code ZIP/tar.gz 属于平台功能，不是项目上传的安装包。
-
-README 默认英文，README.zh-CN.md 为中文入口，两版同步维护；发布说明提供英文与简体中文，首页使用普通 Releases 链接，不添加大型下载标题。应用界面多语言另行实现，文档双语不代表应用已经支持英文。经验证可用的版本按正式版发布并设为 Latest；未经验收的试用构建标为 Pre-release。不要修改已经分发的二进制或移动已有版本标签。
-
-## 检查更新的发布要求（2026-10-06）
-
-0.3.2 起提供手动检查，发布新版本时遵循 [UPDATES.md](UPDATES.md)。正式 Release 使用三个数字版本标签、匹配 DMG，并设为 Latest；预发布不进入当前更新检查。产品版本必须增加，仅增加构建号不会被判为新版。上传源码/标签不等于创建 Release；不要为了验证提示制造虚假公开版本。
-
-## 已发布：0.3.2 / build11（2026-10-07）
-
-用户授权并反馈目前无问题后，将已测试候选集中发布为正式 Latest：https://github.com/TimeLyr1c/PeerJetty/releases/tag/v0.3.2 。标签指向二进制原源码 `a5316f42c45122107cac2ad3843a443f05578cb5`，公开附件仅 `PeerJetty-0.3.2-build11-arm64.dmg`；远端资产 SHA256 与本地归档一致。使用既有包，不重新编译；0.2.4 保留不变。发行说明中英文，继续如实标注临时签名、未公证、Apple Silicon/macOS 15+ 与功能边界。
+Historical provenance: [HISTORY.md](HISTORY.md), [CHANGELOG](../CHANGELOG.md), [validation](VALIDATION.md). Future CI, additional platforms, signing/notarization and artwork changes remain separately scoped work.

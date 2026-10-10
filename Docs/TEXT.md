@@ -1,8 +1,8 @@
 # Text transfer and local history / 文本传输与本机历史
 
-Implemented for the **0.4.0 local test candidate**. This does not publish a GitHub Release or install either device. Both Macs need this feature to send text; older versions can still exchange files.
+Included in **PeerJetty 1.0.0**. Both Macs need this feature to send text; older versions can still exchange files.
 
-已实现于 **0.4.0 本地测试候选**；本轮不发布 GitHub、不替换两台设备上的应用。文本互传要求双方都有此功能，旧版仍可传文件。
+已纳入 **PeerJetty 1.0.0**。文本互传要求双方都有此功能，旧版仍可传文件。
 
 ## Use / 使用
 
