@@ -1,5 +1,9 @@
 # 1.0.0 release gate — 2026-10-09
 
+## Published installer verification
+
+[PeerJetty 1.0.0](https://github.com/TimeLyr1c/PeerJetty/releases/tag/v1.0.0) is verified stable Latest, not draft or prerelease. Sole uploaded asset: `PeerJetty-1.0.0-build29-arm64.dmg` (2,843,340 bytes). Downloaded from GitHub and matched local SHA256 `9cd5aa64143e4ae10ab04640e48eb77bc987122f20d6a980a9c7131f91cf73b5`; server asset digest agrees. Tag v1.0.0 and embedded clean source commit both point to `cf3dfe82485c13ea6fe75397d6f104fc535e456d`. Mounted image contains App, Applications link and bilingual INSTALL.txt; strict signature, arm64/macOS15+, MIT, translations and private-material scan passed. No installation or device identity changes performed. Build28 remains unpublished, all older archives preserved. Later release-record-only commits do not rebuild or move v1.0.0.
+
 Packaging inspection caught compiler debug symbols containing a personal source path in the unpublished build28 candidate. Release packaging now strips those symbols before signing and runs a fail-closed App pattern check. Synthetic privacy regression covers paths, keys, tokens, runtime databases and preserved compatibility identifiers. Build28 remains local and is not uploaded; final release uses build29.
 
 All isolated suites passed: release archive safety (6), core/integration, connection EOF/exit/reconnect, authenticated unpair and failures, disk-full at every receive stage with reverse traffic/partial cleanup, text/SQLite/legacy clients, native motion, drop layout, English/Chinese settings and updates, menu/Dock persistence. Linker emitted missing Command Line Tools search-path warnings; builds and executable checks succeeded.
