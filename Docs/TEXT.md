@@ -6,9 +6,9 @@ Implemented for the **0.4.0 local test candidate**. This does not publish a GitH
 
 ## Use / 使用
 
-Choose **Send Text… / 发送文本…** in the menu bar. The keyboard-focused panel opens below the menu bar and notch, using the file card’s position calculation. The initial target is the file default destination, but selecting another text target does not change that default. Only paired devices appear. If an online device has no active connection, click Connect (or Send once to connect), then send after it is ready. Offline devices and older clients produce explicit guidance.
+Choose **Send Text… / 发送文本…** in the menu bar. The keyboard-focused panel opens below the menu bar and notch, using the file card’s position calculation. The initial target is the file default destination, but selecting another text target does not change that default. Only paired devices appear. If a paired device has no active connection, first use Settings → Devices → Connect / Pair. The text panel only sends over an active connection; its Connect button can finish checking text support on an already connected peer. Disconnected devices and older clients produce explicit guidance.
 
-从菜单栏选择“发送文本…”，在菜单栏／刘海下方打开可输入的面板。初始目标为文件默认发送目标，临时更换文本目标不会改动文件默认目标。只列出已配对设备；在线但尚未连接时，点击“连接”（或先点击一次“发送”建立连接），就绪后再发送。离线或旧版会明确提示。
+从菜单栏选择“发送文本…”，在菜单栏／刘海下方打开可输入的面板。初始目标为文件默认发送目标，临时更换文本目标不会改动文件默认目标。只列出已配对设备；已配对但未连接时，先在设置 → 设备 → 连接 / 配对建立连接；文本面板只在活动连接上发送，它的“连接”按钮可在已连接时继续确认文本支持情况。未连接或旧版会明确提示。
 
 Type or manually paste multiline plain text. Enter inserts a newline; ⌘Enter sends; Esc closes (an active input-method composition gets its normal cancellation first). Text is limited to 256 KiB in UTF-8; emoji can use several bytes each. Empty strings cannot be sent, but spaces/newlines are not trimmed. The app does not read your clipboard proactively. Closing keeps the draft for this run; quitting discards an unsent draft. The submitted editor is temporarily locked while awaiting receipt. A confirmed receipt clears that draft; failure or the 30-second deadline preserves it. “Unconfirmed” does not prove that the other device failed to receive it. Nothing is automatically resent.
 

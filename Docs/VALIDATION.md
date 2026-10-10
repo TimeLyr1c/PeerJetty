@@ -1,5 +1,16 @@
 # 验证记录 / Validation
 
+## 2026-10-09: public README and bilingual user guides
+
+- README.md and README.zh-CN.md now provide matching product positioning, features, a release/source comparison, installation, limits/privacy, build instructions and contribution links. Per-build development narration was removed from the homepage; historical records remain in this document and the workflow/roadmap.
+- Added Docs/TUTORIAL.md and Docs/TUTORIAL.zh-CN.md: install/pairing, drag/picker sending, concurrent directions, cancellation, receiver failures, text/drafts/receipts, always-recorded local history, five settings pages, independent icons, manual addresses, unpair/replacement, updates, troubleshooting and data locations. Both explicitly describe 0.4.0 development, not the public 0.3.2 installer; disk-space refinement is source-only relative to build27.
+- Read-only GitHub check confirmed Latest v0.3.2, stable (published 2026-10-07), with PeerJetty-0.3.2-build11-arm64.dmg as its asset. Current Info.plist remains 0.4.0/build27. Current sources require an SDK that provides NSGlassEffectView (macOS 26+); deployment remains macOS 15. Source behavior confirms disconnected text targets must first connect in Devices; corrected that explicit error in TEXT.md without a broader technical rewrite.
+- PASS: five user-facing documents checked for 62 local links/assets/heading anchors, balanced code fences, aligned feature/version facts and absence of personal absolute paths. Final diff whitespace checked. No source, UI strings, dependencies, app metadata or binaries changed, so runtime tests/package rebuilds were not repeated for this documentation-only task.
+- First-launch instructions reference Apple's current support guidance, distinguish unverified/not-notarized prompts from malware/damage alerts, and do not suggest disabling system protections. No screenshot, icon, naming or app behavior changes; no install/push/release. Final full source/Git-history/installer privacy review remains deferred as agreed.
+
+中英文首页已收敛为新用户入口，详细步骤放入独立双语教程。当前正式版与开发源码清楚区分，文档链接和版本事实核查通过；技术文档只修正文本连接说明。本轮仅文档和本地提交，不重新构建或发布安装包。
+
+
 ## 2026-10-09: disk-space failures and bilingual interface audit
 
 - PASS: new `Scripts/test-disk-space.sh` under English and Simplified Chinese. POSIX ENOSPC, Cocoa out-of-space and nested errors map to owned diagnostics; permission/missing-path/I/O errors stay distinct. Capacity boundary retains the 16 MiB reserve. Injected directory/file creation, write, sync and commit errors clean staging. Injection is per transaction; the engine test setter exists only in DEBUG. No real volume was filled.
