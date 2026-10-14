@@ -91,3 +91,7 @@ Path labels use an explicit 18 pt single-line height inside the 44 pt centered S
 
 
 Startup connection reuses the existing General presence/startup group and native NSSwitch (`autoConnectLastPeer`). `SettingsController.onAutoConnect` is restored from saved configuration on write failure. It adds no new panel, animation, polling or connection status source; use existing authorized peer snapshots. / 启动连接复用通用页原生开关与配置恢复，不增加弹窗、动画或轮询。
+
+## 1.1.0 additions
+
+DropTargets freezes identity/geometry per drag; device tiles share the existing single glass. MenuBarController owns default-device submenu. InAppUpdater uses Sparkle native UI with transfer-aware install reply. Legacy UpdateWindow remains for isolated regression only. Sparkle 2.10.0 is the first third-party runtime dependency.

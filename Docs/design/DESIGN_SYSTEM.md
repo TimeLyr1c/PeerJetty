@@ -60,3 +60,5 @@ Decision: **no UI dependency and no MCP installation**. Codex can consult the of
 Settings-specific spacing: 32 pt horizontal/28 pt vertical insets, 28 pt between groups, 16 pt between rows, 6 pt before associated help. Do not spread these values to the geometry-owned drop card. / 设置留白不改变投放卡片几何。
 
 Accepted settings surfaces: five toolbar categories, 20 pt page heading/13 pt help, quiet 10 pt rounded native-color sections with 18 pt internal padding and 20 pt section spacing. No glass, shadow or new motion. / 五类设置统一轻量分组，不扩散玻璃或动画。
+
+1.1.0 candidate adds pinned native Sparkle 2.10.0; no Web UI framework. The destination submenu is an approved exception to the original six-action menu.

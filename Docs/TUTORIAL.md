@@ -149,3 +149,7 @@ For a report, provide version/build from **About → Diagnostic details**, macOS
 | Source and local builds | Your checkout; local builds under `outputs/`, separate from app data |
 
 Keep private app state out of Git, Dropbox and bug-report attachments. PeerJetty transfers selected content; it does not mirror folders, keep histories synchronized, preserve all macOS file metadata or act as a backup. For implementation boundaries see [protocol](PROTOCOL.md); for source management see [workflow](WORKFLOW.md).
+
+## 1.1.0 source candidate
+
+Choose the default from the menu or Devices settings. Drop onto a named paired-device tile for this transfer only; async files retain the target. Offline targets use bounded reconnect. First install an updater-enabled release manually; public 1.0.0 has no updater. Stable feed is not published yet. During install waiting, accepted work drains, new work is rejected, and waiting can be cancelled. See [updates](updates/IN_APP_UPDATES.md) and [multi-device drop](MULTI_DEVICE_DROP.md).

@@ -30,6 +30,8 @@ AirDrop is a good option for occasional nearby sharing; LocalSend and similar to
 
 Includes plain-text transfer and local history, five-page settings, independent Dock/menu icons, startup reconnection, and explicit connection and disk-space feedback. See the [user guide](Docs/TUTORIAL.md).
 
+Current source is a **1.1.0 local candidate** with [in-app updates](Docs/updates/IN_APP_UPDATES.md) and [multi-device drop](Docs/MULTI_DEVICE_DROP.md). Public 1.0.0 does not include these features.
+
 ## Install and start
 
 Requires **Apple Silicon (M-series), macOS 15 or later** for the distributed installer. Intel builds are not currently verified or distributed.

@@ -30,6 +30,8 @@ AirDrop 适合偶尔的附近分享，LocalSend 等工具覆盖更广的跨平�
 
 包含纯文本传输与本机历史、五页设置、独立 Dock／菜单栏开关、启动重连，以及明确的连接失败和磁盘不足反馈。详见[使用教程](Docs/TUTORIAL.zh-CN.md)。
 
+当前源码为 **1.1.0 本地候选**，包含[应用内更新](Docs/updates/IN_APP_UPDATES.md)与[多设备投放](Docs/MULTI_DEVICE_DROP.md)，公开 1.0.0 不包含这组新功能。
+
 ## 安装与开始使用
 
 公开安装包要求 **Apple Silicon（M 系列）Mac，macOS 15 或更高版本**。暂未验证或提供 Intel 安装包。

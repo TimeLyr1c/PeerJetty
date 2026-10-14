@@ -92,3 +92,9 @@ A disk-full error ends only the matching incoming transfer. The receiver sends t
 Both ends receive one terminal failed update, removing the task's cancel control and suppressing success/auto-open. Roots already exclusively committed remain intact; the diagnostic reports their count. Uncommitted staging is removed. A partially saved transfer sends no success receipt or successful-receive callback. Free space must be restored before retrying. PeerJetty uses the existing card/settings surfaces; concurrent active tasks retain their card priority, while the failure reason is also delivered to the settings status/details area.
 
 接收前继续保留 16 MiB 余量；检查不代表预留空间。创建、写入、同步或提交时磁盘满，只终止对应 UUID 的接收任务，通过现有 reject 通知发送端，并排空旧任务的在途帧，不中断同连接的反向任务。两端得到失败结果，不显示成功、不开启部分文件。已经完整提交的顶层项目保留并显示数量，其余临时内容清理；配对、TLS 和协议版本不变。并行时卡片继续优先显示活动任务，设置状态及详情仍接收完整失败原因。
+
+## Update admission waiting (1.1.0 candidate)
+
+Existing file/text work drains during update waiting. New offers/text get existing reject UUID and localized updates.waiting diagnostic. New senders handle matching text rejection without closing; older text implementations may treat it as protocol error and disconnect, retaining trust for reconnect. No new message or identity change.
+
+更新等待期间完成已接受任务，现有 reject 拒绝新任务。新发送端识别对应文本拒绝；旧文本实现可能断开，但不删除配对。已接受的异步文件在解析后重新等待核心空闲。

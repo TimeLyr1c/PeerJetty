@@ -1,3 +1,13 @@
+# 1.1.0 candidate checks — 2026-10-14
+
+Official Sparkle 2.10.0 pinned; Ed25519 release key created once in Keychain account PeerJetty.Release; public key only in Info.plist. Empty signed stable feed verified locally, not published. No private key exported; independent encrypted backup/restore remains required before public update-channel use.
+
+A disposable old/new native App pair under ~/Applications/PeerJetty-Isolated-Updater completed real Sparkle download, signed-feed/archive validation, replacement, strict signature check and relaunch. Tested again with the production embedding/nested ad hoc signing helper. A mutated archive was rejected and the old build remained. Loopback HTTP and ATS exceptions exist only in fixture bundles; production uses HTTPS and strict signed-feed/pre-extraction checks. A separate sentinel fake data file stayed intact. These fixtures do not establish real PeerJetty identity/SQLite migration, real two-Mac acceptance or every OS authorization path.
+
+Native drop regression covers 1–6 device IDs, duplicate names, default ordering, frozen slots, async delivery target retention, revoked target cleanup, padding rejection and overflow. Menu has six actions plus default-target submenu; ID callbacks/default checkmark tested, including offline peers. Bilingual settings, legacy updates, card geometry and existing motion checks pass. Network/text tests cover accepted inbound text delaying install, new file/text rejection, local rejection, cancellation/retry and previously-admitted asynchronous file preparation re-arming the drain barrier. Connection exit/reconnect, disk-full and bilateral unpair regressions pass. Initial text admission test expected preparation failure for a started rejected file; corrected to observe its terminal transfer event instead, without weakening production behavior.
+
+App packaging embeds Sparkle and its license, preserves framework symlinks, signs nested helpers and verifies them; release privacy-pattern scan remains enforced. Public 1.0.0/its tag/binary unchanged. No production install, source push or release publication performed. Air/mini visuals, real target routing/upgrade and Keychain authorization are pending owner testing.
+
 # 1.0.0 release gate — 2026-10-09
 
 ## Published installer verification

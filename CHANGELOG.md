@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.0 — local candidate
+
+Native Sparkle download/install/relaunch with signed updates and transfer admission waiting. Identity-bound multi-device drop zones (up to six visible), default-device menu and immediate settings synchronization. Public 1.0.0 remains unchanged; signed stable feed is not published yet.
+
+本地候选：应用内下载、安装重启与签名校验，等待传输结束；基于设备 ID 的六块投放区、默认目标子菜单及即时同步。公开 1.0.0 不变，稳定清单尚未发布。
+
 ## 1.0.0 — 2026-10-09
 
 The first 1.0 release combines paired, bidirectional LAN file/folder transfers with plain-text sending and local history. Includes native grouped settings, independent app icons, startup reconnection, authenticated bilateral unpairing, clear offline and disk-full feedback, and refined finite card animations. English and Simplified Chinese guides are aligned. Apple Silicon/macOS 15+; ad hoc signed, not notarized. Earlier candidate entries below are historical development records.
