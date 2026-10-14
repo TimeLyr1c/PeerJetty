@@ -2,9 +2,9 @@
 
 ## Scope and authority / 范围与依据
 
-PeerJetty is a native macOS LAN transfer app for paired devices, with bidirectional files and explicit text delivery. Swift/AppKit, Auto Layout, SF Symbols and Core Animation are the current UI stack; SwiftPM has no external package dependencies. Minimum macOS 15; glass is availability-gated at macOS 26. This is a development contract, not a redesign or a new runtime framework.
+PeerJetty is a native macOS LAN transfer app for paired devices, with bidirectional files and explicit text delivery. Swift/AppKit, Auto Layout, SF Symbols and Core Animation are the current UI stack; SwiftPM pins native Sparkle 2.10.0 for updates. Minimum macOS 15; glass is availability-gated at macOS 26. This is a development contract, not a redesign or a new runtime framework.
 
-PeerJetty 是已配对设备之间的局域网双向投递应用。当前为 Swift/AppKit 原生 UI，不是 React、SwiftUI、Tauri 或 Electron；没有第三方 SwiftPM 依赖。最低 macOS 15，玻璃接口仅在 macOS 26+ 使用。本规范不重做稳定界面。
+PeerJetty 是已配对设备之间的局域网双向投递应用。当前为 Swift/AppKit 原生 UI，不是 React、SwiftUI、Tauri 或 Electron；更新依赖固定版本的原生 Sparkle 2.10.0。最低 macOS 15，玻璃接口仅在 macOS 26+ 使用。本规范不重做稳定界面。
 
 Root [AGENTS.md](../../AGENTS.md) contains stable agent rules. This directory explains application and reuse. [APPEARANCE.md](../APPEARANCE.md) owns current measured appearance/timing parameters; feature documents own behavior, [VALIDATION.md](../VALIDATION.md) owns evidence. Do not duplicate mutable timing tables here or replace old feature specifications with a visual preference.
 

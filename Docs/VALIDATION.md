@@ -1,5 +1,7 @@
 # 1.1.0 candidate checks — 2026-10-14
 
+Delivered local archive: **1.1.0/build30**, `outputs/releases/1.1.0-build30/PeerJetty-1.1.0-build30-arm64.dmg`. Clean embedded source commit `c1b4d5b`; SHA256 `5ef48e4f9b01176e657ab996534ded06232007fffa9e1a14f9c7c202c3a1b539`. Readonly mounted DMG, Ed25519 verification, deep strict nested code signatures, preserved Sparkle symlinks/license, privacy scan and unchanged 1.0.0 checksum passed. Later documentation-only commits do not rebuild this archive.
+
 Official Sparkle 2.10.0 pinned; Ed25519 release key created once in Keychain account PeerJetty.Release; public key only in Info.plist. Empty signed stable feed verified locally, not published. No private key exported; independent encrypted backup/restore remains required before public update-channel use.
 
 A disposable old/new native App pair under ~/Applications/PeerJetty-Isolated-Updater completed real Sparkle download, signed-feed/archive validation, replacement, strict signature check and relaunch. Tested again with the production embedding/nested ad hoc signing helper. A mutated archive was rejected and the old build remained. Loopback HTTP and ATS exceptions exist only in fixture bundles; production uses HTTPS and strict signed-feed/pre-extraction checks. A separate sentinel fake data file stayed intact. These fixtures do not establish real PeerJetty identity/SQLite migration, real two-Mac acceptance or every OS authorization path.

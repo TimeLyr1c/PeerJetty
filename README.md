@@ -56,7 +56,7 @@ Distributed builds currently use ad hoc signing and are **not Apple-notarized**.
 
 ## Build from source
 
-Use a current Xcode or Command Line Tools toolchain with a **macOS 26 or newer SDK** for the native glass APIs; the deployment target remains macOS 15. Python 3 and system OpenSSL are also required. There are no third-party Swift package dependencies or web runtime.
+Use a current Xcode or Command Line Tools toolchain with a **macOS 26 or newer SDK** for the native glass APIs; the deployment target remains macOS 15. Python 3 and system OpenSSL are also required. The 1.1.0 source pins native Sparkle 2.10.0 through SwiftPM for updates; there is no web runtime. Initial dependency resolution needs internet access.
 
 ```sh
 git clone https://github.com/TimeLyr1c/PeerJetty.git

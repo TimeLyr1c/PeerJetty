@@ -56,7 +56,7 @@ AirDrop 适合偶尔的附近分享，LocalSend 等工具覆盖更广的跨平�
 
 ## 从源码构建
 
-使用带有 **macOS 26 或更新 SDK** 的当前 Xcode 或 Command Line Tools，以编译原生玻璃接口；应用最低运行版本仍为 macOS 15。另需 Python 3 和系统 OpenSSL。没有第三方 Swift 包依赖或 Web 运行时。
+使用带有 **macOS 26 或更新 SDK** 的当前 Xcode 或 Command Line Tools，以编译原生玻璃接口；应用最低运行版本仍为 macOS 15。另需 Python 3 和系统 OpenSSL。1.1.0 源码通过 SwiftPM 固定依赖原生 Sparkle 2.10.0 更新框架，无 Web 运行时；首次解析依赖需要联网。
 
 ```sh
 git clone https://github.com/TimeLyr1c/PeerJetty.git
