@@ -111,6 +111,27 @@ final class DropPresentationTests {
 
 @main
 struct RunDropPresentationTests {
+    static func checkTargets() {
+        let peers=(0..<7).map{DiscoveredPeer(id:"peer-\($0)",name:"Same name",paired:true,connected:$0 % 2 == 0)}
+        for count in 1...6 {
+            let selection=DropTargets(Array(peers.prefix(count)),preferred:peers[count-1].id)
+            precondition(selection.peers.first?.id == peers[count-1].id)
+            let view=DropZoneView(frame:NSRect(x:0,y:0,width:320,height:76))
+            view.updateTargets(Array(peers.prefix(count)),preferred:peers[count-1].id);view.beginTargets()
+            if let size=view.targetSize {view.setFrameSize(size)};view.layoutSubtreeIfNeeded()
+            let point=count == 1 ? NSPoint(x:100,y:38) : selection.rect(0,width:view.bounds.width).center
+            let locked=view.target(at:point)!;precondition(locked == peers[count-1].id)
+            var sent:String?;view.onTargetFiles={_,id,_ in sent=id}
+            view.updateTargets(Array(peers.prefix(count)).reversed(),preferred:peers[0].id)
+            precondition(view.target(at:point)==locked,"frozen target slots")
+            view.deliver([URL(fileURLWithPath:"/fixture")],target:locked,cleanup:nil);precondition(sent==locked,"async files retain drop ID")
+            if count > 1 {precondition(view.target(at:NSPoint(x:5,y:5)) == nil,"padding never routes")}
+            var cleaned=false;view.updateTargets([],preferred:nil);view.deliver([],target:locked,cleanup:{cleaned=true});precondition(cleaned,"revoked target cannot receive")
+            view.endTargets()
+        }
+        let six=DropTargets(peers,preferred:"peer-6");precondition(six.overflow && six.peers.count == 6 && six.peers.first?.id == "peer-6")
+        print("PASS: 1–6 identity targets, duplicate names, frozen layout, async routing, revoked cleanup and overflow")
+    }
     static func main() throws {
         let tests = DropPresentationTests()
         tests.testFileRequestFeedbackRejectsOldFailures()
@@ -130,6 +151,7 @@ struct RunDropPresentationTests {
         board.writeObjects([NSURL(fileURLWithPath: "/isolated-test/example.txt")])
         XCTAssertTrue(DragPayload.accepts(board))
         board.releaseGlobally()
+        checkTargets()
         print("PASS: isolated pasteboard rejects text and accepts file URLs")
         for (index, screen) in NSScreen.screens.enumerated() {
             let g = DropPresentation(DropScreenMetrics(screen))
@@ -237,3 +259,5 @@ struct RunDropPresentationTests {
         print("PASS: bilingual card centering, text fit, long-name tooltips and controls across 24 layouts")
     }
 }
+
+private extension NSRect {var center:NSPoint {NSPoint(x:midX,y:midY)}}

@@ -12,6 +12,9 @@ final class MenuBarController {
     private var lastVisibility = true
     private var settingVisibility = false
     private var commands: [MenuCommand] = []
+    var onSelectTarget: ((String) -> Void)?
+    private let destinations = NSMenuItem(title:L10n.text("targets.menu"),action:nil,keyEquivalent:"")
+    private var targetCommands: [MenuCommand] = []
     var isVisible: Bool { item.isVisible }
     static func activationPolicy(dockVisible: Bool) -> NSApplication.ActivationPolicy { dockVisible ? .regular : .accessory }
     init(autosaveName: String = "PeerJetty.MainStatusItem", actions: [Action: () -> Void]) {
@@ -27,6 +30,8 @@ final class MenuBarController {
             let entry = NSMenuItem(title:L10n.text(key),action:#selector(MenuCommand.invoke),keyEquivalent:action == .settings ? "," : action == .quit ? "q" : "")
             entry.target = command; menu.addItem(entry)
         }
+        destinations.submenu=NSMenu();menu.insertItem(destinations,at:2)
+        updateTargets([],preferred:nil)
         item.menu = menu
         lastVisibility = item.isVisible
         observation = item.observe(\.isVisible, options:[.new]) { [weak self] item,_ in
@@ -34,6 +39,17 @@ final class MenuBarController {
             self.lastVisibility = item.isVisible
             if !self.settingVisibility { self.onVisibility?(item.isVisible) }
         }
+    }
+    func updateTargets(_ peers:[DiscoveredPeer],preferred:String?) {
+        targetCommands=[];let submenu=NSMenu()
+        let paired=peers.filter(\.paired).sorted{$0.name == $1.name ? $0.id < $1.id : $0.name.localizedStandardCompare($1.name) == .orderedAscending}
+        for peer in paired {
+            let command=MenuCommand { [weak self] in self?.onSelectTarget?(peer.id) };targetCommands.append(command)
+            let entry=NSMenuItem(title:peer.name+" · "+L10n.text(peer.connected ? "targets.connected" : "targets.offline")+" · "+String(peer.id.prefix(6)),action:#selector(MenuCommand.invoke),keyEquivalent:"")
+            entry.target=command;entry.state=peer.id == preferred ? .on : .off;submenu.addItem(entry)
+        }
+        if paired.isEmpty {let entry=NSMenuItem(title:L10n.text("targets.empty"),action:nil,keyEquivalent:"");entry.isEnabled=false;submenu.addItem(entry)}
+        destinations.submenu=submenu
     }
     func setVisible(_ value: Bool) {
         settingVisibility = true; defer { settingVisibility = false }

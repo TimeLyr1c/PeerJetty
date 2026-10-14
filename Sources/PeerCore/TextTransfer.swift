@@ -38,6 +38,7 @@ struct TextInbox {
     private var digests: [UUID: String] = [:]
     private var order: [UUID] = []
     private var completed: Set<UUID> = []
+    var pendingCount: Int { digests.count - completed.count }
     enum Arrival { case new, pending, duplicate }
     mutating func receive(_ id: UUID, text: String) throws -> Arrival {
         try TextRules.validate(text)

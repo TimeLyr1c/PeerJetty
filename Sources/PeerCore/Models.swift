@@ -201,6 +201,7 @@ public enum FileRules {
 }
 
 public struct DiscoveredPeer: Equatable {
+    public init(id:String,name:String,paired:Bool,connected:Bool,supportsText:Bool?=nil) {self.id=id;self.name=name;self.paired=paired;self.connected=connected;self.supportsText=supportsText}
     public let id: String
     public let name: String
     public let paired: Bool

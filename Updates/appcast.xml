@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0"><channel><title>PeerJetty stable updates</title><link>https://github.com/TimeLyr1c/PeerJetty/releases</link><description>Only verified public releases. No development builds.</description></channel></rss><!-- sparkle-signatures:
+edSignature: ydCI/DIxm3MahNh6QCSNrzdJRhVyEalTkqhASOJpGvJ/Z8WDcI8he1AvX643A7E9PB+7Za34jO94IQkfseNPAw==
+length: 582
+-->

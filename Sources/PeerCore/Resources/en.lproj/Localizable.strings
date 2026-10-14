@@ -378,3 +378,21 @@
 "settings.auto_connect_hint" = "Automatically connect to your last successfully connected paired device. No files are sent.";
 
 "filestore.disk_full_partial" = "Not enough disk space on receiver. Fully saved items: %1$@. Remaining items were not saved.";
+
+"targets.menu" = "Default sending device";
+"targets.more" = "More devices: choose the default in the menu, then drag again";
+"targets.revoked" = "Device is no longer paired";
+"targets.connected" = "Connected";
+"targets.offline" = "Not connected";
+"targets.empty" = "No paired devices";
+
+"updates.waiting" = "Waiting for transfers to finish before updating";
+"updates.cancel_wait" = "Cancel update installation";
+"updates.install_location" = "Install PeerJetty in Applications before using in-app updates.";
+"updates.draft" = "Discard unsent text and install the update?";
+"updates.discard" = "Discard and continue";
+"updates.failed_help" = "Update failed. You can download the installer manually.";
+
+"targets.default" = "Default destination";
+
+"updates.quit_guard" = "Finish or cancel the update before quitting.";

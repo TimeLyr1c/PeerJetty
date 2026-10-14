@@ -396,8 +396,13 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         button.setContentCompressionResistancePriority(.required, for: .horizontal); return button
     }
     private func separator() -> NSView { let box = NSBox(); box.boxType = .separator; return box }
+    private var currentDefault:String?
+    private var explicitPreferred:String?
+    func selectDefault(_ id:String?) {explicitPreferred=id}
     func updatePeers(_ peers: [DiscoveredPeer], preferred: String?) {
-        let selected = devices.indexOfSelectedItem >= 0 && self.peers.indices.contains(devices.indexOfSelectedItem) ? self.peers[devices.indexOfSelectedItem].id : preferred
+        let selected = explicitPreferred ?? (devices.indexOfSelectedItem >= 0 && self.peers.indices.contains(devices.indexOfSelectedItem) ? self.peers[devices.indexOfSelectedItem].id : preferred)
+        explicitPreferred=nil
+        currentDefault=preferred
         self.peers = peers; devices.removeAllItems()
         for peer in peers {
             let state = peer.paired ? (peer.connected ? L10n.text("settings.paired_online") : L10n.text("settings.paired_offline")) : L10n.text("settings.available_to_pair")
@@ -417,7 +422,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         devices.toolTip = peer.name
         peerName.toolTip = peer.name
         peerName.stringValue = peer.name
-        peerState.stringValue = L10n.text("settings.device_state", L10n.text(peer.paired ? "settings.state_paired" : "settings.state_unpaired"), L10n.text(peer.connected ? "settings.state_connected" : "settings.state_disconnected"))
+        peerState.stringValue = (peer.id == currentDefault && peer.paired ? L10n.text("targets.default")+" · " : "") + L10n.text("settings.device_state", L10n.text(peer.paired ? "settings.state_paired" : "settings.state_unpaired"), L10n.text(peer.connected ? "settings.state_connected" : "settings.state_disconnected"))
     }
     private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
     func status(_ text: String) {

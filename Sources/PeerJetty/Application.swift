@@ -19,7 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var history: TextHistory?
     private var volatileTexts: [UUID:TextEntry] = [:]
     private var volatileOrder: [UUID] = []
-    private var updateWindow: UpdateWindow?
+    private var inAppUpdater: InAppUpdater?
+    private var installReply: ((Bool) -> Void)?
+    private var installPanel: NSPanel?
+    private var installRevision=0
+    private var updateEngineIdle=false
     private var menuBar: MenuBarController?
     private var icons: IconVisibilityController?
     private var userOpened = false
@@ -92,12 +96,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             do { _ = try self?.ensureHistory() } catch { DispatchQueue.main.async { self?.settings?.status(L10n.text("text.history_failed")) } }
         }
         let drop = DropPanelController(); self.drop = drop
-        drop.view.onFiles = { [weak self] urls, cleanup in
+        drop.view.onTargetFiles = { [weak self] urls, peer, cleanup in
+            let admitted=self?.promiseBusy == true
             self?.promiseBusy = false; self?.drop?.resetFeedback()
-            guard let self, let peer = self.store?.snapshot.preferredPeer else {
+            guard let self, self.store?.snapshot.peers.contains(where:{$0.id == peer}) == true else {
                 cleanup?(); self?.showStatus(L10n.text("application.pair_and_select_a_destination_in_settings_first")); self?.showSettings(); return
             }
-            self.sendFiles(urls,peerID:peer,cleanup:cleanup)
+            self.sendFiles(urls,peerID:peer,cleanup:cleanup,acceptedBeforeUpdate:admitted)
         }
         drop.view.onReceivingPromise = { [weak self] in self?.promiseBusy = true; self?.drop?.resetFeedback(); self?.refreshBusy(); self?.drop?.show() }
         drop.view.onFailure = { [weak self] text in self?.promiseBusy = false; self?.refreshBusy(); self?.showStatus(text) }
@@ -106,6 +111,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             guard let self else { return }; self.peers = peers; self.composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); self.settings?.updatePeers(peers, preferred: self.store?.snapshot.preferredPeer)
             let name = peers.first { $0.id == self.store?.snapshot.preferredPeer }?.name ?? L10n.text("dropzone.choose_a_destination")
             self.drop?.view.targetName = name
+            self.drop?.view.updateTargets(peers,preferred:store.snapshot.preferredPeer)
+            self.menuBar?.updateTargets(peers,preferred:store.snapshot.preferredPeer)
             if let notice = self.trustFeedback, peers.contains(where:{$0.id == notice.id && $0.paired && $0.connected}) {
                 self.trustFeedback = nil; self.settings?.trustChanged(nil)
             }
@@ -201,6 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             .updates:{ [weak self] in self?.checkUpdates() }, .settings:{ [weak self] in self?.showSettings() },
             .quit:{ NSApp.terminate(nil) }])
         menuBar = bar
+        bar.onSelectTarget = { [weak self] id in self?.selectDefaultTarget(id) }
         bar.onVisibility = { [weak self] value in
             do { try self?.icons?.systemChanged(value) }
             catch { self?.showError(error.localizedDescription) }
@@ -214,16 +222,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         settings?.iconState(menu:icons.menu, dock:icons.dock, temporary:icons.temporary)
         if wasVisible { settings?.window?.makeKeyAndOrderFront(nil) }
     }
-    private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy || !fileFeedback.pendingIDs.isEmpty }
+    private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy || !fileFeedback.pendingIDs.isEmpty;finishUpdateIfReady() }
     private func updateConnectionInfo() {
         settings?.connectionAddresses(LocalNetworkAddress.discover(),port:listeningPort)
     }
     @objc private func addDevice() { showSettings(); settings?.selectSection(.devices); engine?.openPairing() }
     @objc private func checkUpdates() {
-        if updateWindow == nil {
-            updateWindow = UpdateWindow(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+        if inAppUpdater == nil {
+            let value=InAppUpdater();value.onAborted = { [weak self] in self?.cancelUpdate() };value.prepareInstall = { [weak self] reply in self?.prepareUpdate(reply) };inAppUpdater=value
         }
-        updateWindow?.present()
+        inAppUpdater?.check()
+    }
+    private func prepareUpdate(_ reply:@escaping(Bool)->Void) {
+        guard installReply == nil else {reply(false);return}
+        if composer?.hasUnsentDraft == true {
+            let alert=NSAlert();alert.messageText=L10n.text("updates.draft");alert.addButton(withTitle:L10n.text("updates.discard"));alert.addButton(withTitle:L10n.text("dropzone.cancel"))
+            guard alert.runModal() == .alertFirstButtonReturn else {reply(false);return}
+        }
+        installRevision += 1;installReply=reply;updateEngineIdle=false;drop?.view.acceptsNewTransfers=false
+        let panel=NSPanel(contentRect:NSRect(x:0,y:0,width:440,height:150),styleMask:[.titled],backing:.buffered,defer:false)
+        panel.title=L10n.text("updates.title");panel.isReleasedWhenClosed=false
+        let label=NSTextField(wrappingLabelWithString:L10n.text("updates.waiting"));label.frame=NSRect(x:24,y:75,width:392,height:45)
+        let cancel=NSButton(title:L10n.text("updates.cancel_wait"),target:self,action:#selector(cancelUpdate));cancel.bezelStyle = .rounded;cancel.frame=NSRect(x:24,y:24,width:392,height:32)
+        panel.contentView?.addSubview(label);panel.contentView?.addSubview(cancel);panel.center();panel.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);installPanel=panel
+        armUpdateGate()
+    }
+    private func armUpdateGate() {
+        let token=installRevision;updateEngineIdle=false
+        engine?.waitForUpdate { [weak self] in
+            guard let self,self.installRevision == token,self.installReply != nil else {return}
+            self.updateEngineIdle=true;self.finishUpdateIfReady()
+        }
+    }
+    private func finishUpdateIfReady() {
+        guard updateEngineIdle,installReply != nil,!promiseBusy,preparing == 0,fileFeedback.pendingIDs.isEmpty,active.isEmpty else {return}
+        installPanel?.close();installPanel=nil;let reply=installReply;installReply=nil;reply?(true)
+    }
+    @objc private func cancelUpdate() {
+        installRevision += 1;drop?.view.acceptsNewTransfers=true;engine?.cancelUpdateWait();updateEngineIdle=false;installPanel?.close();installPanel=nil
+        let reply=installReply;installReply=nil;reply?(false)
     }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func revealReceived() { if !lastReceived.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(lastReceived) } }
@@ -240,7 +277,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
             controller.onSelect = { [weak self] id in
                 guard let self else { return }
-                do { try store.update { $0.preferredPeer = id }; self.engine?.refresh() } catch { self.showError(error.localizedDescription) }
+                self.selectDefaultTarget(id)
             }
             controller.onPair = { [weak self] in self?.engine?.openPairing() }
             controller.onConnect = { [weak self] id in self?.engine?.connect(peerID: id) }
@@ -323,15 +360,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             settings?.folder(url.path); settings?.status(L10n.text("application.receive_folder_updated"))
         } catch { showError(error.localizedDescription) }
     }
-    private func sendFiles(_ urls:[URL],peerID:String,cleanup:(()->Void)?=nil) {
+    private func selectDefaultTarget(_ id:String) {
+        guard let store,store.snapshot.peers.contains(where:{$0.id == id}) else {return}
+        do {try store.update {$0.preferredPeer=id}} catch {showError(error.localizedDescription)}
+        let preferred=store.snapshot.preferredPeer
+        settings?.selectDefault(preferred)
+        settings?.updatePeers(peers,preferred:preferred);menuBar?.updateTargets(peers,preferred:preferred)
+        drop?.view.targetName=peers.first{$0.id == preferred}?.name ?? L10n.text("dropzone.choose_a_destination")
+        drop?.view.updateTargets(peers,preferred:preferred)
+        if active.isEmpty && fileFeedback.allowsIdle {drop?.view.idle()}
+        composer?.updatePeers(peers,preferred:preferred);engine?.refresh()
+    }
+    private func sendFiles(_ urls:[URL],peerID:String,cleanup:(()->Void)?=nil,acceptedBeforeUpdate:Bool=false) {
+        guard installReply == nil || acceptedBeforeUpdate else {cleanup?();settings?.status(L10n.text("updates.waiting"));return}
         guard let engine else {cleanup?();return}
-        let id=engine.send(urls:urls,peerID:peerID,cleanup:cleanup)
-        fileFeedback.begin(id);refreshBusy()
+        let id=engine.send(urls:urls,peerID:peerID,cleanup:cleanup,acceptedBeforeUpdate:acceptedBeforeUpdate)
+        fileFeedback.begin(id);if installReply != nil {armUpdateGate()};refreshBusy()
     }
     private func chooseFiles() {
         guard initialized else { showSettings(); return }
         guard let peer = store?.snapshot.preferredPeer else { showSettings(); settings?.selectSection(.devices); settings?.status(L10n.text("application.select_a_paired_device_as_your_default_destination")); return }
-        let panel = NSOpenPanel(); panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true; panel.prompt = L10n.text("application.send")
+        let panel = NSOpenPanel(); panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true; panel.prompt = L10n.text("application.send"); panel.message = peers.first{$0.id == peer}?.name ?? ""
         if panel.runModal() == .OK { sendFiles(panel.urls,peerID:peer) }
     }
     private func manualConnection() {
@@ -533,6 +582,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         userOpened = true; icons?.recover(); showSettings(); return true
+    }
+    func applicationShouldTerminate(_ sender:NSApplication) -> NSApplication.TerminateReply {
+        if installReply != nil || inAppUpdater?.preventsOrdinaryQuit == true {
+            inAppUpdater?.focus()
+            let alert=NSAlert();alert.messageText=L10n.text("updates.quit_guard");alert.addButton(withTitle:L10n.text("text.close_action"));alert.runModal()
+            return .terminateCancel
+        }
+        return .terminateNow
     }
     func applicationWillTerminate(_ notification: Notification) { networkMonitor.cancel(); icons?.hideTemporary(); engine?.stop() }
     func applicationDidResignActive(_ notification:Notification) {

@@ -28,6 +28,7 @@ done
   "ic13=$STAGING_ROOT/icons/ic13.png" "ic08=$STAGING_ROOT/icons/ic08.png" "ic14=$STAGING_ROOT/icons/ic14.png" \
   "ic09=$STAGING_ROOT/icons/ic09.png" "ic10=$STAGING_ROOT/icons/ic10.png"
 cp "$PROJECT_ROOT/LICENSE" "$APP/Contents/Resources/LICENSE"
+/usr/bin/python3 "$PROJECT_ROOT/Scripts/embed_sparkle.py" "$APP"
 for localization in "$PROJECT_ROOT/Sources/PeerCore/Resources/"*.lproj; do
   /usr/bin/ditto "$localization" "$APP/Contents/Resources/${localization:t}"
 done

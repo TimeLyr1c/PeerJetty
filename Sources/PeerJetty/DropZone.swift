@@ -170,6 +170,21 @@ final class TransferGlyph: NSView {
 
 final class DropZoneView: NSView {
     var onFiles: (([URL], (() -> Void)?) -> Void)?
+    var acceptsNewTransfers = true
+    var onTargetFiles: (([URL], String, (() -> Void)?) -> Void)?
+    var onTargetLayout: (() -> Void)?
+    private var availableTargets: [DiscoveredPeer] = []
+    private var preferredTarget: String?
+    private var frozenTargets: DropTargets?
+    private var tiles: [NSView] = []
+    private var hoveredTarget: String?
+    private var latestTransfer: TransferUpdate?
+    private var frozenStatusHeight: CGFloat = 0
+    private var overflowHint: NSTextField?
+    var targetSize: NSSize? {
+        guard var size = frozenTargets?.size else { return nil }
+        size.height += frozenStatusHeight; return size
+    }
     var onFailure: ((String) -> Void)?
     var onReceivingPromise: (() -> Void)?
     private let content = NSView()
@@ -228,7 +243,8 @@ final class DropZoneView: NSView {
     required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
     override func layout() {
         super.layout()
-        let centerY = bounds.midY
+        layoutTargets()
+        let centerY: CGFloat = frozenTargets?.size != nil ? 38 : bounds.midY
         let subtitleY = centerY - 22
         let titleY = subtitleY + 18 + 4
         icon.frame = NSRect(x: 16, y: centerY - 11, width: 22, height: 22)
@@ -247,6 +263,8 @@ final class DropZoneView: NSView {
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title); icon.contentTintColor = color
     }
     func transfer(_ update: TransferUpdate) {
+        latestTransfer = update.finished ? nil : update
+        if frozenTargets != nil { onTargetLayout?() }
         if update.finished, update.succeeded, successIDs.contains(update.id) { return }
         let waiting = !update.finished && update.total > 0 && update.completed >= update.total
         show(title: waiting ? L10n.text("drop.waiting_confirmation") : update.status, subtitle: L10n.text(update.receiving ? "drop.receiving_peer" : "drop.sending_peer", update.peerName),
@@ -271,23 +289,94 @@ final class DropZoneView: NSView {
         if let promiseTracker { promiseTracker.cancel() }
         else if let id = cancellableTransferID { onCancel?(id) }
     }
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        guard DragPayload.accepts(sender.draggingPasteboard) else { return [] }
-        onDragStarted?()
-        show(title: L10n.text("dropzone.release_to_send"), subtitle: targetName, symbol: "plus.circle.fill"); MotionEffects.pulse(icon, policy:policy); return .copy
+    func updateTargets(_ peers: [DiscoveredPeer], preferred: String?) {
+        availableTargets = peers; preferredTarget = preferred
+        // Frozen slots stay put; revocation disables a slot immediately.
+        layoutTargets()
     }
-    override func draggingExited(_ sender: NSDraggingInfo?) { idle() }
-    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { DragPayload.accepts(sender.draggingPasteboard) }
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        let board = sender.draggingPasteboard
-        if let urls = board.readObjects(forClasses: [NSURL.self], options: DragPayload.options) as? [URL], !urls.isEmpty {
-            onFiles?(urls, nil); return true
+    func beginTargets() {
+        guard frozenTargets == nil else { return }
+        frozenStatusHeight = latestTransfer == nil ? 0 : 76
+        frozenTargets = DropTargets(availableTargets,preferred:preferredTarget)
+        if frozenTargets?.size != nil {
+            for _ in frozenTargets!.peers {
+                let tile = NSView(); tile.wantsLayer = true; tile.layer?.cornerRadius = 8
+                let name = NSTextField(labelWithString:""); name.font = .systemFont(ofSize:13,weight:.semibold); name.lineBreakMode = .byTruncatingMiddle
+                let state = NSTextField(labelWithString:""); state.font = .systemFont(ofSize:12);state.textColor = .secondaryLabelColor
+                tile.addSubview(name);tile.addSubview(state);content.addSubview(tile);tiles.append(tile)
+            }
+            if frozenTargets!.overflow {
+                let hint=NSTextField(labelWithString:L10n.text("targets.more"));hint.font = .systemFont(ofSize:11);hint.textColor = .secondaryLabelColor;content.addSubview(hint);overflowHint=hint
+            }
         }
-        guard promiseTracker == nil,
-              let receivers = board.readObjects(forClasses: [NSFilePromiseReceiver.self], options: nil) as? [NSFilePromiseReceiver], !receivers.isEmpty else { return false }
-        receive(receivers); return true
+        onTargetLayout?();needsLayout = true;layoutTargets()
     }
-    private func receive(_ receivers: [NSFilePromiseReceiver]) {
+    func endTargets() {
+        guard frozenTargets != nil else {return}
+        [icon,title,subtitle].forEach{$0.isHidden=false}
+        frozenTargets=nil;hoveredTarget=nil;tiles.forEach{$0.removeFromSuperview()};tiles=[];overflowHint?.removeFromSuperview();overflowHint=nil
+        onTargetLayout?()
+        icon.isHidden = !progress.isHidden;needsLayout=true
+    }
+    private func layoutTargets() {
+        guard let frozenTargets, frozenTargets.size != nil else {return}
+        let status:CGFloat = frozenStatusHeight
+        for (index,tile) in tiles.enumerated() {
+            let peer=frozenTargets.peers[index];let current=availableTargets.first{$0.id == peer.id && $0.paired}
+            tile.frame=frozenTargets.rect(index,width:bounds.width,statusHeight:status)
+            tile.layer?.backgroundColor=(hoveredTarget == peer.id && current != nil ? NSColor.controlAccentColor.withAlphaComponent(0.18) : NSColor.clear).cgColor
+            let labels=tile.subviews.compactMap{$0 as? NSTextField}
+            let duplicate=frozenTargets.peers.filter{$0.name == peer.name}.count > 1
+            let display=peer.name+(duplicate ? " · "+String(peer.id.prefix(6)) : "")
+            labels[0].stringValue=(peer.id == frozenTargets.preferred ? "✓ " : "")+display;labels[0].toolTip=display
+            labels[0].frame=NSRect(x:10,y:40,width:tile.bounds.width-20,height:20)
+            labels[1].stringValue=current == nil ? L10n.text("targets.revoked") : (hoveredTarget == peer.id ? L10n.text("dropzone.release_to_send") : L10n.text(current!.connected ? "targets.connected" : "targets.offline"))
+            labels[1].frame=NSRect(x:10,y:18,width:tile.bounds.width-20,height:18)
+            tile.alphaValue=current == nil ? 0.45 : 1
+            tile.setAccessibilityElement(true);tile.setAccessibilityRole(.group);tile.setAccessibilityLabel(peer.name+" · "+labels[1].stringValue+(peer.id == frozenTargets.preferred ? " · "+L10n.text("targets.default") : ""))
+        }
+        overflowHint?.frame=NSRect(x:12,y:8,width:bounds.width-24,height:18)
+        if frozenStatusHeight == 0 {[icon,title,subtitle,progress,cancelButton].forEach{$0.isHidden=true}}
+    }
+    func target(at point:NSPoint) -> String? {
+        guard bounds.contains(point) else {return nil}
+        if let frozenTargets, frozenTargets.size != nil {
+            guard let index=tiles.firstIndex(where:{$0.frame.contains(point)}) else {return nil}
+            let id=frozenTargets.peers[index].id
+            return availableTargets.contains{$0.id == id && $0.paired} ? id : nil
+        }
+        let id=frozenTargets?.peers.first?.id ?? preferredTarget
+        return id.flatMap { id in availableTargets.contains{$0.id == id && $0.paired} ? id : nil }
+    }
+    private func dragTarget(_ sender:NSDraggingInfo) -> NSDragOperation {
+        guard acceptsNewTransfers else {return []}
+        beginTargets();hoveredTarget=target(at:convert(sender.draggingLocation,from:nil));layoutTargets()
+        if frozenTargets?.size == nil {show(title:L10n.text("dropzone.release_to_send"),subtitle:targetName,symbol:"plus.circle.fill")}
+        return hoveredTarget != nil || onTargetFiles == nil ? .copy : []
+    }
+    override func draggingEntered(_ sender:NSDraggingInfo) -> NSDragOperation {
+        guard DragPayload.accepts(sender.draggingPasteboard) else {return []}
+        onDragStarted?();return dragTarget(sender)
+    }
+    override func draggingUpdated(_ sender:NSDraggingInfo) -> NSDragOperation {dragTarget(sender)}
+    override func draggingExited(_ sender:NSDraggingInfo?) {hoveredTarget=nil;layoutTargets()}
+    override func prepareForDragOperation(_ sender:NSDraggingInfo) -> Bool {acceptsNewTransfers && DragPayload.accepts(sender.draggingPasteboard) && (target(at:convert(sender.draggingLocation,from:nil)) != nil || onTargetFiles == nil)}
+    override func performDragOperation(_ sender:NSDraggingInfo) -> Bool {
+        guard acceptsNewTransfers else {return false}
+        let target=target(at:convert(sender.draggingLocation,from:nil))
+        guard target != nil || onTargetFiles == nil else {return false}
+        let board=sender.draggingPasteboard
+        if let urls=board.readObjects(forClasses:[NSURL.self],options:DragPayload.options) as? [URL],!urls.isEmpty {deliver(urls,target:target,cleanup:nil);return true}
+        guard promiseTracker == nil,let receivers=board.readObjects(forClasses:[NSFilePromiseReceiver.self],options:nil) as? [NSFilePromiseReceiver],!receivers.isEmpty else {return false}
+        receive(receivers,target:target);return true
+    }
+    func deliver(_ urls:[URL],target:String?,cleanup:(()->Void)?) {
+        if let onTargetFiles {
+            guard let target,availableTargets.contains(where:{$0.id == target && $0.paired}) else {cleanup?();onFailure?(L10n.text("targets.revoked"));return}
+            onTargetFiles(urls,target,cleanup)
+        } else {onFiles?(urls,cleanup)}
+    }
+    private func receive(_ receivers: [NSFilePromiseReceiver], target: String?) {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-Promises-\(UUID())")
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
         catch { onFailure?(L10n.text("dropzone.could_not_create_a_temporary_folder_for_the")); return }
@@ -297,7 +386,7 @@ final class DropZoneView: NSView {
                 guard let self else { cleanup(); return }
                 self.promiseTracker = nil; self.cancelButton.isHidden = true; self.needsLayout = true
                 switch result {
-                case .success(let urls): self.onFiles?(urls, cleanup)
+                case .success(let urls): self.deliver(urls,target:target,cleanup:cleanup)
                 case .failure(let error): cleanup(); self.onFailure?(error.localizedDescription)
                 }
             }
@@ -376,6 +465,7 @@ final class DropPanelController {
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false; panel.level = .statusBar
         panel.hidesOnDeactivate = false; panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.contentView = DropCardHost(card:view); panel.orderOut(nil)
+        view.onTargetLayout = { [weak self] in if self?.visible == true { self?.position() } }
         view.onDragStarted = { [weak self] in self?.resetFeedback() }
         view.onSuccessFinished = { [weak self] id, hold in
             guard let self, self.resultID == id else { return }
@@ -396,13 +486,13 @@ final class DropPanelController {
         NSScreen.screens.first { screenID($0) == selectedScreenID } ?? mouseScreen()
     }
     private func geometry() -> DropPresentation? {
-        selectedScreen().map { DropPresentation(DropScreenMetrics($0)) }
+        selectedScreen().map { DropPresentation(DropScreenMetrics($0),size:view.targetSize) }
     }
     private func position() {
         guard let screen = selectedScreen() else { panel.orderOut(nil); motion.finishImmediately(); visible = false; return }
         selectedScreenID = screenID(screen)
         revision += 1; hidePending = false
-        let geometry = DropPresentation(DropScreenMetrics(screen))
+        let geometry = DropPresentation(DropScreenMetrics(screen),size:view.targetSize)
         cardFrame = geometry.card
         panel.setFrame(DropCardHost.windowFrame(geometry.card), display: true)
         panel.contentView?.layoutSubtreeIfNeeded()
@@ -493,13 +583,14 @@ final class DropPanelController {
         let acceptsFiles = pressed && board.changeCount != dragTracker.handled && DragPayload.accepts(board)
         dragActive = dragTracker.update(pressed: pressed, location: location,
                                         changeCount: board.changeCount, acceptsFiles: acceptsFiles)
+        if dragActive {view.beginTargets()} else if !pressed {view.endTargets()}
         if !pressed {
             if visible, !busy, Date() >= keepUntil { hide(after: 0.25) }
         } else if dragActive {
             if let geometry = geometry(), visible, geometry.retention.contains(location) {
                 // Cancel an exit dismissal when the user returns to the card.
                 if hidePending { revision += 1; hidePending = false }
-            } else if let screen = mouseScreen(), DropPresentation(DropScreenMetrics(screen)).trigger.contains(location) {
+            } else if let screen = mouseScreen(), DropPresentation(DropScreenMetrics(screen),size:view.targetSize).trigger.contains(location) {
                 if visible, !busy, screenID(screen) != selectedScreenID {
                     revision += 1; hidePending = false; visible = false; panel.orderOut(nil); motion.finishImmediately()
                 }

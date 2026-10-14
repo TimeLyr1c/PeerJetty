@@ -378,3 +378,21 @@
 "settings.auto_connect_hint" = "自动连接上次成功连接的已配对设备，不会自动发送文件。";
 
 "filestore.disk_full_partial" = "接收设备磁盘空间不足。已完整保存 %1$@ 个顶层项目，其余项目未保存。";
+
+"targets.menu" = "默认发送设备";
+"targets.more" = "更多设备：在菜单选择默认目标后重新拖拽";
+"targets.revoked" = "设备已解除配对";
+"targets.connected" = "已连接";
+"targets.offline" = "未连接";
+"targets.empty" = "没有已配对设备";
+
+"updates.waiting" = "正在等待传输结束以安装更新";
+"updates.cancel_wait" = "取消本次更新安装";
+"updates.install_location" = "请先将 PeerJetty 安装到应用程序目录，再使用应用内更新。";
+"updates.draft" = "放弃未发送的文本并安装更新？";
+"updates.discard" = "放弃并继续";
+"updates.failed_help" = "更新失败，可手动下载安装包。";
+
+"targets.default" = "默认发送目标";
+
+"updates.quit_guard" = "请先完成或取消更新，再退出应用。";

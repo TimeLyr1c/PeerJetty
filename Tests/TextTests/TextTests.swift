@@ -5,7 +5,7 @@ import SQLite3
 
 func check(_ ok: Bool, _ description: String) { if !ok { fputs("FAIL: \(description)\n",stderr); exit(1) } }
 func rejects(_ description: String, _ body: () throws -> Void) { do { try body(); check(false,description) } catch {} }
-func pump(_ until: () -> Bool, timeout: Double = 6) { let end = Date().addingTimeInterval(timeout); while !until(), Date() < end { RunLoop.main.run(until:Date().addingTimeInterval(0.02)) }; check(until(),"async deadline") }
+func pump(_ until: () -> Bool, timeout: Double = 6, line:UInt = #line) { let end = Date().addingTimeInterval(timeout); while !until(), Date() < end { RunLoop.main.run(until:Date().addingTimeInterval(0.02)) }; check(until(),"async deadline at line \(line)") }
 
 func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap { descendants($0) } }
 func settle(_ window: NSWindow) {
@@ -286,6 +286,28 @@ static func integration(root:URL) throws {
     receipts[queued[0]]!(); pump({queued.allSatisfy {successes.contains($0)}})
     check(received.filter {$0.id==stalled}.count==1,"timed-out message not resent")
     print("PASS: two ephemeral TLS peers, authorization, receipt ordering, bidirectional text, parallel file, queue20, real30s timeout, late receipt")
+    // Drain accepted work, reject new work, cancel waiting, and retry without re-pairing.
+    var deferredAck:(()->Void)?;b.onTextReceived={_,ack in deferredAck=ack}
+    let draining=a.sendText("accepted before update",peerID:bID.fingerprint);pump({deferredAck != nil})
+    var idle=false;b.waitForUpdate {idle=true}
+    RunLoop.main.run(until:Date().addingTimeInterval(0.15));check(!idle,"pending inbound text blocks installation")
+    let blocked=a.sendText("must reject",peerID:bID.fingerprint)
+    deferredAck!();pump({successes.contains(draining) && failures[blocked] != nil && idle})
+    var fileRejected=false;a.onFileSendEvent={event in if event.phase == .failed {fileRejected=true}}
+    a.onTransfer={update in if update.finished && !update.succeeded {fileRejected=true}}
+    a.send(urls:[file],peerID:bID.fingerprint);pump({fileRejected})
+    let localBlocked=b.sendText("local blocked",peerID:aID.fingerprint)
+    var localFailed=false;b.onTextResult={id,error in if id.id == localBlocked {localFailed=error != nil}}
+    pump({localFailed})
+    b.cancelUpdateWait();b.onTextReceived={_,ack in ack()}
+    let retry=a.sendText("after cancel",peerID:bID.fingerprint);pump({successes.contains(retry)})
+    print("PASS: update admission drains accepted text, rejects file/text, cancels waiting and retries on same TLS session")
+    var acceptedFile=false;b.onReceived={_,_ in acceptedFile=true}
+    a.waitForUpdate {}
+    a.send(urls:[file],peerID:bID.fingerprint,acceptedBeforeUpdate:true)
+    var promiseDrain=false;a.waitForUpdate {promiseDrain=true}
+    pump({acceptedFile && promiseDrain});a.cancelUpdateWait()
+    print("PASS: previously-admitted asynchronous file preparation re-arms the update barrier and drains")
     // A peer with an actual missing hello field remains usable for files.
     let legacyStore = try ConfigurationStore(url:nil,fallback:Configuration(name:"Legacy",receivePath:br.path))
     let legacyID = try DeviceIdentity.ephemeral(); let legacy = PeerEngine(identity:legacyID,store:legacyStore)

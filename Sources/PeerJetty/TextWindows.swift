@@ -190,6 +190,7 @@ private enum TextLayout {
     }
 }
 final class TextComposer: NSWindowController, NSWindowDelegate {
+    var hasUnsentDraft: Bool { !editor.string.isEmpty }
     var onSend: ((String, String) -> UUID?)?
     var onConnect: ((String) -> Void)?
     var onVisibility: ((NSScreen?) -> Void)?
