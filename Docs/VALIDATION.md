@@ -1,3 +1,9 @@
+# 1.1.0/build32 update checks — 2026-10-15
+
+Only Updates/appcast.xml was published to GitHub main in commit 898d6ba39be78b1c083819d8f4d1f5d568186893; no candidate source or installer was pushed. Exact production raw HTTPS URL returns HTTP200 and matches locally verified signed bytes, with zero items. A disposable native Sparkle app with the production feed URL/public key completed signature validation and reported no update without replacing itself. Local signed empty-feed fixture also passed.
+
+Update-interface checks use actual TransferAwareUpdateDriver: English/Chinese checking strings, visible native checking window, hidden checking window before error modal, one error alert, acknowledgement, localized owned explanation and separate provider diagnostics. Preferences are exercised in a disposable domain, including returning to System without deleting an unmanaged override. An app-preference-only launch also checks migration into Sparkle's native language; this is distinct from merely passing AppleLanguages on the command line. Bilingual settings/localization and eight release-tool checks pass. No production install/config reset/pairing or identity change.
+
 # 1.1.0/build31 startup correction — 2026-10-14
 
 Owner reported build30 would not open. Local installed build30 crash reports show DYLD Library missing: @rpath/Sparkle.framework/Versions/B/Sparkle. The framework was embedded and signature-valid, but the actual application executable had no @executable_path/../Frameworks runpath. Earlier disposable updater fixtures explicitly supplied that path, so they did not detect the production packaging defect. Build30 is superseded; prior fixture success did not establish actual PeerJetty launch success.

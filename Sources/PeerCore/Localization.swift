@@ -50,6 +50,17 @@ public struct LanguagePreferences {
     public func save(_ selection: DisplayLanguage) {
         if selection == .system { defaults.removeObject(forKey: Self.key) }
         else { defaults.set(selection.rawValue, forKey: Self.key) }
+        applyNativeLanguage()
+    }
+    /// Persist the same per-app language before next launch, so native frameworks
+    /// (including Sparkle) resolve their own bundles in our selected language.
+    public func applyNativeLanguage() {
+        let owned = "PeerJettyManagesNativeLanguage"
+        if selection == .system {
+            if defaults.bool(forKey:owned) {defaults.removeObject(forKey:"AppleLanguages");defaults.removeObject(forKey:owned)}
+        } else {
+            defaults.set([selection.rawValue],forKey:"AppleLanguages");defaults.set(true,forKey:owned)
+        }
     }
 }
 

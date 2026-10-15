@@ -7,10 +7,31 @@ final class TransferAwareUpdateDriver: SPUStandardUserDriver {
     var prepareInstall: ((@escaping (Bool) -> Void) -> Void)?
     private(set) var installationAuthorized=false
     override func showUpdaterError(_ error:Error,acknowledgement:@escaping()->Void) {
-        let alert=NSAlert();alert.messageText=L10n.text("updates.failed_help");alert.informativeText=error.localizedDescription
+        // Match the standard driver's cleanup before presenting a terminal result.
+        dismissUpdateInstallation()
+        let alert=Self.failureAlert(error)
         alert.addButton(withTitle:L10n.text("text.close_action"));alert.addButton(withTitle:L10n.text("updates.open_release"))
         if alert.runModal() == .alertSecondButtonReturn {NSWorkspace.shared.open(UpdateResponse.releasesPage)}
         acknowledgement()
+    }
+    static func failureAlert(_ error:Error) -> NSAlert {
+        let alert=NSAlert();alert.messageText=L10n.text("updates.failed_help")
+        let code=(error as NSError).code
+        let key: String
+        if (error as NSError).domain == SUSparkleErrorDomain {
+            switch code {
+            case 1000,1002,1004: key="updates.feed_failed"
+            case 2001: key="updates.download_failed"
+            case 3001,3002: key="updates.validation_failed"
+            default: key="updates.operation_failed"
+            }
+        } else {key="updates.operation_failed"}
+        alert.informativeText=L10n.text(key)+"\n\n"+L10n.text("updates.diagnostics_hint")
+        // Keep provider diagnostics available without mixing their language into the main explanation.
+        let details=NSScrollView(frame:NSRect(x:0,y:0,width:360,height:82));details.hasVerticalScroller=true
+        let text=NSTextView(frame:details.bounds);text.isEditable=false;text.isRichText=false;text.font = .systemFont(ofSize:11)
+        text.string=error.localizedDescription;details.documentView=text;alert.accessoryView=details
+        return alert
     }
     override func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
         installationAuthorized=false
@@ -29,7 +50,6 @@ final class InAppUpdater: NSObject, SPUUpdaterDelegate {
     var onAborted:(()->Void)?
     var prepareInstall: ((@escaping (Bool) -> Void) -> Void)?
     init(bundle: Bundle = .main) {
-        UserDefaults.standard.register(defaults:["AppleLanguages":LanguagePreferences().selection.preferences(systemLanguages:Locale.preferredLanguages)])
         driver=TransferAwareUpdateDriver(hostBundle:bundle,delegate:nil)
         super.init()
         updater=SPUUpdater(hostBundle:bundle,applicationBundle:bundle,userDriver:driver,delegate:self)

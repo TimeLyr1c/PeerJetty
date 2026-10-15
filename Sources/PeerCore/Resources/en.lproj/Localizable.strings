@@ -396,3 +396,10 @@
 "targets.default" = "Default destination";
 
 "updates.quit_guard" = "Finish or cancel the update before quitting.";
+
+"updates.feed_failed" = "Could not retrieve valid update information. Check your connection and try again later.";
+"updates.download_failed" = "Could not download the update. Please try again later.";
+"updates.validation_failed" = "The update could not be verified. It will not be installed.";
+"updates.operation_failed" = "The update could not be completed. Details are shown below.";
+
+"updates.diagnostics_hint" = "Technical details (may use the system language):";

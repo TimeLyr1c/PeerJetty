@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     static func main() {
         // Exercise the actual shipped executable/dyld without loading user data.
         if CommandLine.arguments.contains("--verify-launch") { print("PeerJetty startup dependencies loaded"); return }
+        LanguagePreferences().applyNativeLanguage()
         let app = NSApplication.shared; let delegate = AppDelegate()
         app.delegate = delegate; app.setActivationPolicy(.accessory); app.run()
     }

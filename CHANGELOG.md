@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.0/build32 — local update-interface fix
+
+Closes the checking window before a single localized failure alert, preserves diagnostics separately, and aligns native Sparkle language with the app preference after restart. The signed empty stable feed is now online; no new installer is published.
+
+修复报错时检查窗口残留与原生更新语言不同步；诊断信息单独保留。签名空清单已上线，没有发布新安装包。
+
 ## 1.1.0/build31 — local startup fix
 
 Fixes the embedded Sparkle framework search path missing from build30. Packaging now checks actual executable linkage and runs a no-user-data startup entry. Build30 is superseded; product version and pairing/data remain unchanged.

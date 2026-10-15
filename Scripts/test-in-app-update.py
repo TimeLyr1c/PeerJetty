@@ -9,7 +9,10 @@ base=Path.home()/'Applications/PeerJetty-Isolated-Updater';base.mkdir(parents=Tr
 with tempfile.TemporaryDirectory(prefix='fixture-',dir=base) as directory:
     run=Path(directory);public=run/'server';public.mkdir();result=run/'result.txt'
     subprocess.run(['/usr/bin/swiftc','-parse-as-library','-module-cache-path',str(root/'.module-cache'),'-F',str(framework.parent),'-framework','Sparkle','-Xlinker','-rpath','-Xlinker','@executable_path/../Frameworks',str(root/'Tests/InAppUpdateTests/Fixture.swift'),'-o',str(run/'Fixture')],check=True)
+    online='--online-empty' in sys.argv
     pub=subprocess.check_output([str(run/'Fixture'),'--key',str(run/'private-seed')],env={**os.environ,'DYLD_FRAMEWORK_PATH':str(framework.parent)},text=True).strip()
+    production=plistlib.loads((root/'Info.plist').read_bytes())
+    if online:pub=production['SUPublicEDKey']
     class Handler(http.server.SimpleHTTPRequestHandler):
         def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(public),**kwargs)
         def log_message(self,*args):pass
@@ -20,13 +23,18 @@ with tempfile.TemporaryDirectory(prefix='fixture-',dir=base) as directory:
         app=parent/'Fixture.app';(app/'Contents/MacOS').mkdir(parents=True);(app/'Contents/Frameworks').mkdir();(app/'Contents/Resources').mkdir()
         shutil.copy2(run/'Fixture',app/'Contents/MacOS/Fixture')
         subprocess.run(['/usr/bin/python3',str(root/'Scripts/embed_sparkle.py'),str(app)],check=True)
-        info={'CFBundleIdentifier':identifier,'CFBundleName':'PeerJetty Isolated Updater','CFBundleExecutable':'Fixture','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.1.0','CFBundleVersion':str(build),'LSMinimumSystemVersion':'15.0','LSUIElement':True,'FixtureResult':str(result),'SUFeedURL':prefix+'appcast.xml','SUPublicEDKey':pub,'SUEnableAutomaticChecks':False,'SUAllowsAutomaticUpdates':False,'SUVerifyUpdateBeforeExtraction':True,'SURequireSignedFeed':True,'SUSignedFeedFailureExpirationInterval':0,'NSAppTransportSecurity':{'NSAllowsLocalNetworking':True,'NSAllowsArbitraryLoads':True}}
+        info={'CFBundleIdentifier':identifier,'CFBundleName':'PeerJetty Isolated Updater','CFBundleExecutable':'Fixture','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.1.0','CFBundleVersion':str(build),'LSMinimumSystemVersion':'15.0','LSUIElement':True,'FixtureResult':str(result),'SUFeedURL':production['SUFeedURL'] if online else prefix+'appcast.xml','SUPublicEDKey':pub,'SUEnableAutomaticChecks':False,'SUAllowsAutomaticUpdates':False,'SUVerifyUpdateBeforeExtraction':True,'SURequireSignedFeed':True,'SUSignedFeedFailureExpirationInterval':0,'NSAppTransportSecurity':{'NSAllowsLocalNetworking':True,'NSAllowsArbitraryLoads':True}}
         (app/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
         subprocess.run(['/usr/bin/codesign','--force','--sign','-',str(app)],check=True)
         return app
     target=run/'new';target.mkdir();new=make_app(target,1001)
     subprocess.run(['/usr/bin/ditto','-c','-k','--keepParent',str(new),str(public/'Fixture.zip')],check=True)
-    subprocess.run([str(tools/'generate_appcast'),'--ed-key-file',str(run/'private-seed'),'--download-url-prefix',prefix,'--maximum-deltas','0',str(public)],check=True)
+    if not online:subprocess.run([str(tools/'generate_appcast'),'--ed-key-file',str(run/'private-seed'),'--download-url-prefix',prefix,'--maximum-deltas','0',str(public)],check=True)
+    empty='--empty' in sys.argv or online
+    if empty and not online:
+        feed=public/'appcast.xml'
+        feed.write_text('<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel><title>Empty stable updates</title><description>No public updates yet</description><link>https://example.invalid/</link></channel></rss>')
+        subprocess.run([str(tools/'sign_update'),'--ed-key-file',str(run/'private-seed'),str(feed)],check=True)
     corrupt='--corrupt' in sys.argv
     if corrupt:
         package=public/'Fixture.zip';data=bytearray(package.read_bytes());data[len(data)//2]^=1;package.write_bytes(data)
@@ -38,14 +46,17 @@ with tempfile.TemporaryDirectory(prefix='fixture-',dir=base) as directory:
         while time.monotonic()<deadline and not result.exists():time.sleep(0.2)
         if not result.exists():raise RuntimeError('No relaunch marker within 60 seconds')
         message=result.read_text();info=plistlib.loads((old/'Contents/Info.plist').read_bytes())
-        if corrupt:
+        if empty:
+            assert message=='PASS: signed empty feed reports no update' and info['CFBundleVersion']=='1000',message
+            print(message)
+        elif corrupt:
             assert not message.startswith('PASS:') and info['CFBundleVersion']=='1000',message
             print('PASS: modified signed package rejected; installed version unchanged')
         else:
             assert message.startswith('PASS:') and info['CFBundleVersion']=='1001',message
         assert hashlib.sha256(sentinel.read_bytes()).hexdigest()==initial
         subprocess.run(['/usr/bin/codesign','--verify','--strict',str(old)],check=True)
-        if not corrupt:print(message);print('PASS: installed-copy replacement, ad hoc signing, signed feed/archive and adjacent private-data preservation')
+        if not corrupt and not empty:print(message);print('PASS: installed-copy replacement, ad hoc signing, signed feed/archive and adjacent private-data preservation')
     finally:
         process.wait(timeout=10);server.shutdown()
         # Only the disposable test domain is touched; production preferences/Keychain are never read.

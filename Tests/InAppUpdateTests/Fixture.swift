@@ -5,6 +5,10 @@ import CryptoKit
 final class Driver: SPUStandardUserDriver {
     override func showUpdateFound(with appcastItem:SUAppcastItem,state:SPUUserUpdateState,reply:@escaping(SPUUserUpdateChoice)->Void) {reply(.install)}
     override func showReady(toInstallAndRelaunch reply:@escaping(SPUUserUpdateChoice)->Void) {reply(.install)}
+    override func showUpdateNotFoundWithError(_ error:Error,acknowledgement:@escaping()->Void) {
+        try? "PASS: signed empty feed reports no update".write(toFile:Bundle.main.object(forInfoDictionaryKey:"FixtureResult") as! String,atomically:true,encoding:.utf8)
+        acknowledgement();NSApp.terminate(nil)
+    }
     override func showUpdaterError(_ error:Error,acknowledgement:@escaping()->Void) {
         try? error.localizedDescription.write(toFile:Bundle.main.object(forInfoDictionaryKey:"FixtureResult") as! String,atomically:true,encoding:.utf8)
         acknowledgement();NSApp.terminate(nil)

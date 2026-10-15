@@ -19,13 +19,13 @@ Only installed copies under /Applications or ~/Applications are eligible. Read-o
 ## Publishing / 发布
 
 - Stable signed feed: `Updates/appcast.xml`, served from `https://raw.githubusercontent.com/TimeLyr1c/PeerJetty/main/Updates/appcast.xml`.
-- Feed is currently empty and is **not pushed by this task**. A missing remote feed is not proof of a working production update channel; local signed fixtures cover the installer.
+- Feed was published empty on 2026-10-15 (remote commit 898d6ba). The exact production HTTPS URL returns signed bytes with zero items; an isolated Sparkle client using the production public key reports no update. No 1.1.0 package is published.
 - Packages remain GitHub Release DMGs only. Development builds must never enter stable feed. CFBundleVersion increases monotonically; product version labels accompany it.
 - Update archives are Ed25519 signed; feed and release notes are signed. Verify before extraction; never fall back to unsigned feed after a failure.
 - Generate feed in an ignored staging folder with pinned Sparkle tools, `--account PeerJetty.Release --maximum-deltas 0 --download-url-prefix https://github.com/TimeLyr1c/PeerJetty/releases/download/vVERSION/`. Copy only the generated signed XML into Updates after verifying published installer URL and signature. Signing XML or notes again is mandatory after editing.
 - Validate source commit, installer checksum, nested code signatures and privacy scan. Publish verified stable DMG first, then publish its signed feed. Existing release tags/archives remain immutable.
 
-稳定清单现在为空，本轮不推送；只有正式验收并发布后才放入清单。发布前验证 DMG URL、签名、大小、版本和说明，不将开发构建暴露给普通用户。公开附件只有 DMG，清单与说明是仓库文档。
+2026-10-15 已上线签名空清单，检查会得到无更新；只有正式验收并发布后才放入安装包条目。发布前验证 DMG URL、签名、大小、版本和说明，不将开发构建暴露给普通用户。公开附件只有 DMG，清单与说明是仓库文档。
 
 ## Signing key / 更新密钥
 
@@ -42,3 +42,9 @@ Before relying on this update channel, export an **independent encrypted backup*
 `Scripts/test-in-app-update.py` creates disposable Apps in ~/Applications/PeerJetty-Isolated-Updater, with a fresh ephemeral signing seed removed afterwards. It uses signed feed and archive over loopback HTTP only, with ATS exceptions only in fixture Info.plist. Production feed/download uses HTTPS with no such exception.
 
 The fixture tests actual Sparkle download, extraction, replacement, restart and preservation of an adjacent fake data file; it does not access production Keychain or claim a real two-Mac upgrade. `--corrupt` mutates the signed archive and checks the old app remains. Native UI and real Air/mini acceptance are separately required.
+
+## build32 interface fix / 界面修复
+
+Terminal errors now dismiss the native checking/status windows before presenting one localized alert. Provider diagnostic text remains in a labeled, scrollable details area. Language preferences persist AppleLanguages only inside this App’s defaults and apply before NSApplication startup; selecting System removes only an override managed by PeerJetty. No global/macOS language setting is changed; restart remains required.
+
+错误出现前关闭原生检查／状态窗口，只显示一个本机语言提示；提供者诊断放在标注的可滚动区域。语言保存到本 App 的偏好中，并在初始化原生界面前应用，不改系统全局语言，退出重开生效。

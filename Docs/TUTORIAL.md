@@ -152,4 +152,4 @@ Keep private app state out of Git, Dropbox and bug-report attachments. PeerJetty
 
 ## 1.1.0 source candidate
 
-Choose the default from the menu or Devices settings. Drop onto a named paired-device tile for this transfer only; async files retain the target. Offline targets use bounded reconnect. First install an updater-enabled release manually; public 1.0.0 has no updater. Stable feed is not published yet. During install waiting, accepted work drains, new work is rejected, and waiting can be cancelled. See [updates](updates/IN_APP_UPDATES.md) and [multi-device drop](MULTI_DEVICE_DROP.md).
+Choose the default from the menu or Devices settings. Drop onto a named paired-device tile for this transfer only; async files retain the target. Offline targets use bounded reconnect. First install an updater-enabled release manually; public 1.0.0 has no updater. The signed stable feed is online and empty; there is no public 1.1.0 update yet. During install waiting, accepted work drains, new work is rejected, and waiting can be cancelled. See [updates](updates/IN_APP_UPDATES.md) and [multi-device drop](MULTI_DEVICE_DROP.md).
