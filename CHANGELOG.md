@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.0/build31 — local startup fix
+
+Fixes the embedded Sparkle framework search path missing from build30. Packaging now checks actual executable linkage and runs a no-user-data startup entry. Build30 is superseded; product version and pairing/data remain unchanged.
+
+修复 build30 主程序缺少 Sparkle 加载路径而无法启动的问题；打包增加实际主程序的路径与无副作用启动检查。产品版本、配对和数据不变，build30 不再用于安装。
+
 ## 1.1.0 — local candidate
 
 Native Sparkle download/install/relaunch with signed updates and transfer admission waiting. Identity-bound multi-device drop zones (up to six visible), default-device menu and immediate settings synchronization. Public 1.0.0 remains unchanged; signed stable feed is not published yet.

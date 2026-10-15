@@ -48,4 +48,6 @@ DESTINATION="$PROJECT_ROOT/outputs/PeerJetty.app"
 if [[ -e "$DESTINATION" ]]; then rm -rf "$DESTINATION"; fi
 /usr/bin/ditto --noextattr --noqtn "$APP" "$DESTINATION"
 /usr/bin/codesign --verify --strict "$DESTINATION"
+/usr/bin/python3 "$PROJECT_ROOT/Scripts/check_app_linkage.py" "$DESTINATION"
+"$DESTINATION/Contents/MacOS/PeerJetty" --verify-launch
 print "$DESTINATION"

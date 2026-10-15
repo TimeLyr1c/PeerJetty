@@ -1,3 +1,11 @@
+# 1.1.0/build31 startup correction — 2026-10-14
+
+Owner reported build30 would not open. Local installed build30 crash reports show DYLD Library missing: @rpath/Sparkle.framework/Versions/B/Sparkle. The framework was embedded and signature-valid, but the actual application executable had no @executable_path/../Frameworks runpath. Earlier disposable updater fixtures explicitly supplied that path, so they did not detect the production packaging defect. Build30 is superseded; prior fixture success did not establish actual PeerJetty launch success.
+
+SwiftPM now links the application with the packaged-framework runpath. Release builds run a loader-path/dependency check and launch the actual shipped executable with --verify-launch, which returns before constructing AppDelegate, NSApplication, Keychain identity or production config. Regression reproduces missing path despite a present framework, verifies correct path resolution, and rejects missing framework. Eight release-tool tests and the corrected release build/startup entry passed. Final mounted/relocated build31 verification is stored alongside its local archive; normal UI/real Air/mini acceptance remains user testing.
+
+用户反馈 build30 无法打开，已从崩溃记录定位实际主程序加载路径遗漏。此前隔离更新测试自行设置了正确路径，因此未覆盖正式 App 的启动。build31 修复 SwiftPM 链接路径，并把实际打包主程序的无副作用启动检查加入打包流程。未删除配对、配置或历史，未替换 Applications 安装，也未发布或推送。旧归档保留，build30 不再用于安装。
+
 # 1.1.0 candidate checks — 2026-10-14
 
 Delivered local archive: **1.1.0/build30**, `outputs/releases/1.1.0-build30/PeerJetty-1.1.0-build30-arm64.dmg`. Clean embedded source commit `c1b4d5b`; SHA256 `5ef48e4f9b01176e657ab996534ded06232007fffa9e1a14f9c7c202c3a1b539`. Readonly mounted DMG, Ed25519 verification, deep strict nested code signatures, preserved Sparkle symlinks/license, privacy scan and unchanged 1.0.0 checksum passed. Later documentation-only commits do not rebuild this archive.
