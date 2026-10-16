@@ -5,7 +5,9 @@ import UserNotifications
 import Darwin
 import Network
 
+#if !PEERJETTY_TESTING
 @main
+#endif
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private var store: ConfigurationStore?
     private var engine: PeerEngine?
@@ -22,8 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var inAppUpdater: InAppUpdater?
     private var installReply: ((Bool) -> Void)?
     private var installPanel: NSPanel?
-    private var installRevision=0
-    private var updateEngineIdle=false
+    private var updateReadiness = UpdateReadiness()
     private var menuBar: MenuBarController?
     private var icons: IconVisibilityController?
     private var userOpened = false
@@ -46,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var bootError: String?
     private var fileFeedback = FileSendFeedback()
     private var preparing = 0
-    private var promiseBusy = false
+    private var promiseBusy: Bool { !updateReadiness.promises.isEmpty }
 
     static func main() {
         // Exercise the actual shipped executable/dyld without loading user data.
@@ -64,6 +65,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         userOpened = !backgroundLaunch && (userOpened || reason == .user)
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
+#if PEERJETTY_TESTING
+        if let startup=Self.isolatedStartup {startup(self);return}
+#endif
+
         captureLaunchReason()
         setupMenu(); UNUserNotificationCenter.current().delegate = self
         networkMonitor.pathUpdateHandler = { [weak self] _ in DispatchQueue.main.async { self?.updateConnectionInfo() } }
@@ -99,16 +104,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             do { _ = try self?.ensureHistory() } catch { DispatchQueue.main.async { self?.settings?.status(L10n.text("text.history_failed")) } }
         }
         let drop = DropPanelController(); self.drop = drop
-        drop.view.onTargetFiles = { [weak self] urls, peer, cleanup in
-            let admitted=self?.promiseBusy == true
-            self?.promiseBusy = false; self?.drop?.resetFeedback()
-            guard let self, self.store?.snapshot.peers.contains(where:{$0.id == peer}) == true else {
-                cleanup?(); self?.showStatus(L10n.text("application.pair_and_select_a_destination_in_settings_first")); self?.showSettings(); return
-            }
-            self.sendFiles(urls,peerID:peer,cleanup:cleanup,acceptedBeforeUpdate:admitted)
+        drop.view.onTargetFiles = { [weak self] urls, peer, source, cleanup in
+            self?.receiveDroppedFiles(urls, peer:peer, source:source, cleanup:cleanup)
         }
-        drop.view.onReceivingPromise = { [weak self] in self?.promiseBusy = true; self?.drop?.resetFeedback(); self?.refreshBusy(); self?.drop?.show() }
-        drop.view.onFailure = { [weak self] text in self?.promiseBusy = false; self?.refreshBusy(); self?.showStatus(text) }
+        drop.view.onReceivingPromise = { [weak self] id,peer in
+            guard let self,let peer else {return}
+            self.updateReadiness.beginPromise(id,peer:peer)
+            self.drop?.resetFeedback();self.refreshBusy();self.drop?.show()
+        }
+        drop.view.onPromiseFailure = { [weak self] id,text in self?.promiseFailed(id,text:text) }
+        drop.view.onFailure = { [weak self] text in self?.showStatus(text) }
         drop.view.onCancel = { [weak self] id in self?.engine?.cancel(transferID: id) }
         engine.onPeers = { [weak self] peers in
             guard let self else { return }; self.peers = peers; self.composer?.updatePeers(peers,preferred:store.snapshot.preferredPeer); self.settings?.updatePeers(peers, preferred: self.store?.snapshot.preferredPeer)
@@ -130,25 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         engine.onPreparation = { [weak self] value in
             guard let self else { return }; self.preparing = max(0, self.preparing + (value ? 1 : -1)); self.refreshBusy()
         }
-        engine.onFileSendEvent = { [weak self] event in
-            guard let self else {return}
-            let accepted=self.fileFeedback.accept(event);self.refreshBusy()
-            guard accepted else {return}
-            if event.phase == .failed {
-                let title=L10n.text(event.notConnected ? "file.not_connected" : "file.send_failed",event.peerName)
-                let hint=event.notConnected ? L10n.text("file.offline_help") : L10n.text("application.status_details_hint")
-                let detail=[title,hint,event.error?.localizedDescription ?? ""].joined(separator:"\n")
-                self.lastStatus=detail;self.settings?.status(detail)
-                if self.active.isEmpty {
-                    self.drop?.resetFeedback();self.drop?.show()
-                    self.drop?.view.show(title:title,subtitle:event.notConnected ? L10n.text("file.offline_card_help") : hint,symbol:"exclamationmark.triangle.fill",color:.systemOrange)
-                    self.drop?.hide(after:5)
-                }
-            } else if self.active.isEmpty && (event.phase == .preparing || event.phase == .connecting) {
-                self.drop?.resetFeedback();self.drop?.show()
-                self.drop?.view.show(title:event.phase == .connecting ? L10n.text("file.connecting",event.peerName) : L10n.text("application.preparing_files"),subtitle:event.peerName)
-            }
-        }
+        engine.onFileSendEvent = { [weak self] event in self?.handleFileSendEvent(event) }
         engine.onPairing = { [weak self] id, name, code in self?.showPairing(id: id, name: name, code: code) }
         engine.onPairingEnded = { [weak self] id in
             self?.pairingWindows.removeValue(forKey: id)?.close(); self?.pairingCodes.removeValue(forKey: id)
@@ -225,6 +212,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         settings?.iconState(menu:icons.menu, dock:icons.dock, temporary:icons.temporary)
         if wasVisible { settings?.window?.makeKeyAndOrderFront(nil) }
     }
+    private func handleFileSendEvent(_ event:FileSendEvent) {
+        // Register ownership before dropping the pending request; onTransfer follows later.
+        if event.phase == .started {
+            if !active.contains(event.id) {transferOrder.append(event.id)}
+            active.insert(event.id)
+        }
+        let accepted=fileFeedback.accept(event);refreshBusy()
+        guard accepted else {return}
+        if event.phase == .failed {
+            let title=L10n.text(event.notConnected ? "file.not_connected" : "file.send_failed",event.peerName)
+            let hint=event.notConnected ? L10n.text("file.offline_help") : L10n.text("application.status_details_hint")
+            let detail=[title,hint,event.error?.localizedDescription ?? ""].joined(separator:"\n")
+            lastStatus=detail;settings?.status(detail)
+            if active.isEmpty {
+                drop?.resetFeedback();drop?.show()
+                drop?.view.show(title:title,subtitle:event.notConnected ? L10n.text("file.offline_card_help") : hint,symbol:"exclamationmark.triangle.fill",color:.systemOrange)
+                drop?.hide(after:5)
+            }
+        } else if active.isEmpty && (event.phase == .preparing || event.phase == .connecting) {
+            drop?.resetFeedback();drop?.show()
+            drop?.view.show(title:event.phase == .connecting ? L10n.text("file.connecting",event.peerName) : L10n.text("application.preparing_files"),subtitle:event.peerName)
+        }
+    }
     private func refreshBusy() { drop?.busy = !active.isEmpty || preparing > 0 || promiseBusy || !fileFeedback.pendingIDs.isEmpty;finishUpdateIfReady() }
     private func updateConnectionInfo() {
         settings?.connectionAddresses(LocalNetworkAddress.discover(),port:listeningPort)
@@ -242,7 +252,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let alert=NSAlert();alert.messageText=L10n.text("updates.draft");alert.addButton(withTitle:L10n.text("updates.discard"));alert.addButton(withTitle:L10n.text("dropzone.cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else {reply(false);return}
         }
-        installRevision += 1;installReply=reply;updateEngineIdle=false;drop?.view.acceptsNewTransfers=false
+        updateReadiness.begin();installReply=reply;drop?.view.acceptsNewTransfers=false
+        // Drain earlier startup/maintenance work as well as individually tracked saves.
+        let fence=updateReadiness.beginHistory()
+        historyQueue.async { [weak self] in
+            DispatchQueue.main.async {
+                guard let self else {return}
+                self.updateReadiness.endHistory(fence);self.finishUpdateIfReady()
+            }
+        }
         let panel=NSPanel(contentRect:NSRect(x:0,y:0,width:440,height:150),styleMask:[.titled],backing:.buffered,defer:false)
         panel.title=L10n.text("updates.title");panel.isReleasedWhenClosed=false
         let label=NSTextField(wrappingLabelWithString:L10n.text("updates.waiting"));label.frame=NSRect(x:24,y:75,width:392,height:45)
@@ -251,18 +269,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         armUpdateGate()
     }
     private func armUpdateGate() {
-        let token=installRevision;updateEngineIdle=false
+        guard let ticket=updateReadiness.arm() else {return}
         engine?.waitForUpdate { [weak self] in
-            guard let self,self.installRevision == token,self.installReply != nil else {return}
-            self.updateEngineIdle=true;self.finishUpdateIfReady()
+            guard let self,self.installReply != nil,self.updateReadiness.accept(ticket) else {return}
+            self.finishUpdateIfReady()
         }
     }
     private func finishUpdateIfReady() {
-        guard updateEngineIdle,installReply != nil,!promiseBusy,preparing == 0,fileFeedback.pendingIDs.isEmpty,active.isEmpty else {return}
+        guard installReply != nil,updateReadiness.claimInstallation(otherWork:
+            preparing > 0 || !fileFeedback.pendingIDs.isEmpty || !active.isEmpty) else {return}
         installPanel?.close();installPanel=nil;let reply=installReply;installReply=nil;reply?(true)
     }
     @objc private func cancelUpdate() {
-        installRevision += 1;drop?.view.acceptsNewTransfers=true;engine?.cancelUpdateWait();updateEngineIdle=false;installPanel?.close();installPanel=nil
+        updateReadiness.cancel();drop?.view.acceptsNewTransfers=true;engine?.cancelUpdateWait();installPanel?.close();installPanel=nil
         let reply=installReply;installReply=nil;reply?(false)
     }
     @objc private func quit() { NSApp.terminate(nil) }
@@ -374,8 +393,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if active.isEmpty && fileFeedback.allowsIdle {drop?.view.idle()}
         composer?.updatePeers(peers,preferred:preferred);engine?.refresh()
     }
+    private func promiseFailed(_ id:UUID,text:String) {
+        updateReadiness.endPromise(id);refreshBusy();showStatus(text)
+    }
+    private func receiveDroppedFiles(_ urls:[URL],peer:String,source:DropFileSource,cleanup:(()->Void)?) {
+        let promise:UUID?
+        switch source {
+        case .files: promise=nil
+        case .promise(let id):
+            guard updateReadiness.promises[id] == peer else {cleanup?();return}
+            promise=id
+        }
+        // Keep the promise counted until its successor request is registered.
+        defer {if let promise {updateReadiness.endPromise(promise)};refreshBusy()}
+        guard store?.snapshot.peers.contains(where:{$0.id == peer}) == true else {
+            cleanup?();showStatus(L10n.text("targets.revoked"));return
+        }
+        drop?.resetFeedback()
+        sendFiles(urls,peerID:peer,cleanup:cleanup,acceptedBeforeUpdate:promise != nil)
+    }
     private func sendFiles(_ urls:[URL],peerID:String,cleanup:(()->Void)?=nil,acceptedBeforeUpdate:Bool=false) {
-        guard installReply == nil || acceptedBeforeUpdate else {cleanup?();settings?.status(L10n.text("updates.waiting"));return}
+        guard !updateReadiness.blocksNewWork || acceptedBeforeUpdate else {cleanup?();settings?.status(L10n.text("updates.waiting"));return}
         guard let engine else {cleanup?();return}
         let id=engine.send(urls:urls,peerID:peerID,cleanup:cleanup,acceptedBeforeUpdate:acceptedBeforeUpdate)
         fileFeedback.begin(id);if installReply != nil {armUpdateGate()};refreshBusy()
@@ -440,16 +478,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         try value.clean(retention:store?.snapshot.textRetention ?? .latest500); history = value; return value
     }
     private func saveText(_ entry:TextEntry, completion:@escaping (UUID,Bool)->Void) {
+        let write=updateReadiness.beginHistory()
         historyQueue.async { [weak self] in
             guard let self else { return }
             do {
                 let id = try self.ensureHistory().add(entry,retention:self.store?.snapshot.textRetention ?? .latest500)
-                DispatchQueue.main.async { completion(id,true); self.textHistoryWindow?.reload() }
+                DispatchQueue.main.async {
+                    completion(id,true);self.textHistoryWindow?.reload()
+                    self.updateReadiness.endHistory(write);self.finishUpdateIfReady()
+                }
             } catch {
                 DispatchQueue.main.async {
                     self.volatileTexts[entry.id] = entry; self.volatileOrder.append(entry.id)
                     if self.volatileOrder.count > 500 { self.volatileTexts.removeValue(forKey:self.volatileOrder.removeFirst()) }
-                    self.settings?.status(L10n.text("text.history_failed")); self.composer?.historyFailure(); completion(entry.id,false)
+                    if self.updateReadiness.waiting {self.cancelUpdate()}
+                    self.lastStatus=L10n.text("text.history_failed")
+                    self.settings?.status(L10n.text("text.history_failed"));self.composer?.historyFailure();completion(entry.id,false)
+                    self.updateReadiness.endHistory(write);self.finishUpdateIfReady()
                 }
             }
         }
@@ -598,4 +643,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationDidResignActive(_ notification:Notification) {
         settings?.hideWhenInactive(dockVisible:icons?.dock ?? true)
     }
+#if PEERJETTY_TESTING
+    static var isolatedStartup: ((AppDelegate)->Void)?
+    func configureUpdateFixture(store:ConfigurationStore,identity:DeviceIdentity,historyURL:URL) throws {
+        precondition(Bundle.main.bundleIdentifier?.hasPrefix("app.peerjetty.test.") == true)
+        self.store=store;self.history=try TextHistory(url:historyURL)
+        let engine=PeerEngine(identity:identity,store:store);self.engine=engine
+        engine.onFileSendEvent={ [weak self] event in self?.handleFileSendEvent(event) }
+        engine.start(discovery:false)
+    }
+    var fixtureReadiness:UpdateReadiness {updateReadiness}
+    var fixtureActive:Set<UUID> {active}
+    var fixtureStatus:String? {lastStatus}
+    func fixtureVolatileText(_ id:UUID) -> String? {volatileTexts[id]?.text}
+    func fixturePromise(_ id:UUID,peer:String) {updateReadiness.beginPromise(id,peer:peer)}
+    func fixtureDrop(_ urls:[URL],peer:String,source:DropFileSource,cleanup:(()->Void)?=nil) {receiveDroppedFiles(urls,peer:peer,source:source,cleanup:cleanup)}
+    func fixtureBeginUpdate(_ reply:@escaping(Bool)->Void) {prepareUpdate(reply)}
+    func fixtureCancelUpdate() {cancelUpdate()}
+    func fixtureFileEvent(_ event:FileSendEvent) {handleFileSendEvent(event)}
+    func fixtureSave(_ entry:TextEntry,completion:@escaping(UUID,Bool)->Void) {saveText(entry,completion:completion)}
+    func fixtureSuspendHistory() {historyQueue.suspend()}
+    func fixtureResumeHistory() {historyQueue.resume()}
+    func fixturePromiseFailed(_ id:UUID,text:String) {promiseFailed(id,text:text)}
+    func fixtureCheckUpdates() {checkUpdates()}
+#endif
+
 }

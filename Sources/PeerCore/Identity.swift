@@ -50,6 +50,19 @@ public final class DeviceIdentity {
     // Isolated integration tests never read or modify the user's Keychain.
     public static func ephemeral() throws -> DeviceIdentity { try DeviceIdentity(generate()) }
 
+#if DEBUG
+    /// Disposable test identity persisted outside Keychain; not part of release builds.
+    public static func isolated(at url: URL) throws -> DeviceIdentity {
+        if FileManager.default.fileExists(atPath:url.path) {
+            return try DeviceIdentity(JSONDecoder().decode(Stored.self,from:Data(contentsOf:url)))
+        }
+        let stored=try generate()
+        try JSONEncoder().encode(stored).write(to:url,options:.atomic)
+        try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:url.path)
+        return try DeviceIdentity(stored)
+    }
+#endif
+
     public static func reset() throws {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrService as String: service, kSecAttrAccount as String: "identity"]

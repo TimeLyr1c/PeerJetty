@@ -121,7 +121,7 @@ struct RunDropPresentationTests {
             if let size=view.targetSize {view.setFrameSize(size)};view.layoutSubtreeIfNeeded()
             let point=count == 1 ? NSPoint(x:100,y:38) : selection.rect(0,width:view.bounds.width).center
             let locked=view.target(at:point)!;precondition(locked == peers[count-1].id)
-            var sent:String?;view.onTargetFiles={_,id,_ in sent=id}
+            var sent:String?;view.onTargetFiles={_,id,_,_ in sent=id}
             view.updateTargets(Array(peers.prefix(count)).reversed(),preferred:peers[0].id)
             precondition(view.target(at:point)==locked,"frozen target slots")
             view.deliver([URL(fileURLWithPath:"/fixture")],target:locked,cleanup:nil);precondition(sent==locked,"async files retain drop ID")

@@ -6,6 +6,7 @@ import PeerCore
 final class TransferAwareUpdateDriver: SPUStandardUserDriver {
     var prepareInstall: ((@escaping (Bool) -> Void) -> Void)?
     private(set) var installationAuthorized=false
+    func revokeInstallationAuthorization() { installationAuthorized=false }
     override func showUpdaterError(_ error:Error,acknowledgement:@escaping()->Void) {
         // Match the standard driver's cleanup before presenting a terminal result.
         dismissUpdateInstallation()
@@ -72,6 +73,7 @@ final class InAppUpdater: NSObject, SPUUpdaterDelegate {
         if alert.runModal() == .alertSecondButtonReturn {NSWorkspace.shared.open(UpdateResponse.releasesPage)}
     }
     func updater(_ updater:SPUUpdater, didAbortWithError error:Error) {
+        driver.revokeInstallationAuthorization()
         onAborted?()
         // User driver shows one native diagnostic with a manual-download route.
     }

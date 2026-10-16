@@ -171,7 +171,7 @@ final class TransferGlyph: NSView {
 final class DropZoneView: NSView {
     var onFiles: (([URL], (() -> Void)?) -> Void)?
     var acceptsNewTransfers = true
-    var onTargetFiles: (([URL], String, (() -> Void)?) -> Void)?
+    var onTargetFiles: (([URL], String, DropFileSource, (() -> Void)?) -> Void)?
     var onTargetLayout: (() -> Void)?
     private var availableTargets: [DiscoveredPeer] = []
     private var preferredTarget: String?
@@ -186,7 +186,8 @@ final class DropZoneView: NSView {
         size.height += frozenStatusHeight; return size
     }
     var onFailure: ((String) -> Void)?
-    var onReceivingPromise: (() -> Void)?
+    var onReceivingPromise: ((UUID, String?) -> Void)?
+    var onPromiseFailure: ((UUID, String) -> Void)?
     private let content = NSView()
     private var motionObserver: NSObjectProtocol?
     private var successIDs: [UUID] = []
@@ -206,6 +207,9 @@ final class DropZoneView: NSView {
         let queue = OperationQueue(); queue.name = "PeerJetty.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
     }()
     private var promiseTracker: PromiseTracker?
+    private var promiseID: UUID?
+    private var promiseTarget: String?
+    private var promiseRevoked=false
     convenience override init(frame: NSRect) { self.init(frame: frame, forceLegacyMaterial: false) }
     // Exercise the macOS 15 fallback on a newer development host without changing production selection.
     init(frame: NSRect, forceLegacyMaterial: Bool, policy: MotionPolicy = .shared) {
@@ -286,11 +290,14 @@ final class DropZoneView: NSView {
     }
     deinit { if let motionObserver { NotificationCenter.default.removeObserver(motionObserver) } }
     @objc private func cancel() {
-        if let promiseTracker { promiseTracker.cancel() }
-        else if let id = cancellableTransferID { onCancel?(id) }
+        if let id = cancellableTransferID { onCancel?(id) }
+        else if let promiseTracker { promiseTracker.cancel() }
     }
     func updateTargets(_ peers: [DiscoveredPeer], preferred: String?) {
         availableTargets = peers; preferredTarget = preferred
+        if let target=promiseTarget,!peers.contains(where:{$0.id == target && $0.paired}) {
+            promiseRevoked=true;promiseTracker?.cancel()
+        }
         // Frozen slots stay put; revocation disables a slot immediately.
         layoutTargets()
     }
@@ -370,29 +377,44 @@ final class DropZoneView: NSView {
         guard promiseTracker == nil,let receivers=board.readObjects(forClasses:[NSFilePromiseReceiver.self],options:nil) as? [NSFilePromiseReceiver],!receivers.isEmpty else {return false}
         receive(receivers,target:target);return true
     }
-    func deliver(_ urls:[URL],target:String?,cleanup:(()->Void)?) {
+    func deliver(_ urls:[URL],target:String?,source:DropFileSource = .files,cleanup:(()->Void)?) {
         if let onTargetFiles {
-            guard let target,availableTargets.contains(where:{$0.id == target && $0.paired}) else {cleanup?();onFailure?(L10n.text("targets.revoked"));return}
-            onTargetFiles(urls,target,cleanup)
+            guard let target,availableTargets.contains(where:{$0.id == target && $0.paired}) else {
+                cleanup?()
+                if case .promise(let id)=source {onPromiseFailure?(id,L10n.text("targets.revoked"))}
+                else {onFailure?(L10n.text("targets.revoked"))}
+                return
+            }
+            onTargetFiles(urls,target,source,cleanup)
         } else {onFiles?(urls,cleanup)}
+    }
+    /// The same task lifecycle is used for real file receivers and isolated regressions.
+    func trackPromise(receivers:Int,target:String?,cleanup:@escaping()->Void) -> PromiseTracker {
+        let id=UUID()
+        let tracker = PromiseTracker(receivers: receivers) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { cleanup(); return }
+                guard self.promiseID == id else {cleanup();return}
+                let revoked=self.promiseRevoked
+                self.promiseTracker = nil;self.promiseID=nil;self.promiseTarget=nil;self.promiseRevoked=false
+                self.cancelButton.isHidden = self.cancellableTransferID == nil; self.needsLayout = true
+                if revoked {cleanup();self.onPromiseFailure?(id,L10n.text("targets.revoked"));return}
+                switch result {
+                case .success(let urls): self.deliver(urls,target:target,source:.promise(id),cleanup:cleanup)
+                case .failure(let error): cleanup(); self.onPromiseFailure?(id,error.localizedDescription)
+                }
+            }
+        }
+        promiseTracker = tracker;promiseID=id;promiseTarget=target;promiseRevoked=false;onReceivingPromise?(id,target)
+        show(title: L10n.text("dropzone.reading_files"), subtitle: L10n.text("dropzone.waiting_for_the_source_app_to_provide_files")); cancelButton.isHidden = false
+        return tracker
     }
     private func receive(_ receivers: [NSFilePromiseReceiver], target: String?) {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("PeerJetty-Promises-\(UUID())")
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
         catch { onFailure?(L10n.text("dropzone.could_not_create_a_temporary_folder_for_the")); return }
         let cleanup = { try? FileManager.default.removeItem(at: folder); return () }
-        let tracker = PromiseTracker(receivers: receivers.count) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self else { cleanup(); return }
-                self.promiseTracker = nil; self.cancelButton.isHidden = true; self.needsLayout = true
-                switch result {
-                case .success(let urls): self.deliver(urls,target:target,cleanup:cleanup)
-                case .failure(let error): cleanup(); self.onFailure?(error.localizedDescription)
-                }
-            }
-        }
-        promiseTracker = tracker; onReceivingPromise?()
-        show(title: L10n.text("dropzone.reading_files"), subtitle: L10n.text("dropzone.waiting_for_the_source_app_to_provide_files")); cancelButton.isHidden = false
+        let tracker=trackPromise(receivers:receivers.count,target:target,cleanup:cleanup)
         for (index, receiver) in receivers.enumerated() {
             receiver.receivePromisedFiles(atDestination: folder, options: [:], operationQueue: promises) { url, error in
                 if tracker.wasCancelled { cleanup(); return }

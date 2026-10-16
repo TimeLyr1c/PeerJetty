@@ -12,7 +12,7 @@ if [[ -f "$BIN_DIR/PeerCore.o" ]]; then
 else
   CORE_OBJECTS=("$BIN_DIR/PeerCore.build/"*.o(N))
 fi
-SOURCES=(Sources/PeerJetty/Motion.swift Sources/PeerJetty/DropPresentation.swift Sources/PeerJetty/DropZone.swift Sources/PeerJetty/TextWindows.swift Tests/MotionTests/MotionTests.swift)
+SOURCES=(Sources/PeerJetty/Motion.swift Sources/PeerJetty/UpdateReadiness.swift Sources/PeerJetty/DropPresentation.swift Sources/PeerJetty/DropZone.swift Sources/PeerJetty/TextWindows.swift Tests/MotionTests/MotionTests.swift)
 /usr/bin/swiftc -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${SOURCES[@]}" -o "$TEST_ROOT/checks"
 "$TEST_ROOT/checks" "$@"
 if [[ "${1:-}" == --compare ]]; then
@@ -28,7 +28,7 @@ if [[ "${1:-}" == --compare ]]; then
   if rg -q 'final class DropCardHost' "$TEST_ROOT/LegacyDropZone.swift"; then
     BASELINE_FLAGS+=(-D HOST_BASELINE)
   fi
-  /usr/bin/swiftc "${BASELINE_FLAGS[@]}" -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${BASELINE_SOURCES[@]}" Sources/PeerJetty/DropPresentation.swift "$TEST_ROOT/LegacyDropZone.swift" Tests/MotionTests/MotionTests.swift -o "$TEST_ROOT/baseline"
+  /usr/bin/swiftc "${BASELINE_FLAGS[@]}" -parse-as-library -target "$(uname -m)-apple-macos15.0" -module-cache-path .module-cache -I "$BIN_DIR" -I "$BIN_DIR/Modules" "${CORE_OBJECTS[@]}" "${BASELINE_SOURCES[@]}" Sources/PeerJetty/UpdateReadiness.swift Sources/PeerJetty/DropPresentation.swift "$TEST_ROOT/LegacyDropZone.swift" Tests/MotionTests/MotionTests.swift -o "$TEST_ROOT/baseline"
   print 'Before (build16 glass card and bar progress):'
   "$TEST_ROOT/baseline" --benchmark
   print 'After (three speeds and vector progress/check):'
