@@ -48,3 +48,17 @@ The fixture tests actual Sparkle download, extraction, replacement, restart and 
 Terminal errors now dismiss the native checking/status windows before presenting one localized alert. Provider diagnostic text remains in a labeled, scrollable details area. Language preferences persist AppleLanguages only inside this App’s defaults and apply before NSApplication startup; selecting System removes only an override managed by PeerJetty. No global/macOS language setting is changed; restart remains required.
 
 错误出现前关闭原生检查／状态窗口，只显示一个本机语言提示；提供者诊断放在标注的可滚动区域。语言保存到本 App 的偏好中，并在初始化原生界面前应用，不改系统全局语言，退出重开生效。
+
+## build33 admission fixes / 更新等待修复
+
+The main-thread update coordinator uses a session UUID plus a fresh idle-check UUID on every re-arm. Late callbacks cannot authorize a new check or session, and installation can be authorized only once. File requests become active before their preparation ownership is released. Accepted file promises carry their own UUID and locked peer ID; ordinary file drops cannot finish another promise or inherit its admission. Failure, cancellation/timeout and revoked targets retire only the matching promise.
+
+更新协调器用会话和检查两层编号使旧回调失效，安装只授权一次。文件准备到活动任务的交接保持连续；文件承诺独立编号并锁定目标，普通投放不能清除其他准备任务。失败、取消／超时和目标撤销只结束对应任务。
+
+Successful text sends/receipts register pending history work before queueing SQLite. A serial-queue fence drains earlier startup/maintenance work. Installation waits for the write and its main-thread result handling; a write failure during waiting cancels installation, retains the volatile copy and explicit error, and restores normal admission. No main-thread SQLite wait is introduced.
+
+文本历史写入及其主线程结果处理也属于更新等待条件。等待期间保存失败会取消安装，保留当前可复制文本和错误并恢复收发，不阻塞主线程等待数据库。
+
+`Scripts/test-update-readiness.sh` exercises the real AppDelegate and promise tracker using temporary SQLite, ephemeral identities and deterministic generation tests. `Scripts/test-actual-app-update.py` compiles the actual application/updater sources with a test-only startup, drives native Sparkle buttons and a signed DMG through replacement/relaunch, and checks persistent disposable identity/config/history. Its loopback feed, temporary signing key, file-backed test identity and isolated startup are absent from release builds. It does not access the production Keychain or establish physical Air/mini coverage.
+
+新增回归直接覆盖正式协调与回调代码；完整升级测试使用实际 App 源码、原生更新界面和签名 DMG，但启动、身份、配置和历史全部隔离。测试专用入口不编入交付 App；它不能代替两台实机和生产钥匙串授权体验的验收。

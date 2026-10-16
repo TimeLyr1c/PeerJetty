@@ -95,3 +95,7 @@ Startup connection reuses the existing General presence/startup group and native
 ## 1.1.0 additions
 
 DropTargets freezes identity/geometry per drag; device tiles share the existing single glass. MenuBarController owns default-device submenu. InAppUpdater uses Sparkle native UI with transfer-aware install reply. Legacy UpdateWindow remains for isolated regression only. Sparkle 2.10.0 is the first third-party runtime dependency.
+
+### Update admission coordinator
+
+`UpdateReadiness` owns main-thread session/check tickets, outstanding promise IDs and history-write IDs. AppDelegate remains responsible for transport/file activity and the native waiting panel. Reuse the one-shot gate for updater authorization; do not infer readiness from status strings or a single global promise flag. Test-only AppDelegate hooks are excluded unless PEERJETTY_TESTING is explicitly defined.

@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.0/build33 — local update-readiness fixes
+
+Invalidates stale idle callbacks, tracks asynchronous file promises independently, closes the preparation-to-active gap, and waits for text-history writes before restarting. History save failures cancel installation and restore transfers. Adds actual-AppDelegate regressions and an isolated native Sparkle signed-DMG upgrade test.
+
+修复旧空闲回调、文件承诺混用与准备到传输的交接空隙；重启前等待文本历史保存，保存失败取消安装并恢复收发。增加正式协调代码回归与隔离的原生 DMG 完整升级验证。仅本地测试，未公开发布。
+
 ## 1.1.0/build32 — local update-interface fix
 
 Closes the checking window before a single localized failure alert, preserves diagnostics separately, and aligns native Sparkle language with the app preference after restart. The signed empty stable feed is now online; no new installer is published.
