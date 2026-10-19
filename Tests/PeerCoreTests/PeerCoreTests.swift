@@ -160,6 +160,21 @@ private func XCTAssertFalse(_ value: Bool) { precondition(!value, "Expected fals
 private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) {
     do { _ = try expression(); preconditionFailure("Expected an error") } catch {}
 }
+extension PeerCoreTests {
+    func testManualEndpointAndPairingCodeDisplay() {
+        XCTAssertEqual(ManualEndpoint.parse(host:" 192.0.2.1 ",port:"12345")?.host,"192.0.2.1")
+        XCTAssertEqual(ManualEndpoint.parse(host:"192.0.2.1:12345",port:"")?.port,12345)
+        XCTAssertEqual(ManualEndpoint.parse(host:"[fe80::1]:80",port:"")?.host,"fe80::1")
+        XCTAssertEqual(ManualEndpoint.parse(host:"fe80::1",port:"80")?.host,"fe80::1")
+        for (host,port) in [("","12345"),("mac.local",""),("mac.local","0"),("mac.local","65536"),("mac.local","12a"),("two words","80"),("fe80::1",""),("[::1]:","")] {
+            XCTAssertEqual(ManualEndpoint.parse(host:host,port:port) == nil,true)
+        }
+        XCTAssertEqual(PairingCodeDisplay.grouped("123456"),"123 456")
+        XCTAssertEqual(PairingCodeDisplay.grouped("12345"),"12345")
+        XCTAssertEqual(PairingCodeDisplay.grouped("١٢٣٤٥٦"),"١٢٣٤٥٦")
+        XCTAssertEqual(PairingCodeDisplay.spoken("123456"),"1 2 3 4 5 6")
+    }
+}
 @main struct TestRunner {
     static func main() throws {
         let tests = PeerCoreTests()
@@ -172,6 +187,7 @@ private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) 
         try tests.testMalformedAndDuplicateManifests()
         try tests.testCorruptionDoesNotCommitAndCancellationCleansStaging()
         try tests.testAtomicNoOverwriteAndEmptyFiles()
-        print("PASS: 9 core test groups (optional auto-open, rename migration, pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
+        tests.testManualEndpointAndPairingCodeDisplay()
+        print("PASS: 10 core test groups (manual endpoint/pairing code display, optional auto-open, rename migration, pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
     }
 }
