@@ -107,6 +107,24 @@ final class DropPresentationTests {
             XCTAssertEqual(g.card.maxY, 936)
         }
     }
+    func testTransferDetailAndPaceStayHonest() {
+        XCTAssertNil(TransferDetail.summary(roots:[],total:0))
+        XCTAssertTrue(TransferDetail.summary(roots:["Report.pdf"],total:2_000_000)!.hasPrefix("Report.pdf · "))
+        XCTAssertEqual(TransferDetail.summary(roots:["Report.pdf"],total:0),"Report.pdf")
+        XCTAssertTrue(TransferDetail.summary(roots:["A","B","C"],total:0)!.contains("3"))
+        XCTAssertNil(TransferDetail.remaining(4)); XCTAssertNil(TransferDetail.remaining(.infinity))
+        XCTAssertEqual(TransferDetail.remaining(7),TransferDetail.remaining(10))
+        XCTAssertEqual(TransferDetail.remaining(61),TransferDetail.remaining(120))
+        var pace=TransferPace(); let id=UUID()
+        pace.record(id:id,bytes:0,at:0); pace.record(id:id,bytes:100,at:1)
+        XCTAssertNil(pace.remaining(total:1000))
+        pace.record(id:id,bytes:200,at:2); XCTAssertEqual(pace.remaining(total:1000),8)
+        XCTAssertNil(pace.remaining(total:200))
+        pace.record(id:UUID(),bytes:500,at:3); XCTAssertNil(pace.remaining(total:1000))
+        pace.record(id:id,bytes:0,at:4); pace.record(id:id,bytes:0,at:6); XCTAssertNil(pace.remaining(total:1000))
+        pace.record(id:id,bytes:100,at:20); XCTAssertNil(pace.remaining(total:1000))
+        print("PASS: item summary, coarse time left and display-only pace without invented estimates")
+    }
 }
 
 @main
@@ -135,6 +153,7 @@ struct RunDropPresentationTests {
     static func main() throws {
         let tests = DropPresentationTests()
         tests.testFileRequestFeedbackRejectsOldFailures()
+        tests.testTransferDetailAndPaceStayHonest()
         tests.testDragTrackerRejectsStalePasteboardAndTextAndRequiresMovement()
         tests.testPlainScreenApproachTriggersBeforeCardWithoutEnteringSystemEdge()
         tests.testDifferentNotchWidthsAreMeasuredAndContentsStayBelowHousing()

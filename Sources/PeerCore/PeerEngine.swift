@@ -724,7 +724,8 @@ public final class PeerEngine {
         if !finished, throttle, now - (session.uiUpdates[outgoing.id] ?? 0) < 0.1 { return }
         session.uiUpdates[outgoing.id] = now
         let update = TransferUpdate(id: outgoing.id, peerName: session.name, receiving: false, completed: outgoing.completed,
-                                    total: outgoing.prepared.manifest.byteCount, status: status, finished: finished, succeeded: succeeded)
+                                    total: outgoing.prepared.manifest.byteCount, status: status, finished: finished, succeeded: succeeded,
+                                    roots: outgoing.prepared.manifest.roots)
         DispatchQueue.main.async { self.onTransfer?(update) }
     }
     private func updateIncoming(_ session: Session, status: String, finished: Bool = false, succeeded: Bool = false) {
@@ -733,7 +734,8 @@ public final class PeerEngine {
         if !finished, now - (session.uiUpdates[id] ?? 0) < 0.1 { return }
         session.uiUpdates[id] = now
         let update = TransferUpdate(id: id, peerName: session.name, receiving: true, completed: incoming.received,
-                                    total: incoming.manifest.byteCount, status: status, finished: finished, succeeded: succeeded)
+                                    total: incoming.manifest.byteCount, status: status, finished: finished, succeeded: succeeded,
+                                    roots: incoming.manifest.roots)
         DispatchQueue.main.async { self.onTransfer?(update) }
     }
     private func fail(_ session: Session, _ error: Error) {

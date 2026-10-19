@@ -15,7 +15,7 @@ struct LocalizationChecks {
         check(TranslationCatalog(preferences: ["fr", "zh-SG"]).language == "zh-Hans", "Second preferred supported language")
         check(en.text("receive.notification_count", 1) == "Received 1 item", "English singular")
         check(en.text("receive.notification_count", 2) == "Received 2 items", "English plural")
-        check(zh.text("receive.notification_count", 1) == "收到 1 项文件", "Chinese count")
+        check(zh.text("receive.notification_count", 1) == "收到 1 项文件", "Chinese count: " + zh.text("receive.notification_count", 1))
         check(en.text("receive.open_failures", 3, 1).contains("3 items saved; could not open 1 item"), "Independent plural variables")
         check(en.text("receive.partial_error", 2, "Example") == "Example (2 items saved)", "Positional plural")
         let device = "Mac 中文 %1$@ 🧪"
