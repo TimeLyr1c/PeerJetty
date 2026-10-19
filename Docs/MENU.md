@@ -10,6 +10,10 @@ Text history and latest received text are in Text settings; hiding history still
 
 文本历史与最近收到的文本位于文本设置，隐藏历史不停止记录，本次运行最近文本仍可查看。最近收到的文件位于传输设置；两种演示入口已移除；关于与诊断详情在关于页。
 
+While a file transfer is active, a read-only line above the actions shows its direction, device and percentage (or Waiting for confirmation once all bytes are sent), and the menu-bar symbol switches to its filled variant. Both return to idle when nothing is moving. The default-device submenu shows the short ID only when two paired devices share a name.
+
+文件传输进行中时，菜单顶部显示一行只读状态（方向、设备、百分比；字节传完后显示“等待确认”），菜单栏图标换成实心样式；空闲时恢复。默认设备子菜单仅在重名时显示短 ID。
+
 ## Hide and restore / 隐藏与恢复
 
 General has independent Show menu bar icon and Show Dock icon switches. New installations default to menu on / Dock off; all four combinations are supported. Both choices persist locally. Upgrading a legacy configuration preserves the previous native menu visibility and its corresponding Dock visibility before unlinking the switches. Hiding icons never stops transfers or closes Settings.

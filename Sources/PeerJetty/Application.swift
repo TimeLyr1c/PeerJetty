@@ -164,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self.active.insert(update.id); self.transferUpdates[update.id] = update
             }
             self.refreshBusy(); self.drop?.presentTransfer(update); self.settings?.progress(update)
+            self.menuBar?.activity(self.transferOrder.last.flatMap { self.transferUpdates[$0] })
         }
         engine.onReceived = { [weak self] name, urls in
             guard let self else { return }; self.lastReceived = urls; self.notifyReceived(name: name, count: urls.count)
