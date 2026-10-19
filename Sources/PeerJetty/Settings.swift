@@ -24,7 +24,7 @@ enum SettingsSection: String, CaseIterable {
     var identifier: NSToolbarItem.Identifier { NSToolbarItem.Identifier("settings." + rawValue) }
 }
 
-final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowDelegate {
+final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate {
     var onSave: ((String) -> Void)?
     var onSelect: ((String) -> Void)?
     var onPair: (() -> Void)?
@@ -53,7 +53,12 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     var onReset: (() -> Void)?
     var onQuit: (() -> Void)?
     private let name = NSTextField()
-    private let devices = NSPopUpButton()
+    private let deviceList = NSTableView()
+    private let deviceScroll = NSScrollView()
+    private var deviceListHeight: NSLayoutConstraint?
+    private let defaultButton = NSButton()
+    private let connectButton = NSButton()
+    private let forgetButton = NSButton()
     private let peerName = NSTextField(wrappingLabelWithString: "")
     private let peerState = NSTextField(wrappingLabelWithString: "")
     private let language = NSPopUpButton()
@@ -116,9 +121,23 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         folderLabel.setContentHuggingPriority(.required,for:.vertical)
         folderLabel.identifier = NSUserInterfaceItemIdentifier("receiveFolderPath")
         folderLabel.maximumNumberOfLines = 1; folderLabel.toolTip = configuration.receivePath; folderLabel.setAccessibilityValue(configuration.receivePath)
-        devices.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        devices.identifier = NSUserInterfaceItemIdentifier("devicePicker"); devices.setAccessibilityLabel(SettingsSection.devices.title)
-        devices.target = self; devices.action = #selector(selectPeer)
+        // A native list keeps every device visible; selecting a row never changes the default by itself.
+        let deviceColumn = NSTableColumn(identifier:NSUserInterfaceItemIdentifier("device")); deviceColumn.resizingMask = .autoresizingMask
+        deviceList.addTableColumn(deviceColumn); deviceList.headerView = nil; deviceList.style = .inset
+        deviceList.rowHeight = SettingsDeviceRow.height; deviceList.backgroundColor = .clear; deviceList.allowsEmptySelection = true
+        deviceList.dataSource = self; deviceList.delegate = self; deviceList.target = self; deviceList.doubleAction = #selector(makeDefaultFromList)
+        deviceList.identifier = NSUserInterfaceItemIdentifier("deviceList"); deviceList.setAccessibilityLabel(SettingsSection.devices.title)
+        deviceScroll.documentView = deviceList; deviceScroll.drawsBackground = false; deviceScroll.borderType = .noBorder
+        deviceScroll.hasVerticalScroller = true; deviceScroll.autohidesScrollers = true
+        deviceScroll.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let listHeight = deviceScroll.heightAnchor.constraint(equalToConstant:SettingsDeviceRow.height); listHeight.isActive = true; deviceListHeight = listHeight
+        for (control, key, action, id) in [(defaultButton, "settings.set_default", #selector(makeDefault), "setDefaultDevice"),
+                                           (connectButton, "settings.connect_pair", #selector(connect), "connectDevice"),
+                                           (forgetButton, "settings.remove_trust", #selector(forget), "unpairDevice")] {
+            control.title = L10n.text(key); control.bezelStyle = .rounded; control.font = .systemFont(ofSize:13)
+            control.target = self; control.action = action; control.identifier = NSUserInterfaceItemIdentifier(id)
+            control.setContentCompressionResistancePriority(.required, for: .horizontal)
+        }
         connectionLabel.stringValue = L10n.text("settings.connection_not_ready")
         connectionLabel.identifier = NSUserInterfaceItemIdentifier("connectionInfo")
         menuBarSwitch.state = .on; menuBarSwitch.identifier = NSUserInterfaceItemIdentifier("menuBarVisibility")
@@ -207,10 +226,10 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         connectionGroup.addArrangedSubview(button(L10n.text("connection.copy"),#selector(copyConnection)))
         connectionGroup.addArrangedSubview(button(L10n.text("connection.other"),#selector(toggleOtherConnections)))
         connectionGroup.addArrangedSubview(otherConnectionGroup)
-        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [trustNotice, row([symbol("desktopcomputer",size:32), summary, spacer(), button(L10n.text("settings.connect_pair"), #selector(connect))]),
-            devices, hint("settings.devices_select_a_paired_device_as_your_default"),
+        let deviceRows: [NSView] = [group("settings.tab_devices", rows: [trustNotice, row([symbol("desktopcomputer",size:32), summary, spacer(), defaultButton, connectButton]),
+            deviceScroll, hint("settings.devices_list_hint"),
             actions([button(L10n.text("settings.add_device_min"), #selector(pair)), button(L10n.text("settings.manual_address"), #selector(manual))])]),
-            group("settings.group_trust", rows: [actions([button(L10n.text("settings.remove_trust"), #selector(forget))])]),
+            group("settings.group_trust", rows: [actions([forgetButton])]),
             group("settings.group_manual", rows: [actions([connectionDisclosure]), connectionGroup])]
         let folderIcon = symbol("folder",size:20)
         folderIcon.identifier = NSUserInterfaceItemIdentifier("receiveFolderIcon")
@@ -252,7 +271,7 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             actions([button(L10n.text("updates.title"), #selector(checkUpdates)), button(L10n.text("settings.license"), #selector(showLicense)), button(L10n.text("settings.diagnostics"), #selector(showDiagnostics))]),
             group("settings.maintenance", rows: [actions([disclosure]), maintenance]), actions([button(L10n.text("settings.quit"), #selector(quit))])]
 
-        for control in [name, devices, language, folderLabel, progressLabel, connectionLabel, version, latestTextButton, historyOpen, retention] as [NSControl] {
+        for control in [name, language, folderLabel, progressLabel, connectionLabel, version, latestTextButton, historyOpen, retention] as [NSControl] {
             control.font = .systemFont(ofSize:13)
         }
         name.font = .systemFont(ofSize:15,weight:.semibold)
@@ -400,31 +419,46 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     private var explicitPreferred:String?
     func selectDefault(_ id:String?) {explicitPreferred=id}
     func updatePeers(_ peers: [DiscoveredPeer], preferred: String?) {
-        let selected = explicitPreferred ?? (devices.indexOfSelectedItem >= 0 && self.peers.indices.contains(devices.indexOfSelectedItem) ? self.peers[devices.indexOfSelectedItem].id : preferred)
+        let selected = explicitPreferred ?? self.selected?.id ?? preferred
         explicitPreferred=nil
         currentDefault=preferred
-        self.peers = peers; devices.removeAllItems()
-        for peer in peers {
-            let state = peer.paired ? (peer.connected ? L10n.text("settings.paired_online") : L10n.text("settings.paired_offline")) : L10n.text("settings.available_to_pair")
-            devices.addItem(withTitle: L10n.text("settings.peer_entry", peer.name, state, String(peer.id.prefix(6))))
-        }
-        if peers.isEmpty { devices.addItem(withTitle: L10n.text("settings.select_add_device_on_both_macs")) }
-        if let id = selected ?? preferred, let index = peers.firstIndex(where: { $0.id == id }) { devices.selectItem(at: index) }
+        // Paired devices first; the engine's order is kept within each group.
+        self.peers = peers.filter(\.paired) + peers.filter { !$0.paired }
+        deviceList.reloadData()
+        deviceScroll.isHidden = self.peers.isEmpty
+        deviceListHeight?.constant = CGFloat(min(max(self.peers.count,1),4)) * (SettingsDeviceRow.height + deviceList.intercellSpacing.height) + 8
+        if let id = selected ?? preferred, let index = self.peers.firstIndex(where: { $0.id == id }) {
+            deviceList.selectRowIndexes(IndexSet(integer:index), byExtendingSelection:false); deviceList.scrollRowToVisible(index)
+        } else if !self.peers.isEmpty { deviceList.selectRowIndexes(IndexSet(integer:0), byExtendingSelection:false) }
         updatePeerSummary()
+    }
+    private func stateText(_ peer: DiscoveredPeer) -> String {
+        guard peer.paired else { return L10n.text("settings.available_to_pair") }
+        let state = L10n.text("settings.device_state", L10n.text("settings.state_paired"), L10n.text(peer.connected ? "settings.state_connected" : "settings.state_disconnected"))
+        return peer.id == currentDefault ? L10n.text("settings.device_state", L10n.text("targets.default"), state) : state
     }
     private func updatePeerSummary() {
         guard let peer = selected else {
-            devices.toolTip = nil; peerName.toolTip = nil
+            peerName.toolTip = nil
             peerName.stringValue = L10n.text("settings.no_devices")
             peerState.stringValue = L10n.text("settings.select_add_device_on_both_macs")
+            defaultButton.isEnabled = false; connectButton.isEnabled = false; forgetButton.isEnabled = false
             return
         }
-        devices.toolTip = peer.name
         peerName.toolTip = peer.name
         peerName.stringValue = peer.name
         peerState.stringValue = (peer.id == currentDefault && peer.paired ? L10n.text("targets.default")+" · " : "") + L10n.text("settings.device_state", L10n.text(peer.paired ? "settings.state_paired" : "settings.state_unpaired"), L10n.text(peer.connected ? "settings.state_connected" : "settings.state_disconnected"))
+        defaultButton.isEnabled = peer.paired && peer.id != currentDefault; connectButton.isEnabled = true; forgetButton.isEnabled = peer.paired
     }
-    private var selected: DiscoveredPeer? { peers.indices.contains(devices.indexOfSelectedItem) ? peers[devices.indexOfSelectedItem] : nil }
+    private var selected: DiscoveredPeer? { peers.indices.contains(deviceList.selectedRow) ? peers[deviceList.selectedRow] : nil }
+    func numberOfRows(in tableView: NSTableView) -> Int { peers.count }
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        guard peers.indices.contains(row) else { return nil }
+        let cell = tableView.makeView(withIdentifier:SettingsDeviceRow.identifier, owner:nil) as? SettingsDeviceRow ?? SettingsDeviceRow(frame:.zero)
+        let peer = peers[row]; cell.show(name:peer.name, state:stateText(peer), paired:peer.paired)
+        return cell
+    }
+    func tableViewSelectionDidChange(_ notification: Notification) { updatePeerSummary() }
     func status(_ text: String) {
         statusLabel.stringValue = text; statusLabel.toolTip = text
         let available = max(100, (window?.contentView?.bounds.width ?? 720) - 64 - statusDetails.intrinsicContentSize.width - 10)
@@ -521,7 +555,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     @objc private func toggleAnimations() { onAnimations?(animations.state == .on) }
     @objc private func save() { onSave?(name.stringValue) }
-    @objc private func selectPeer() { updatePeerSummary(); if let selected, selected.paired { onSelect?(selected.id) } }
+    @objc private func makeDefault() { if let selected, selected.paired, selected.id != currentDefault { onSelect?(selected.id) } }
+    @objc private func makeDefaultFromList() { if deviceList.clickedRow >= 0 { makeDefault() } }
     @objc private func connect() { if let selected { onConnect?(selected.id) } }
     @objc private func pair() { onPair?() }
     @objc private func forget() {
@@ -596,4 +631,35 @@ private final class SettingsPathSurface: NSView {
         NSColor.controlBackgroundColor.setFill(); path.fill(); NSColor.separatorColor.withAlphaComponent(0.2).setStroke(); path.stroke()
     }
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
+}
+
+/// One device row: literal name with its trust/connection state as separate text, never color alone.
+private final class SettingsDeviceRow: NSTableCellView {
+    static let identifier = NSUserInterfaceItemIdentifier("settingsDeviceRow")
+    static let height: CGFloat = 44
+    private let icon = NSImageView()
+    private let name = NSTextField(labelWithString: "")
+    private let state = NSTextField(labelWithString: "")
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect); identifier = Self.identifier
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize:18, weight:.regular); icon.contentTintColor = .secondaryLabelColor
+        name.font = .systemFont(ofSize:13, weight:.semibold); name.lineBreakMode = .byTruncatingMiddle
+        state.font = .systemFont(ofSize:12); state.textColor = .secondaryLabelColor; state.lineBreakMode = .byTruncatingTail
+        for label in [name, state] { label.setContentCompressionResistancePriority(.defaultLow, for:.horizontal) }
+        let text = NSStackView(views:[name, state]); text.orientation = .vertical; text.alignment = .leading; text.spacing = 2
+        for view in [icon, text] as [NSView] { view.translatesAutoresizingMaskIntoConstraints = false; addSubview(view) }
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo:leadingAnchor, constant:4), icon.centerYAnchor.constraint(equalTo:centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant:26), icon.heightAnchor.constraint(equalToConstant:26),
+            text.leadingAnchor.constraint(equalTo:icon.trailingAnchor, constant:8), text.trailingAnchor.constraint(lessThanOrEqualTo:trailingAnchor, constant:-4),
+            text.centerYAnchor.constraint(equalTo:centerYAnchor)])
+        setAccessibilityElement(true); setAccessibilityRole(.cell)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
+    func show(name value: String, state text: String, paired: Bool) {
+        name.stringValue = value; name.toolTip = value; state.stringValue = text
+        icon.image = NSImage(systemSymbolName: paired ? "desktopcomputer" : "plus.circle", accessibilityDescription: nil)
+        name.textColor = paired ? .labelColor : .secondaryLabelColor
+        setAccessibilityLabel(value + " · " + text)
+    }
 }

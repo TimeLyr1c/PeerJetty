@@ -159,7 +159,6 @@
 "settings.choose_folder" = "Choose folder…";
 "settings.connect_pair" = "Connect / Pair";
 "settings.device_name" = "Device name";
-"settings.devices_select_a_paired_device_as_your_default" = "Devices — select a paired device as your default destination";
 "settings.devices_settings" = "Devices & Settings";
 "settings.drag_toward_the_upper_center_below_the_menu" = "Drag toward the upper center, below the menu bar. Drop into the card when it appears; no need to touch the screen edge.";
 "settings.install_peerjetty_on_both_macs_and_pair_them" = "Install PeerJetty on both Macs and pair them on the same local network. Trusted devices receive automatically. Notifications are the default; opening received files is optional.";
@@ -403,3 +402,5 @@
 "updates.operation_failed" = "The update could not be completed. Details are shown below.";
 
 "updates.diagnostics_hint" = "Technical details (may use the system language):";
+"settings.set_default" = "Set as Default";
+"settings.devices_list_hint" = "Select a device to connect, make it the default destination or unpair it. Double-click a paired device to make it the default.";

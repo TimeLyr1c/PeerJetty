@@ -159,7 +159,6 @@
 "settings.choose_folder" = "选择文件夹…";
 "settings.connect_pair" = "连接 / 配对";
 "settings.device_name" = "本机名称";
-"settings.devices_select_a_paired_device_as_your_default" = "设备列表（选择已配对设备即设为默认发送目标）";
 "settings.devices_settings" = "设备与设置";
 "settings.drag_toward_the_upper_center_below_the_menu" = "拖到屏幕上方中央、菜单栏下方，卡片出现后拖进去再松开发送，无需碰顶边。";
 "settings.install_peerjetty_on_both_macs_and_pair_them" = "两台 Mac 安装同一个 App，在同一局域网配对后即可互传。可信设备自动接收；默认只通知，可自行开启收到后自动打开。";
@@ -403,3 +402,5 @@
 "updates.operation_failed" = "未能完成更新，详细原因见下方。";
 
 "updates.diagnostics_hint" = "诊断详情（可能保留系统语言）：";
+"settings.set_default" = "设为默认";
+"settings.devices_list_hint" = "选中设备后可连接、设为默认发送目标或解除配对；双击已配对设备可直接设为默认。";
