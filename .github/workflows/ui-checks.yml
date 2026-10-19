@@ -33,3 +33,6 @@ jobs:
 
       - name: Core tests
         run: '"$(./Scripts/swift.sh build --show-bin-path)/PeerTests"'
+
+      - name: Menu checks
+        run: ./Scripts/test-menu.sh
