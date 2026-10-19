@@ -236,7 +236,9 @@ struct LocalizationChecks {
         settings.showTrustResult(L10n.text("unpair.remote","Test Mac"))
         check(window.attachedSheet === existingSheet,"Unpair result waits for existing confirmation")
         window.endSheet(existingSheet,returnCode:.alertFirstButtonReturn)
-        RunLoop.main.run(until:Date().addingTimeInterval(0.1))
+        // The result sheet is queued behind the closing one; give slow CI runners up to 2 s.
+        let sheetDeadline = Date().addingTimeInterval(2)
+        repeat { RunLoop.main.run(until:Date().addingTimeInterval(0.05)) } while window.attachedSheet == nil && Date() < sheetDeadline
         check(window.attachedSheet != nil,"Unpair result is an app-owned alert independent of notification permission")
         if let sheet = window.attachedSheet { window.endSheet(sheet,returnCode:.alertFirstButtonReturn) }
         RunLoop.main.run(until:Date().addingTimeInterval(0.05))

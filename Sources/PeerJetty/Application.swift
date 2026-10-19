@@ -427,14 +427,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func manualConnection() {
         let alert = NSAlert(); alert.messageText = L10n.text("application.connect_manually")
         alert.informativeText = L10n.text("application.if_discovery_fails_enter_the_address_and_port")
-        alert.addButton(withTitle: L10n.text("application.connect")); alert.addButton(withTitle: L10n.text("dropzone.cancel"))
+        let connect = alert.addButton(withTitle: L10n.text("application.connect")); alert.addButton(withTitle: L10n.text("dropzone.cancel"))
         let host = NSTextField(string: ""); host.placeholderString = L10n.text("application.other_mac_s_lan_address_or_hostname")
         let port = NSTextField(string: ""); port.placeholderString = L10n.text("application.port_shown_on_the_other_mac")
         let stack = NSStackView(views: [host, port]); stack.orientation = .vertical; stack.spacing = 8
         stack.frame = NSRect(x: 0, y: 0, width: 360, height: 60); host.widthAnchor.constraint(equalToConstant: 360).isActive = true
         port.widthAnchor.constraint(equalToConstant: 360).isActive = true; alert.accessoryView = stack
-        if alert.runModal() == .alertFirstButtonReturn, let value = UInt16(port.stringValue), value > 0 {
-            engine?.openPairing(); engine?.connect(host: host.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), port: value)
+        // Connect stays disabled until the input is usable, instead of silently doing nothing.
+        let validator = ManualEndpointValidator(host: host, port: port, button: connect)
+        alert.window.initialFirstResponder = host
+        let response = withExtendedLifetime(validator) { alert.runModal() }
+        if response == .alertFirstButtonReturn, let endpoint = ManualEndpoint.parse(host: host.stringValue, port: port.stringValue) {
+            engine?.openPairing(); engine?.connect(host: endpoint.host, port: endpoint.port)
         }
     }
     private func showPairing(id: UUID, name: String, code: String) {
@@ -443,7 +447,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         window.title = L10n.text("application.confirm_pairing"); window.isReleasedWhenClosed = false; window.center()
         let label = NSTextField(labelWithString: L10n.text("application.pair_with", String(describing: name))); label.frame = NSRect(x: 28, y: 230, width: 375, height: 30)
         label.font = .systemFont(ofSize: 17, weight: .semibold); label.lineBreakMode = .byTruncatingMiddle
-        let number = NSTextField(labelWithString: code); number.frame = NSRect(x: 28, y: 165, width: 375, height: 55)
+        let number = NSTextField(labelWithString: PairingCodeDisplay.grouped(code)); number.frame = NSRect(x: 28, y: 165, width: 375, height: 55)
+        number.setAccessibilityValue(PairingCodeDisplay.spoken(code))
         number.font = .monospacedDigitSystemFont(ofSize: 40, weight: .medium)
         let detail = NSTextField(wrappingLabelWithString: L10n.text("application.compare_the_code_on_both_macs_and_confirm")); detail.frame = NSRect(x: 28, y: 75, width: 375, height: 75)
         let yes = NSButton(title: L10n.text("application.codes_match_pair"), target: self, action: #selector(confirmPairing(_:)))
@@ -668,4 +673,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func fixtureCheckUpdates() {checkUpdates()}
 #endif
 
+}
+
+private final class ManualEndpointValidator: NSObject, NSTextFieldDelegate {
+    private let host: NSTextField, port: NSTextField, button: NSButton
+    init(host: NSTextField, port: NSTextField, button: NSButton) {
+        self.host = host; self.port = port; self.button = button; super.init()
+        host.delegate = self; port.delegate = self; refresh()
+    }
+    func controlTextDidChange(_ notification: Notification) { refresh() }
+    private func refresh() { button.isEnabled = ManualEndpoint.parse(host: host.stringValue, port: port.stringValue) != nil }
 }
