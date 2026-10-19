@@ -15,15 +15,17 @@ final class MenuBarController {
     var onSelectTarget: ((String) -> Void)?
     private let destinations = NSMenuItem(title:L10n.text("targets.menu"),action:nil,keyEquivalent:"")
     private var targetCommands: [MenuCommand] = []
+    /// A read-only line above the actions; hidden while nothing is moving.
+    private let activityItem = NSMenuItem(title:"",action:nil,keyEquivalent:"")
+    private let activitySeparator = NSMenuItem.separator()
+    static let idleSymbol = "arrow.up.arrow.down.square", busySymbol = "arrow.up.arrow.down.square.fill"
     var isVisible: Bool { item.isVisible }
     static func activationPolicy(dockVisible: Bool) -> NSApplication.ActivationPolicy { dockVisible ? .regular : .accessory }
     init(autosaveName: String = "PeerJetty.MainStatusItem", actions: [Action: () -> Void]) {
         item = NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength)
         item.autosaveName = autosaveName
         item.behavior = [.removalAllowed] // Never terminate transfers when the icon is removed.
-        item.button?.image = NSImage(systemSymbolName:"arrow.up.arrow.down.square", accessibilityDescription:L10n.text("application.file_handoff"))
-        item.button?.image = item.button?.image?.withSymbolConfiguration(.init(pointSize:18, weight:.medium))
-        item.button?.image?.isTemplate = true
+        setSymbol(Self.idleSymbol)
         let menu = NSMenu()
         for (action,key) in Self.entries {
             let command = MenuCommand(actions[action] ?? {}); commands.append(command)
@@ -31,6 +33,8 @@ final class MenuBarController {
             entry.target = command; menu.addItem(entry)
         }
         destinations.submenu=NSMenu();menu.insertItem(destinations,at:2)
+        activityItem.isEnabled = false; activityItem.isHidden = true; activitySeparator.isHidden = true
+        menu.insertItem(activitySeparator,at:0); menu.insertItem(activityItem,at:0)
         updateTargets([],preferred:nil)
         item.menu = menu
         lastVisibility = item.isVisible
@@ -45,12 +49,32 @@ final class MenuBarController {
         let paired=peers.filter(\.paired).sorted{$0.name == $1.name ? $0.id < $1.id : $0.name.localizedStandardCompare($1.name) == .orderedAscending}
         for peer in paired {
             let command=MenuCommand { [weak self] in self?.onSelectTarget?(peer.id) };targetCommands.append(command)
-            let entry=NSMenuItem(title:peer.name+" · "+L10n.text(peer.connected ? "targets.connected" : "targets.offline")+" · "+String(peer.id.prefix(6)),action:#selector(MenuCommand.invoke),keyEquivalent:"")
+            // The short ID only tells apart devices that share a name.
+            let duplicate=paired.filter{$0.name == peer.name}.count > 1
+            let entry=NSMenuItem(title:peer.name+" · "+L10n.text(peer.connected ? "targets.connected" : "targets.offline")+(duplicate ? " · "+String(peer.id.prefix(6)) : ""),action:#selector(MenuCommand.invoke),keyEquivalent:"")
             entry.target=command;entry.state=peer.id == preferred ? .on : .off;submenu.addItem(entry)
         }
         if paired.isEmpty {let entry=NSMenuItem(title:L10n.text("targets.empty"),action:nil,keyEquivalent:"");entry.isEnabled=false;submenu.addItem(entry)}
         destinations.submenu=submenu
     }
+    /// Shows the newest active transfer, or hides the line and restores the idle symbol.
+    func activity(_ update: TransferUpdate?) {
+        guard let update, !update.finished else {
+            activityItem.isHidden = true; activitySeparator.isHidden = true; setSymbol(Self.idleSymbol); return
+        }
+        let waiting = update.total > 0 && update.completed >= update.total
+        let detail = waiting ? L10n.text("drop.waiting_confirmation") : update.total > 0 ? L10n.percent(Int(Double(update.completed) / Double(update.total) * 100)) : update.status
+        activityItem.title = L10n.text(update.receiving ? "settings.receiving_progress" : "settings.sending_progress", update.peerName, detail)
+        activityItem.isHidden = false; activitySeparator.isHidden = false; setSymbol(Self.busySymbol)
+    }
+    var activityText: String? { activityItem.isHidden ? nil : activityItem.title }
+    private func setSymbol(_ name: String) {
+        guard currentSymbol != name else { return }
+        currentSymbol = name
+        let image = NSImage(systemSymbolName:name, accessibilityDescription:L10n.text("application.file_handoff"))?.withSymbolConfiguration(.init(pointSize:18, weight:.medium))
+        image?.isTemplate = true; item.button?.image = image
+    }
+    private(set) var currentSymbol = ""
     func setVisible(_ value: Bool) {
         settingVisibility = true; defer { settingVisibility = false }
         if item.isVisible != value { item.isVisible = value }
