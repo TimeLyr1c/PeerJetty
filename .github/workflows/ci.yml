@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # The native glass APIs need a macOS 26 SDK; the deployment target stays macOS 15.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Localization catalogs
+        run: python3 Scripts/check-localization.py
+
+      - name: Build, core tests and two-engine harness
+        run: ./Scripts/test.sh
+
+      - name: Release tool tests
+        run: python3 -m unittest discover -s Tests/ReleaseTools -v
