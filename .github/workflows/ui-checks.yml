@@ -30,3 +30,6 @@ jobs:
 
       - name: Settings layout checks (English and Chinese)
         run: ./Scripts/test-localization.sh
+
+      - name: Core tests
+        run: '"$(./Scripts/swift.sh build --show-bin-path)/PeerTests"'
