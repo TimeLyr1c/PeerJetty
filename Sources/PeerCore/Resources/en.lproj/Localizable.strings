@@ -403,3 +403,5 @@
 "updates.operation_failed" = "The update could not be completed. Details are shown below.";
 
 "updates.diagnostics_hint" = "Technical details (may use the system language):";
+"drop.detail" = "%1$@ · %2$@";
+"drop.remaining" = "About %1$@ left";

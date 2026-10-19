@@ -218,8 +218,10 @@ public struct TransferUpdate {
     public let status: String
     public let finished: Bool
     public let succeeded: Bool
-    public init(id: UUID, peerName: String, receiving: Bool, completed: Int64, total: Int64, status: String, finished: Bool, succeeded: Bool) {
+    /// Top-level item names of a validated manifest, for display only. Empty when unknown.
+    public let roots: [String]
+    public init(id: UUID, peerName: String, receiving: Bool, completed: Int64, total: Int64, status: String, finished: Bool, succeeded: Bool, roots: [String] = []) {
         self.id = id; self.peerName = peerName; self.receiving = receiving; self.completed = completed; self.total = total
-        self.status = status; self.finished = finished; self.succeeded = succeeded
+        self.status = status; self.finished = finished; self.succeeded = succeeded; self.roots = roots
     }
 }

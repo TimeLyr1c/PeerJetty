@@ -9,6 +9,46 @@ enum DragPayload {
     }
 }
 
+/// Display-only throughput estimate from engine byte updates. It never drives progress or completion.
+struct TransferPace {
+    private(set) var id: UUID?
+    private var samples: [(time: Double, bytes: Int64)] = []
+    static let window: Double = 5, minimumSpan: Double = 1.5
+    mutating func record(id: UUID, bytes: Int64, at time: Double) {
+        if self.id != id { self.id = id; samples = [] }
+        if let last = samples.last, bytes < last.bytes || time < last.time { samples = [] }
+        samples.append((time, bytes))
+        samples.removeAll { time - $0.time > Self.window }
+    }
+    mutating func reset() { id = nil; samples = [] }
+    /// Seconds left, only after a steady span of real samples; nil instead of a guess.
+    func remaining(total: Int64) -> Double? {
+        guard let first = samples.first, let last = samples.last, last.time - first.time >= Self.minimumSpan, total > last.bytes else { return nil }
+        let rate = Double(last.bytes - first.bytes) / (last.time - first.time)
+        return rate > 0 ? Double(total - last.bytes) / rate : nil
+    }
+}
+
+/// Card text for what is moving: one item name or an item count, plus the manifest size.
+enum TransferDetail {
+    static func summary(roots: [String], total: Int64) -> String? {
+        var parts: [String] = []
+        if roots.count == 1 { parts.append(roots[0]) } else if roots.count > 1 { parts.append(L10n.text("drop.item_count", roots.count)) }
+        if total > 0 { parts.append(ByteCountFormatter.string(fromByteCount: total, countStyle: .file)) }
+        guard let first = parts.first else { return nil }
+        return parts.count == 1 ? first : L10n.text("drop.detail", parts[0], parts[1])
+    }
+    /// Coarse buckets keep the label calm; the final seconds are left unlabeled.
+    static func remaining(_ seconds: Double) -> String? {
+        guard seconds.isFinite, seconds >= 5, seconds < 100 * 3600 else { return nil }
+        let step: Double = seconds < 60 ? 5 : seconds < 3600 ? 60 : 300
+        let formatter = DateComponentsFormatter()
+        var calendar = Calendar.current; calendar.locale = Locale(identifier: L10n.language); formatter.calendar = calendar
+        formatter.unitsStyle = .abbreviated; formatter.allowedUnits = [.hour, .minute, .second]; formatter.maximumUnitCount = 2
+        return formatter.string(from: (seconds / step).rounded(.up) * step).map { L10n.text("drop.remaining", $0) }
+    }
+}
+
 /// Small vector renderer. No spinner, display link or per-frame drawing loop.
 final class TransferGlyph: NSView {
     // Reference centerline samples, normalized to the ring center/radius rather
@@ -203,6 +243,8 @@ final class DropZoneView: NSView {
     private(set) var cancellableTransferID: UUID?
     var onCancel: ((UUID) -> Void)?
     var targetName = L10n.text("dropzone.choose_a_destination")
+    private var shownTitle = ""
+    private var pace = TransferPace()
     private let promises: OperationQueue = {
         let queue = OperationQueue(); queue.name = "PeerJetty.FilePromises"; queue.maxConcurrentOperationCount = 1; return queue
     }()
@@ -260,9 +302,10 @@ final class DropZoneView: NSView {
     func idle() { cancellableTransferID = nil; show(title: L10n.text("dropzone.drop_into_card_to_send"), subtitle: targetName, symbol: "arrow.up.doc.fill", color: .labelColor); progress.isHidden = true; cancelButton.isHidden = true }
     func show(title: String, subtitle: String, symbol: String = "arrow.up.circle.fill", color: NSColor = .systemBlue, preserveProgress: Bool = false) {
         if !preserveProgress { cancellableTransferID = nil; cancelButton.isHidden = promiseTracker == nil; progress.reset(); progress.isHidden = true; icon.isHidden = false }
-        if self.title.stringValue != title { icon.layer?.removeAnimation(forKey: "PeerJetty.feedback"); MotionEffects.transition(self.title, policy:policy); MotionEffects.transition(icon, policy:policy) }
+        // Compare the base title, so a time-left suffix updates without a status transition.
+        if shownTitle != title { icon.layer?.removeAnimation(forKey: "PeerJetty.feedback"); MotionEffects.transition(self.title, policy:policy); MotionEffects.transition(icon, policy:policy) }
         if self.subtitle.stringValue != subtitle { MotionEffects.transition(self.subtitle, policy:policy) }
-        self.title.stringValue = title; self.subtitle.stringValue = subtitle
+        shownTitle = title; self.title.stringValue = title; self.subtitle.stringValue = subtitle
         self.title.toolTip = title; self.subtitle.toolTip = subtitle; needsLayout = true
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title); icon.contentTintColor = color
     }
@@ -271,11 +314,19 @@ final class DropZoneView: NSView {
         if frozenTargets != nil { onTargetLayout?() }
         if update.finished, update.succeeded, successIDs.contains(update.id) { return }
         let waiting = !update.finished && update.total > 0 && update.completed >= update.total
-        show(title: waiting ? L10n.text("drop.waiting_confirmation") : update.status, subtitle: L10n.text(update.receiving ? "drop.receiving_peer" : "drop.sending_peer", update.peerName),
+        let peer = L10n.text(update.receiving ? "drop.receiving_peer" : "drop.sending_peer", update.peerName)
+        let detail = TransferDetail.summary(roots: update.roots, total: update.total).map { L10n.text("drop.detail", peer, $0) } ?? peer
+        show(title: waiting ? L10n.text("drop.waiting_confirmation") : update.status, subtitle: detail,
              symbol: update.finished ? (update.succeeded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill") : "arrow.up.arrow.down.circle.fill",
              color: update.finished ? (update.succeeded ? .systemGreen : .systemOrange) : .systemBlue, preserveProgress:true)
         cancellableTransferID = update.finished ? nil : update.id
         cancelButton.isHidden = update.finished
+        if update.finished || waiting || update.total <= 0 { pace.reset() } else {
+            pace.record(id: update.id, bytes: update.completed, at: CACurrentMediaTime())
+            if let left = pace.remaining(total: update.total).flatMap(TransferDetail.remaining) {
+                let text = L10n.text("drop.detail", shownTitle, left); title.stringValue = text; title.toolTip = text
+            }
+        }
         progress.setAccessibilityLabel(waiting ? L10n.text("drop.waiting_confirmation") : update.status)
         if update.finished, update.succeeded {
             successIDs.append(update.id); if successIDs.count > 256 { successIDs.removeFirst() }

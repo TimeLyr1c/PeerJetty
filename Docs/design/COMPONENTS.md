@@ -99,3 +99,10 @@ DropTargets freezes identity/geometry per drag; device tiles share the existing 
 ### Update admission coordinator
 
 `UpdateReadiness` owns main-thread session/check tickets, outstanding promise IDs and history-write IDs. AppDelegate remains responsible for transport/file activity and the native waiting panel. Reuse the one-shot gate for updater authorization; do not infer readiness from status strings or a single global promise flag. Test-only AppDelegate hooks are excluded unless PEERJETTY_TESTING is explicitly defined.
+
+### Drop card transfer details
+
+`TransferUpdate.roots` carries validated top-level names for display only; rejected manifests send none. The card subtitle adds one item name or an item count plus the manifest size. `TransferPace` estimates time left from real byte updates over a 5 s window, shows nothing until 1.5 s of steady data, and leaves the final 5 s unlabeled. The suffix updates without a status transition and never affects progress, confirmation or the success sequence.
+
+卡片副标题显示单个项目名或项目数量及总大小；剩余时间只依据真实字节更新估算，数据不足时不显示，不影响进度、确认和成功反馈。
+

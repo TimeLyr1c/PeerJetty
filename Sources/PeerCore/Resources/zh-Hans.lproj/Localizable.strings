@@ -403,3 +403,5 @@
 "updates.operation_failed" = "未能完成更新，详细原因见下方。";
 
 "updates.diagnostics_hint" = "诊断详情（可能保留系统语言）：";
+"drop.detail" = "%1$@ · %2$@";
+"drop.remaining" = "剩余约 %1$@";
