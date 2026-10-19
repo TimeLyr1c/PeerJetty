@@ -131,10 +131,11 @@ public struct TransferManifest: Codable {
             let (next, overflow) = sum.addingReportingOverflow(entry.size)
             guard !overflow else { throw PeerError.localized("models.file_size_exceeds_the_limit", []) }; sum = next
             try FileRules.validateRelative(entry.path, allowEmpty: true)
-            let key = "\(entry.root)/\(entry.path)"
+            let folded = FileRules.diskKey(entry.path)
+            let key = "\(entry.root)/\(folded)"
             guard paths[key] == nil else { throw PeerError.localized("models.the_file_manifest_contains_duplicate_paths", []) }
             if !entry.path.isEmpty {
-                let parent = (entry.path as NSString).deletingLastPathComponent
+                let parent = (folded as NSString).deletingLastPathComponent
                 guard paths["\(entry.root)/\(parent)"] == .directory else { throw PeerError.localized("models.invalid_parent_directory", []) }
             }
             if entry.kind == .symlink {
@@ -146,7 +147,7 @@ public struct TransferManifest: Codable {
         }
         for root in roots.indices { guard paths["\(root)/"] != nil else { throw PeerError.localized("models.the_file_manifest_has_no_root_entry", []) } }
         // Resolve chains virtually before creating links: lexical checks alone miss `sub/link/..` escapes.
-        let links = Dictionary(uniqueKeysWithValues: entries.filter { $0.kind == .symlink }.map { ("\($0.root)/\($0.path)", $0.link!) })
+        let links = Dictionary(uniqueKeysWithValues: entries.filter { $0.kind == .symlink }.map { ("\($0.root)/\(FileRules.diskKey($0.path))", $0.link!) })
         for entry in entries where entry.kind == .symlink {
             var remaining = entry.path.split(separator: "/").map(String.init)
             var resolved: [String] = []; var steps = 0
@@ -159,7 +160,7 @@ public struct TransferManifest: Codable {
                     resolved.removeLast(); continue
                 }
                 resolved.append(part)
-                if let target = links["\(entry.root)/\(resolved.joined(separator: "/"))"] {
+                if let target = links["\(entry.root)/\(FileRules.diskKey(resolved.joined(separator: "/")))"] {
                     resolved.removeLast(); remaining = target.split(separator: "/").map(String.init) + remaining
                 }
             }
@@ -168,6 +169,11 @@ public struct TransferManifest: Codable {
 }
 
 public enum FileRules {
+    // Default APFS/HFS+ volumes ignore case and Unicode normalization, so `D/UP` reaches `d/up`.
+    // Compare manifest paths the way the receiving disk resolves them.
+    static func diskKey(_ path: String) -> String {
+        path.folding(options: .caseInsensitive, locale: nil).decomposedStringWithCanonicalMapping
+    }
     public static func validateName(_ name: String) throws {
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\0"),
               name.utf8.count <= 255 else { throw PeerError.localized("models.invalid_filename", []) }

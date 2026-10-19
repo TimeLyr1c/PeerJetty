@@ -90,6 +90,24 @@ final class PeerCoreTests {
             ManifestEntry(root: 0, path: "b", kind: .symlink, link: "a")]
         XCTAssertThrowsError(try TransferManifest(roots: ["root"], entries: cycle).validate())
     }
+    func testCaseAndNormalizationInsensitiveLinkEscape() throws {
+        // `D/UP` is not a link lexically, but on a case-insensitive volume it resolves through `d/up` -> `..`.
+        let base = [ManifestEntry(root: 0, path: "", kind: .directory),
+            ManifestEntry(root: 0, path: "d", kind: .directory),
+            ManifestEntry(root: 0, path: "d/f", kind: .file),
+            ManifestEntry(root: 0, path: "d/up", kind: .symlink, link: "..")]
+        try TransferManifest(roots: ["root"], entries: base + [ManifestEntry(root: 0, path: "ok", kind: .symlink, link: "D/f")]).validate()
+        XCTAssertThrowsError(try TransferManifest(roots: ["root"], entries: base + [ManifestEntry(root: 0, path: "escape", kind: .symlink, link: "D/UP/..")]).validate())
+        let composed = "\u{E9}", decomposed = "e\u{301}"
+        let unicode = [ManifestEntry(root: 0, path: "", kind: .directory),
+            ManifestEntry(root: 0, path: composed, kind: .directory),
+            ManifestEntry(root: 0, path: composed + "/up", kind: .symlink, link: ".."),
+            ManifestEntry(root: 0, path: "escape", kind: .symlink, link: decomposed + "/up/..")]
+        XCTAssertThrowsError(try TransferManifest(roots: ["root"], entries: unicode).validate())
+        let collision = [ManifestEntry(root: 0, path: "", kind: .directory),
+            ManifestEntry(root: 0, path: "a", kind: .file), ManifestEntry(root: 0, path: "A", kind: .file)]
+        XCTAssertThrowsError(try TransferManifest(roots: ["root"], entries: collision).validate())
+    }
     func testPromiseCompletionCountsFilesAndWaitsForAll() throws {
         var completions = 0
         let first = URL(fileURLWithPath: "/test/a"), second = URL(fileURLWithPath: "/test/b")
@@ -168,10 +186,11 @@ private func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T) 
         try tests.testPairingBindsBothIdentitiesNoncesAndTLSConnection()
         try tests.testRejectTraversalAndSymlinkParent()
         try tests.testSymlinkChainEscapeAndCycles()
+        try tests.testCaseAndNormalizationInsensitiveLinkEscape()
         try tests.testPromiseCompletionCountsFilesAndWaitsForAll()
         try tests.testMalformedAndDuplicateManifests()
         try tests.testCorruptionDoesNotCommitAndCancellationCleansStaging()
         try tests.testAtomicNoOverwriteAndEmptyFiles()
-        print("PASS: 9 core test groups (optional auto-open, rename migration, pairing, traversal/links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
+        print("PASS: 10 core test groups (optional auto-open, rename migration, pairing, traversal/links, case-insensitive links, malformed manifests, promises, corruption/cancellation, no-overwrite/empty files)")
     }
 }
