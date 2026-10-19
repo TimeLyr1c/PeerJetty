@@ -99,3 +99,10 @@ DropTargets freezes identity/geometry per drag; device tiles share the existing 
 ### Update admission coordinator
 
 `UpdateReadiness` owns main-thread session/check tickets, outstanding promise IDs and history-write IDs. AppDelegate remains responsible for transport/file activity and the native waiting panel. Reuse the one-shot gate for updater authorization; do not infer readiness from status strings or a single global promise flag. Test-only AppDelegate hooks are excluded unless PEERJETTY_TESTING is explicitly defined.
+
+### Device list
+
+Devices uses a native inset `NSTableView` (`deviceList`) instead of a popup: paired devices first, each row with literal name and separate trust/connection/default text. Selecting a row only changes the summary and the target of Connect / Set as Default / Unpair…; the default destination changes only through Set as Default or a double-click on a paired row. The list shows up to four rows before scrolling and hides when no device is known.
+
+设备页改为原生列表，已配对设备在前；选中行不再自动改默认目标，需点“设为默认”或双击已配对设备。连接和解除配对作用于选中行。
+
