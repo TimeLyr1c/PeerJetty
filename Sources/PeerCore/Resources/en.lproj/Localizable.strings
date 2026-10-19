@@ -403,3 +403,10 @@
 "updates.operation_failed" = "The update could not be completed. Details are shown below.";
 
 "updates.diagnostics_hint" = "Technical details (may use the system language):";
+"settings.onboarding_name" = "Name this Mac, then click Save / Finish setup.";
+"settings.onboarding_pair" = "Pair with your other Mac: open Add device on both and confirm matching codes.";
+"settings.onboarding_default" = "Choose a default destination in Devices.";
+"settings.onboarding_drop" = "Then drag files toward the top center of the screen, just below the menu bar, and drop them into the card.";
+"settings.open_devices" = "Open Devices";
+"settings.step_done" = "Done";
+"settings.step_todo" = "Not done yet";

@@ -403,3 +403,10 @@
 "updates.operation_failed" = "未能完成更新，详细原因见下方。";
 
 "updates.diagnostics_hint" = "诊断详情（可能保留系统语言）：";
+"settings.onboarding_name" = "为本机命名，然后点“保存 / 完成初始化”。";
+"settings.onboarding_pair" = "与另一台 Mac 配对：两台都打开“添加设备”，核对配对码一致后确认。";
+"settings.onboarding_default" = "在“设备”页选择默认发送设备。";
+"settings.onboarding_drop" = "之后把文件拖向屏幕上方中间、菜单栏下方，放进出现的卡片即可发送。";
+"settings.open_devices" = "打开设备页";
+"settings.step_done" = "已完成";
+"settings.step_todo" = "未完成";

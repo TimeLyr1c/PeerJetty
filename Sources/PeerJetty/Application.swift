@@ -294,7 +294,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 guard let self else { return }
                 let value = name.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !value.isEmpty, value.utf8.count <= 256 else { self.settings?.status(L10n.text("application.enter_a_short_nonempty_device_name")); return }
-                do { try store.update { $0.name = value; $0.onboardingComplete = true }; self.engine?.refresh(); self.requestNotifications(); self.settings?.status(L10n.text("application.settings_saved_select_add_device_on_both_macs")) }
+                do { try store.update { $0.name = value; $0.onboardingComplete = true }; self.settings?.markNamed(); self.engine?.refresh(); self.requestNotifications(); self.settings?.status(L10n.text("application.settings_saved_select_add_device_on_both_macs")) }
                 catch { self.showError(error.localizedDescription) }
             }
             controller.onSelect = { [weak self] id in
