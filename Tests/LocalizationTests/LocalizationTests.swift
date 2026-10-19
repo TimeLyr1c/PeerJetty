@@ -193,6 +193,12 @@ struct LocalizationChecks {
         check(summaryName.stringValue == L10n.text("settings.no_devices"), "Empty device summary")
         settings.updatePeers([peer],preferred:peer.id)
         check(draft.stringValue == "Unsaved name 中文 🧪", "Peer refresh preserves local draft")
+        if !configuration.onboardingComplete {
+            let steps = (0..<3).map { control("onboardingStep\($0)", as: NSImageView.self).image?.accessibilityDescription }
+            check(steps == [L10n.text("settings.step_todo"), L10n.text("settings.step_done"), L10n.text("settings.step_done")], "Setup checklist follows the saved name, pairing and default state")
+            let welcome = control("settingsGroup.settings.welcome_to_peerjetty", as: NSView.self)
+            check(!welcome.isHidden && welcome.superview?.isHidden == false, "Checklist stays until every step is done")
+        }
         settings.connectionAddresses([
             LocalNetworkAddress(host:"192.0.2.1",interface:"en0",label:"Wi-Fi",local:true),
             LocalNetworkAddress(host:"100.64.0.2",interface:"utun9",label:"utun9",local:false)

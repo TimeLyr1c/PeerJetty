@@ -87,6 +87,9 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
     private var pages: [SettingsSection: NSScrollView] = [:]
     private let maintenance = NSStackView()
     private(set) var selectedSection: SettingsSection = .general
+    private var onboardingSteps: [(icon: NSImageView, label: NSTextField)] = []
+    private var onboardingNamed = true
+    private var welcomeGroup: NSView?
 
     init(configuration: Configuration, displayLanguage: DisplayLanguage = LanguagePreferences().selection) {
         let height = min(580, max(440, (NSScreen.main?.visibleFrame.height ?? 900) - 130))
@@ -159,7 +162,21 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         var general: [NSView] = []
         if !configuration.onboardingComplete {
-            general += [group("settings.welcome_to_peerjetty", rows:[hint("settings.install_peerjetty_on_both_macs_and_pair_them")])]
+            // Three checkable steps; each turns done from real state (saved name, a paired device, a default).
+            onboardingNamed = false
+            let steps = [("settings.onboarding_name", nil), ("settings.onboarding_pair", button(L10n.text("settings.add_device_min"), #selector(pair))),
+                         ("settings.onboarding_default", button(L10n.text("settings.open_devices"), #selector(openDevices)))] as [(String, NSButton?)]
+            var rows: [NSView] = [hint("settings.install_peerjetty_on_both_macs_and_pair_them")]
+            for (index, (key, action)) in steps.enumerated() {
+                let icon = symbol("circle", size:16); icon.identifier = NSUserInterfaceItemIdentifier("onboardingStep\(index)")
+                let label = NSTextField(wrappingLabelWithString: L10n.text(key)); label.font = .systemFont(ofSize:13)
+                label.setContentCompressionResistancePriority(.defaultLow, for:.horizontal)
+                onboardingSteps.append((icon, label))
+                rows.append(row([icon, label, spacer()] + (action.map { [$0] } ?? [])))
+            }
+            rows.append(hint("settings.onboarding_drop"))
+            let welcome = group("settings.welcome_to_peerjetty", rows:rows); welcomeGroup = welcome
+            general += [welcome]
         }
         name.widthAnchor.constraint(greaterThanOrEqualToConstant: 190).isActive = true
         name.heightAnchor.constraint(equalToConstant:28).isActive = true
@@ -410,8 +427,22 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
         }
         if peers.isEmpty { devices.addItem(withTitle: L10n.text("settings.select_add_device_on_both_macs")) }
         if let id = selected ?? preferred, let index = peers.firstIndex(where: { $0.id == id }) { devices.selectItem(at: index) }
-        updatePeerSummary()
+        updatePeerSummary(); refreshOnboarding()
     }
+    /// Called after the first successful name save.
+    func markNamed() { onboardingNamed = true; refreshOnboarding() }
+    private func refreshOnboarding() {
+        guard !onboardingSteps.isEmpty else { return }
+        let done = [onboardingNamed, peers.contains(where:\.paired), peers.contains { $0.paired && $0.id == currentDefault }]
+        for (step, value) in zip(onboardingSteps, done) {
+            step.icon.image = NSImage(systemSymbolName: value ? "checkmark.circle.fill" : "circle", accessibilityDescription: L10n.text(value ? "settings.step_done" : "settings.step_todo"))
+            step.icon.contentTintColor = value ? .systemGreen : .tertiaryLabelColor
+            step.label.textColor = value ? .secondaryLabelColor : .labelColor
+        }
+        // Once everything is set up the group hides for good; the page stack detaches it.
+        if done.allSatisfy({ $0 }) { welcomeGroup?.isHidden = true }
+    }
+    @objc private func openDevices() { selectSection(.devices) }
     private func updatePeerSummary() {
         guard let peer = selected else {
             devices.toolTip = nil; peerName.toolTip = nil

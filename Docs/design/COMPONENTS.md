@@ -99,3 +99,10 @@ DropTargets freezes identity/geometry per drag; device tiles share the existing 
 ### Update admission coordinator
 
 `UpdateReadiness` owns main-thread session/check tickets, outstanding promise IDs and history-write IDs. AppDelegate remains responsible for transport/file activity and the native waiting panel. Reuse the one-shot gate for updater authorization; do not infer readiness from status strings or a single global promise flag. Test-only AppDelegate hooks are excluded unless PEERJETTY_TESTING is explicitly defined.
+
+### First-run checklist
+
+Before the first name save, General's welcome group lists three steps (name this Mac, pair, choose a default) with a static drag-target hint. Each step turns done from real state: the saved name, any paired device and a paired default destination. Step buttons reuse existing actions (Add device, open Devices). When all three are done, the group's surface hides for the rest of the run. No new window, animation or persisted field.
+
+首次使用时，通用页欢迎分组显示三步清单（命名、配对、选默认设备）及拖拽位置说明；每步依据实际状态打勾，全部完成后隐藏。不新增窗口、动画或配置字段。
+
