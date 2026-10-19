@@ -8,6 +8,15 @@ BIN_DIR="$("$PROJECT_ROOT/Scripts/swift.sh" build --show-bin-path)"
 TEST_ROOT="$(mktemp -d /private/tmp/PeerJetty-localization-tests.XXXXXX)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 /usr/bin/ditto "$BIN_DIR/PeerJetty_PeerCore.bundle" "$TEST_ROOT/PeerJetty_PeerCore.bundle"
+# Some SwiftPM versions lowercase localization folders (zh-hans.lproj) in the resource
+# bundle; Bundle lookups are case-sensitive, so restore the source names the app ships.
+for built in "$TEST_ROOT/PeerJetty_PeerCore.bundle"/**/*.lproj(N/); do
+  for source in "$PROJECT_ROOT/Sources/PeerCore/Resources/"*.lproj; do
+    if [[ "${built:t:l}" == "${source:t:l}" && "${built:t}" != "${source:t}" ]]; then
+      rm -rf "$built"; /usr/bin/ditto "$source" "${built:h}/${source:t}"
+    fi
+  done
+done
 # Accommodate both SwiftPM's Xcode and native build-engine object layouts.
 if [[ -f "$BIN_DIR/PeerCore.o" ]]; then
   CORE_OBJECTS=("$BIN_DIR/PeerCore.o")
