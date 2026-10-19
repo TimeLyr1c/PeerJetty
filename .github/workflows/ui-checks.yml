@@ -1,0 +1,38 @@
+name: UI checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui:
+    # Native glass APIs need a macOS 26 SDK; the deployment target stays macOS 15.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Localization catalogs
+        run: python3 Scripts/check-localization.py
+
+      - name: Build all targets
+        run: ./Scripts/swift.sh build
+
+      - name: Drop card and geometry checks
+        run: ./Scripts/test-drop-presentation.sh
+
+      - name: Settings layout checks (English and Chinese)
+        run: ./Scripts/test-localization.sh
+
+      - name: Core tests
+        run: '"$(./Scripts/swift.sh build --show-bin-path)/PeerTests"'
+
+      - name: Menu checks
+        run: ./Scripts/test-menu.sh
