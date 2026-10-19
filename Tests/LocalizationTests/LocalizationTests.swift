@@ -196,7 +196,8 @@ struct LocalizationChecks {
         if !configuration.onboardingComplete {
             let steps = (0..<3).map { control("onboardingStep\($0)", as: NSImageView.self).image?.accessibilityDescription }
             check(steps == [L10n.text("settings.step_todo"), L10n.text("settings.step_done"), L10n.text("settings.step_done")], "Setup checklist follows the saved name, pairing and default state")
-            check(!control("settingsGroup.settings.welcome_to_peerjetty", as: NSView.self).isHiddenOrHasHiddenAncestor, "Checklist stays until every step is done")
+            let welcome = control("settingsGroup.settings.welcome_to_peerjetty", as: NSView.self)
+            check(!welcome.isHidden && welcome.superview?.isHidden == false, "Checklist stays until every step is done")
         }
         settings.connectionAddresses([
             LocalNetworkAddress(host:"192.0.2.1",interface:"en0",label:"Wi-Fi",local:true),

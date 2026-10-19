@@ -439,8 +439,8 @@ final class SettingsController: NSWindowController, NSToolbarDelegate, NSWindowD
             step.icon.contentTintColor = value ? .systemGreen : .tertiaryLabelColor
             step.label.textColor = value ? .secondaryLabelColor : .labelColor
         }
-        // Once everything is set up the surface hides for good; the page stack detaches it.
-        if done.allSatisfy({ $0 }) { welcomeGroup?.superview?.isHidden = true }
+        // Once everything is set up the group hides for good; the page stack detaches it.
+        if done.allSatisfy({ $0 }) { welcomeGroup?.isHidden = true }
     }
     @objc private func openDevices() { selectSection(.devices) }
     private func updatePeerSummary() {
