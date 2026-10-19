@@ -27,3 +27,6 @@ jobs:
 
       - name: Drop card and geometry checks
         run: ./Scripts/test-drop-presentation.sh
+
+      - name: Settings layout checks (English and Chinese)
+        run: ./Scripts/test-localization.sh
